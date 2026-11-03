@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 02:35 · docs: 更新 P7 完成状态
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`AGENT.md` §1/§5/目录；`docs/implementation-plan.md` P7-1～P7-6、P7 状态与 §19；`docs/requirements.md` 变更记录；本条目。
+- **验证**：`cargo test --workspace` **111 passed**；clippy/fmt/gen/interop/package 检查通过。
+- **TDD**：不适用（状态与文档收口）。
+
+---
+
 ## 2026-11-04 02:30 · feat: P7 加固与发布准备（TDD）
 
 - **提交**：本次（hash 见 `git log`）

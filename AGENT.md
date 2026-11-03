@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0–P6 已完成，P7 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成，P7-1 的 30 分钟 fuzz 仍需夜间/手工执行；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：33 个用例、74750 字节（P6 新增 object/40），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P6 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义（Date/BigInteger/BigDecimal/java.time）+ schema 驱动 serde 桥；110 项测试全绿 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P6 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；111 项测试全绿 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P6 已完成；下一步是 P7 的 fuzz、bench、panic 审计与发布准备。
+所以：P0–P7 已完成；剩余加固项是手工/夜间跑满 30 分钟 `cargo fuzz`（AC-04）与真实 100 MB 对象负载复测。
 
 ---
 
@@ -57,6 +57,9 @@
 
 ```
 AGENT.md                     # 本文件（仓库根）
+README.md / SECURITY.md      # 快速开始、安全边界
+CHANGELOG.md                 # 版本变更
+fuzz/                        # cargo-fuzz 目标（独立 workspace）
 docs/
 ├── requirements.md          # 要做什么：FR/NFR/AC/范围外/待确认问题
 ├── design.md                # 怎么做：决策 D1–D5、协议要点、模块、里程碑、风险
@@ -107,6 +110,8 @@ cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --test derive      # derive 互通
 cargo test -p jser --test builtin     # Date/BigInteger/java.time 语义
 cargo test -p jser-serde              # serde 桥
+cargo test -p jser --test fuzz_smoke  # 离线 fuzz 冒烟
+cargo run --release -p jser --example bench -- 100 # 100MB 级 bench
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
