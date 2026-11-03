@@ -354,7 +354,7 @@ serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Opt
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
 | M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |
-| M6 | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 无 panic；吞吐达到约定目标 |
+| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 无 panic；吞吐达到约定目标；P7 已完成 bench/fuzz 目标与冒烟，30 分钟 fuzz 待夜间执行 |
 
 ## 7. 风险与缓解
 

@@ -47,7 +47,7 @@ impl BigInteger {
             digits.push(b'-');
         }
         digits.reverse();
-        String::from_utf8(digits).expect("decimal digits are ASCII")
+        String::from_utf8_lossy(&digits).into_owned()
     }
 }
 
@@ -70,6 +70,10 @@ impl BigDecimal {
         let sign = if self.unscaled.signum < 0 { "-" } else { "" };
         let digits = self.unscaled.to_decimal_string();
         let digits = digits.trim_start_matches('-');
+
+        if self.scale.unsigned_abs() > 100_000 {
+            return format!("{sign}{digits}E{}", -self.scale);
+        }
 
         if self.scale <= 0 {
             let zeros = "0".repeat(self.scale.unsigned_abs() as usize);

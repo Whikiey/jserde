@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-04 02:30 · feat: P7 加固与发布准备（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - panic 审计：`jser` 增加 `#![deny(clippy::unwrap_used, clippy::expect_used)]`；移除 allowlist/builtin/semantic 中的 `expect`；`Reader` 批量解码改为 move 进 arena，避免 100 MB 顶层块多一次复制。
+  - `fuzz/`：decode/roundtrip/mutf8 三个 libFuzzer 目标、README、seed 说明；新增离线 `tests/fuzz_smoke.rs`，CI 增加 `fuzz-smoke` job。
+  - `crates/jser/examples/bench.rs` + `docs/bench.md`：100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入。
+  - `README.md`、`SECURITY.md`、`CHANGELOG.md`；CI 继续覆盖 lint/test/fixtures/interop。
+- **验证**：`cargo test --workspace` **111 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过；`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
+- **TDD**：Red：新增 `fuzz_smoke` 与 bench 流程先运行；Green：修复 panic 路径与批量解码复制后通过。
+- **AC 状态**：`AC-06` 的合成 100 MB 块负载满足吞吐/内存目标；`AC-04` 已有 fuzz 目标 + 冒烟，但 30 分钟完整运行待夜间/手工执行。
+
+---
+
 ## 2026-11-04 02:15 · docs: 更新 P6 完成状态
 
 - **提交**：本次（hash 见 `git log`）

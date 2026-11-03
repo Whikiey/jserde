@@ -25,12 +25,9 @@ impl Allowlist {
     /// Default policy: `java.lang.*` and `java.util.*`.
     pub fn strict() -> Self {
         let mut allowlist = Self::new();
-        allowlist
-            .add("java.lang.*")
-            .expect("built-in allowlist pattern is valid");
-        allowlist
-            .add("java.util.*")
-            .expect("built-in allowlist pattern is valid");
+        // The two built-in patterns are compile-time constants and cannot fail.
+        let _ = allowlist.add("java.lang.*");
+        let _ = allowlist.add("java.util.*");
         allowlist
     }
 

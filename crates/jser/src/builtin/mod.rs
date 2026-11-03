@@ -120,8 +120,12 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
     let mut entries = Vec::with_capacity(size);
     let mut items = contents[1..].iter();
     for _ in 0..size {
-        let key = items.next().expect("length checked above");
-        let value = items.next().expect("length checked above");
+        let key = items.next().ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap entry count is inconsistent".to_owned(),
+        })?;
+        let value = items.next().ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap entry count is inconsistent".to_owned(),
+        })?;
         entries.push((key, value));
     }
 

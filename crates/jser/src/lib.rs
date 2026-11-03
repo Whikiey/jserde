@@ -80,6 +80,7 @@
 //! Keep depth/element/stream-size limits enabled for untrusted data.
 
 #![forbid(unsafe_code)]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 
 pub mod allowlist;
 pub mod builtin;

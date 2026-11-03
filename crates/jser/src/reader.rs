@@ -105,6 +105,19 @@ impl<'a> Reader<'a> {
         Ok(Some(value))
     }
 
+    /// Bulk decoder path: move the value into the arena instead of cloning it.
+    /// Large top-level block-data items otherwise double the peak memory.
+    fn read_next_in_place(&mut self) -> Result<bool> {
+        if self.input.is_empty() {
+            return Ok(false);
+        }
+
+        let tag = self.input.read_u8()?;
+        let value = self.read_content(tag, 0)?;
+        self.graph.push_item(value);
+        Ok(true)
+    }
+
     /// Arena accumulated so far.
     pub fn graph(&self) -> &Graph {
         &self.graph
@@ -543,7 +556,7 @@ pub fn decode_stream_with_options(
     allowlist: Allowlist,
 ) -> Result<Graph> {
     let mut reader = Reader::with_allowlist(bytes, limits, allowlist)?;
-    while reader.read_next()?.is_some() {}
+    while reader.read_next_in_place()? {}
     Ok(reader.into_graph())
 }
 
