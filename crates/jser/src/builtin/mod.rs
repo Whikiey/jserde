@@ -2,14 +2,23 @@
 //!
 //! P2 decodes `ArrayList`, `LinkedList`, `HashMap`, `LinkedHashMap` and
 //! `HashSet`; their wire layouts differ from plain field-by-field objects and
-//! are parsed from the preserved custom data blocks here. Semantic codecs for
-//! `Date`, `BigInteger`, `BigDecimal` and `java.time.*` are added in P6.
+//! are parsed from the preserved custom data blocks here.
+//!
+//! P6 adds semantic views for `Date`, `BigInteger`, `BigDecimal` and
+//! `java.time.*` in [`semantic`]; the reader still keeps them as generic
+//! `JValue::Obj` values so byte replay is unaffected.
+
+pub mod semantic;
 
 use crate::error::{Error, Result};
 use crate::value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
 };
 use crate::wire::reader::StreamReader;
+pub use semantic::{
+    BigDecimal, BigInteger, BuiltinValue, Duration, Instant, JavaDate, LocalDate, LocalDateTime,
+    LocalTime, Registry, ZonedDateTime,
+};
 
 pub const ARRAY_LIST: &str = "java.util.ArrayList";
 pub const LINKED_LIST: &str = "java.util.LinkedList";

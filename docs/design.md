@@ -142,17 +142,21 @@ pub trait JavaSerializable: Sized {
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`feature = "serde"` 时提供 `Serializer`/`Deserializer`，**仅**支持：单根、无环、无共享引用、字段名与 Java 类一致的 POJO。遇到多元素流、`Reset`、回指或未知类直接返回错误，不做半吊子支持。这样 serde 的短板不会污染核心设计。
+`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。**仅**支持单根扁平 POJO、标量/String/Option/数组；遇到多元素流、`TC_RESET`、回指/环、未知类、嵌套对象或 Map/Set 字段直接报错。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
 `HashMap`/`HashSet`/`Date`/`BigInteger`/`BigDecimal`/`java.time.*` 等的 wire 形态不符合"字段直读"规则（它们有 `writeObject/readObject` 自定义逻辑），必须逐个实现：
 
 ```rust
-pub struct Registry { codecs: HashMap<&'static str, Box<dyn Codec>> }
+pub struct Registry; // builtin::Registry
+impl Registry {
+    pub fn is_known(&self, class: &str) -> bool;
+    pub fn decode(&self, graph: &Graph, value: &JValue) -> Result<Option<BuiltinValue>>;
+}
 ```
 
-未知类在 decode 时退化为 `JValue::Obj`（保留字段、描述符、自定义块原样，可再编码回去）——这是"能读任意流"的兜底策略，也是动态模型的直接收益。
+解码器仍保留通用 `JValue::Obj`（字段、描述符、自定义块原样，可再编码回去）；`Registry`/`Graph::builtin` 在需要时做语义分派。未知类保持 `JValue::Obj`，但受 allowlist 门禁。
 
 对 `Externalizable`（`OUT-01`）的边界也要写清楚：
 
@@ -300,11 +304,11 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 "逐字节回放"只用于**未修改的 fixture 流**，是 P3 的回归门禁，不是验收标准（验收仍是 `AC-02` 的 Java 读回）。
 
 - **定义**：`encode_stream(decode_stream(x)) == x`。
-- **适用**：`testdata/fixtures/**` 的 32 个已提交用例；decode 后不改动 `Graph`。
+- **适用**：`testdata/fixtures/**` 的 33 个已提交用例；decode 后不改动 `Graph`。
 - **不适用**：新建的图、修改过字段/集合/引用的图；这些只要求"Java 读回语义相等"。
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
 - **防作弊**：mutation test（解码 → 改一个字段 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
-- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 才要求全部 32 例回放 + Java 读回。
+- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部 fixture 回放 + Java 读回（P6 后为 33 例）。
 
 ### 5.2 Allowlist（2026-11-04 定案）
 
@@ -322,16 +326,34 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 - `cargo run -p jser --bin suid -- path/to/Foo.class` 输出现值；`interop.sh` 用 `build/suid.txt` 的 `Fixtures$NoSuid = -3559046683250708543` 与之对拍。
 - 限制：这是默认算法值，**优先显式声明 `suid`**；Java 版本/类成员变化会改变计算值，文档不承诺跨版本稳定。
 
+### 5.4 内置类与 serde 支持矩阵（P6）
+
+| 类型 | 状态 | 入口 |
+|---|---|---|
+| `java.util.Date` | ✅ epoch millis | `BuiltinValue::Date` |
+| `java.math.BigInteger` | ✅ signum + 大端 magnitude，十进制转换 | `BuiltinValue::BigInteger` |
+| `java.math.BigDecimal` | ✅ scale + `intVal`，保留 scale | `BuiltinValue::BigDecimal` |
+| `java.time.Duration` | ✅ seconds + nanos | `BuiltinValue::Duration` |
+| `java.time.Instant` | ✅ epoch second + nano | `BuiltinValue::Instant` |
+| `java.time.LocalDate` | ✅ year/month/day | `BuiltinValue::LocalDate` |
+| `java.time.LocalTime` | ✅ hour/minute/second/nano | `BuiltinValue::LocalTime` |
+| `java.time.LocalDateTime` | ✅ date + time | `BuiltinValue::LocalDateTime` |
+| `java.time.ZonedDateTime` | ✅ date/time + offset + zone | `BuiltinValue::ZonedDateTime` |
+| `Year`/`YearMonth`/`MonthDay`/`Period` | ❌ 未实现（fixture 未覆盖） | — |
+| `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
+
+serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Option`/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。
+
 ## 6. 里程碑与出口条件
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | ✅ **数据部分已完成**（2026-11-03）：32 个用例、74559 字节，codec 层手写推导与 JDK 输出逐字节一致；剩余工作是 Rust 侧解码器读到能复现这些字节 |
-| M1 | 基本类型 / `String` / 数组 / 集合的**读** | 32 个 fixture 全部可解码（`36` 先只验结构）；多元素流与 `TC_RESET` 可读 |
-| M2 | **写** + 回放门禁 + 双向对拍 | 未修改的 32 例 `encode_stream(decode_stream(x)) == x`（例外需登记）；构造/修改过的图由 Java 读回验证语义；Rust 写 → Java 读回，语义相等 |
-| M3 | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
-| M4 | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
-| M5 | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |
+| M0 | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | ✅ **数据部分已完成**（2026-11-03）：32 个用例、74559 字节；P6 新增 `40` 后共 33 例、74750 字节，codec 层手写推导与 JDK 输出逐字节一致；剩余工作是 Rust 侧解码器读到能复现这些字节 |
+| M1 | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码（`36` 先只验结构）；多元素流与 `TC_RESET` 可读 |
+| M2 | **写** + 回放门禁 + 双向对拍 | 未修改的 fixture（当前 33 例）`encode_stream(decode_stream(x)) == x`（例外需登记）；构造/修改过的图由 Java 读回验证语义；Rust 写 → Java 读回，语义相等 |
+| M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
+| M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
+| M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |
 | M6 | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 无 panic；吞吐达到约定目标 |
 
 ## 7. 风险与缓解

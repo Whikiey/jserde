@@ -3,3 +3,8 @@ name = "jser-serde"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+jser = { path = "../jser" }
+serde.workspace = true
+serde_json.workspace = true

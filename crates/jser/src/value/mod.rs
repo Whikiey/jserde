@@ -500,6 +500,11 @@ impl Graph {
         }
     }
 
+    /// Semantic built-in value (Date/BigInteger/BigDecimal/java.time), if known.
+    pub fn builtin(&self, value: &JValue) -> Result<Option<crate::builtin::BuiltinValue>> {
+        crate::builtin::Registry::new().decode(self, value)
+    }
+
     /// Map view for a `HashMap`/`LinkedHashMap` object; `None` otherwise.
     pub fn as_map<'a>(&'a self, value: &'a JValue) -> Result<Option<MapView<'a>>> {
         builtin::map_view(self, value)

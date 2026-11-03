@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-04 02:10 · feat: 实现 P6 内置类语义与 serde 桥（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `crates/jser/src/builtin/semantic.rs`：`JavaDate`、`BigInteger`（十进制度转换）、`BigDecimal`（保留 scale）、`Duration`/`Instant`/`LocalDate`/`LocalTime`/`LocalDateTime`/`ZonedDateTime`；`BuiltinValue` 与 `Registry`（按类名分派，未知类返回 `None`）。
+  - `Graph::builtin` 便捷入口；`crates/jser/tests/builtin.rs` 覆盖 `36` 与新增 `40` 的语义，未知类不误判。
+  - `crates/jser-serde`：schema 驱动 `to_vec`/`from_slice`（JavaSchema/SchemaField），支持单根扁平 POJO、标量/String/Option/数组；拒绝多根、未知类/schema 不匹配、嵌套对象；`tests/serde.rs` 5 例。
+  - `examples/emit.rs` + `interop.sh`：serde 输出的 `point-serde.ser` 由 Java 读回；`docs/design.md` §5.4 支持矩阵与 serde 限制。
+- **验证**：`cargo test --workspace` **110 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过（14 项 Java/SUID 校验）。
+- **TDD**：Red：先加 `tests/builtin.rs`/serde 测试，缺少 `Registry`/`BuiltinValue`/`to_vec` 编译失败；Green：实现语义解析与 schema 桥后逐项通过。
+- **AC 状态**：`AC-01` 的 `36` 语义补齐，新增 `40` 通过；`AC-02` 的 serde 输出增加 Java 读回；`AC-04`/`AC-06` 仍未覆盖。
+
+---
+
 ## 2026-11-04 02:00 · test: 扩充 java.time fixture（object/40）
 
 - **提交**：本次（hash 见 `git log`）

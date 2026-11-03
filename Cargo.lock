@@ -85,6 +85,11 @@ dependencies = [
 [[package]]
 name = "jser-serde"
 version = "0.1.0"
+dependencies = [
+ "jser",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "libc"
