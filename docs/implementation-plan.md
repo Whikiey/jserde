@@ -117,12 +117,14 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | fixture |
 |---|---|---|---|
-| P1-1 | `wire/reader.rs`：有界游标 | 大端 `u16/u32/u64/i*/f32/f64`、`read_exact`、剩余长度、`max_stream_size`；任何越界返回 `Truncated`，禁止索引越界 panic | 单测 + fuzz 初版 |
-| P1-2 | `wire/mutf8.rs`：解码/编码 | `C0 80` ↔ `U+0000`；2/3 字节 BMP；补充平面 = 两个 3 字节代理项（6 字节）；拒绝非法/超长（`C0 80` 除外）；解码 `TC_STRING`/`TC_LONGSTRING` 并保留头部类型；编码与解码互为逆 | `01–06`、`12` |
-| P1-3 | `wire/block.rs`：块缓冲读取 | 顶层与 `writeObject` 内两种上下文；`TC_BLOCKDATA`（u8 长度）/`TC_BLOCKDATALONG`（i32 长度）；块可跨多个元素，`TC_ENDBLOCKDATA` 收尾；保留块边界 | `09`（13 字节合并）、`11`（1024+976） |
-| P1-4 | `wire/handle.rs`：wire 句柄表 | 从 `0x7E0000` 递增分配 wire 值；维护 `wire -> 内部 Handle` 映射；`get`/`assign`/`reset`；`TC_REFERENCE` 越界报 `BadHandle`；reset 只清映射，内部 `Handle` 继续单调 | `07`、`08`、`10`、`35` |
-| P1-5 | 顶层分发 | `TC_NULL`/`TC_STRING`/`TC_LONGSTRING`/`TC_REFERENCE`/`TC_BLOCKDATA*`/`TC_RESET`；返回 `JValue`（`TC_RESET` → `JValue::Reset`）；`reset` 清 wire 映射；EOF 返回 `None` | `08`、`10` |
-| P1-6 | codec 测试 | 数据驱动：`kind = string/null/sequence/blockdata/primitive_stream/reset_stream` 的语义断言；字符串长度上限分支（`06` 70000 字节） | 12 例全绿 |
+| P1-1 | ✅ `wire/reader.rs`：有界游标 | 大端 `u16/u32/u64/i*/f32/f64`、`read_exact`、剩余长度、`max_stream_size`；任何越界返回 `Truncated`，禁止索引越界 panic | 单测 + fuzz 初版 |
+| P1-2 | ✅ `wire/mutf8.rs`：解码/编码 | `C0 80` ↔ `U+0000`；2/3 字节 BMP；补充平面 = 两个 3 字节代理项（6 字节）；拒绝非法/超长（`C0 80` 除外）；解码 `TC_STRING`/`TC_LONGSTRING` 并保留头部类型；编码与解码互为逆 | `01–06`、`12` |
+| P1-3 | ✅ 顶层块读取 | `TC_BLOCKDATA`（u8 长度）/`TC_BLOCKDATALONG`（i32 长度），保留块边界与头部类型；自定义 `writeObject` 的块序列在 P2-4 复用同一解析循环 | `09`（13 字节合并）、`11`（两个 long 块） |
+| P1-4 | ✅ `wire/handle.rs`：wire 句柄表 | 从 `0x7E0000` 递增分配 wire 值；维护 `wire -> 内部 Handle` 映射；`get`/`assign`/`reset`；`TC_REFERENCE` 越界报 `BadHandle`；reset 只清映射，内部 `Handle` 继续单调；P1 只映射 String | `07`、`08`、`10` |
+| P1-5 | ✅ 顶层分发（P1 子集） | `TC_NULL`/`TC_STRING`/`TC_LONGSTRING`/`TC_REFERENCE`/`TC_BLOCKDATA*`/`TC_RESET`；返回 `JValue`（`TC_RESET` → `JValue::Reset`）；`reset` 清 wire 映射；对象/数组/enum 留给 P2 | `08`、`10` |
+| P1-6 | ✅ codec 测试 | 数据驱动：`kind = string/null/sequence/blockdata/primitive_stream/reset_stream` 的语义断言；字符串长度上限分支（`06` 70000 字节） | 12 例全绿 |
+
+**状态（2026-11-03，TDD）**：P1 主体完成，codec 12 例全绿；新增 27 项测试（codec 10 个测试函数覆盖 12 例 + MUTF-8 6 + reader 5 + manifest 4 + error 2），`clippy`/`fmt`/`gen.sh --check` 均通过。P1-3 的自定义 `writeObject` 块上下文并入 P2-4。
 
 出口：`cargo test -p jser --test codec` 12 例通过；`cargo fuzz run decode` 初版 10 分钟无 panic（fuzz 目标可延后到 P7，但 reader 必须从第一天就是有界的）。
 
@@ -348,8 +350,8 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 3. ✅ 搭 workspace + 空 crate + 错误模型（P0-2～P0-5）。
 4. ✅ 写 manifest 测试夹具，断言 32 例（P0-6）。
 5. ✅ 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
-6. 实现有界 `StreamReader` + MUTF-8（P1-1/P1-2），先让字符串 6 例通过。
-7. 实现块缓冲 + 句柄表（P1-3/P1-4），让 codec 12 例全绿。
+6. ✅ 实现有界 `StreamReader` + MUTF-8（P1-1/P1-2）。
+7. ✅ 实现顶层块读取 + 句柄表（P1-3/P1-4），codec 12 例全绿。
 8. 实现 `classDesc` 解析 + 单层对象（P2-1/P2-4），先过 `20`。
 9. 加继承、字段排序、`SC_WRITE_METHOD`（P2-2），过 `21–23`。
 10. 加数组/enum/集合/环/reset（P2-5～P2-8），过 `24–39`。
@@ -377,3 +379,5 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | 完善回放门禁：限定"未修改的 32 例"、例外登记、mutation/构造流防作弊；补 `Slot::Str.long`（G-11）；明确门禁不是 AC | 拍板 1 |
 | 2026-11-03 | P0-1 完成：git 初始化并提交文档/testdata（`ad46c43`） | 版本控制 |
 | 2026-11-03 | P0 完成：workspace/错误模型/manifest 夹具/CI；P0-2～P0-8 落地，6 项测试通过 | P0 |
+| 2026-11-03 | P1 主体完成（TDD）：StreamReader/MUTF-8/块/句柄/顶层分发，codec 12 例与 27 项测试全绿 | P1 |
+| 2026-11-03 | 修正 `11` 号夹具语义预期：976 字节块 >255，JDK 也使用 `TC_BLOCKDATALONG`；同步 manifest/文档 | TDD 发现 |

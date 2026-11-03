@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0 已完成，P1 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1 已完成，P2 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P0 骨架已完成**：workspace、`jser` 错误模型与模块占位、manifest 测试夹具、CI；解码器尚未实现 |
+| Rust 代码 | **P1 codec 层已完成**：`StreamReader`、MUTF-8、wire 句柄表、顶层分发；codec 12 例全绿；对象/数组/集合尚未实现（P2） |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0 工程骨架已完成；下一步是 P1 的 `StreamReader`/MUTF-8/块缓冲/句柄表，让 12 个 codec fixture 全绿，不是"重构现有代码"。
+所以：P0/P1 已完成；下一步是 P2 的 `classDesc`、对象、数组、集合，不是"重构现有代码"。
 
 ---
 
@@ -94,7 +94,9 @@ Rust 侧命令（骨架建好后必须保持可用）：
 cargo test --workspace                 # 全部测试，含 fixture 驱动用例
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
-cargo test -p jser --test decode       # 只跑解码对拍（测试文件建好后）
+cargo test -p jser --test codec        # 只跑 codec 12 例
+cargo test -p jser --test reader       # StreamReader 单元契约
+cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
 ```
 
 要求：
@@ -161,7 +163,7 @@ jser/
 ## 8. 开发流程（每个任务照此执行）
 
 1. **定位需求**：找到对应的 `FR-*` / `AC-*` 与里程碑（`design.md` §6），确认不在 OUT 范围内。
-2. **先写失败测试**：从 `manifest.json` 取用例，或为尚未覆盖的协议细节新增一个 fixture + 期望值。新增 fixture 必须同步：`Fixtures.java` → `./gen/gen.sh`（会重算 manifest 与 size/sha256）。
+2. **先写失败测试**：从 `manifest.json` 取用例，或为尚未覆盖的协议细节新增一个 fixture + 期望值。新增 fixture 必须同步：`Fixtures.java` → `docs/testdata/gen/gen.sh`（会重算 manifest 与 size/sha256）。
 3. **最小实现**：按 §6 的结构落位；改协议行为时同步更新 `design.md` §4.2/§4.3。
 4. **验证**：`docs/testdata/gen/gen.sh --check`、`cargo test --workspace`、`cargo clippy -D warnings`、`cargo fmt --check`。
 5. **自检**：解码路径有没有 `unwrap`/`expect`/索引越界/`unsafe`？新代码是否引入了平台相关或需要网络的依赖？
@@ -171,6 +173,16 @@ jser/
 里程碑顺序：M1 读通 fixture → M2 写 + 双向对拍 → M3 动态 POJO/环/`TC_RESET` → M4 derive + SUID → M5 内置类/serde → M6 加固（fuzz、bench）。**不要跳过 M1 直接做 M5。**
 
 P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture 流**；修改/构造过的图必须用 Java 读回验证，别把回放门禁当成 `AC-02`。回放门禁的例外要登记"文件+原因+负责人+到期"。
+
+### 8.1 TDD 循环（强制）
+
+每个行为按 **Red → Green → Refactor** 推进：
+
+1. **Red**：先写会失败的测试。测试从 `manifest.json`/fixture 或公开 API 契约出发，不照抄实现；运行 `cargo test` 确认失败原因正确。
+2. **Green**：写最小实现让测试通过；不提前加入没有被测试覆盖的功能。
+3. **Refactor**：在测试全绿下整理结构、命名与错误信息，然后重跑 §5 的全部检查。
+4. **提交**：测试与实现放在同一个提交（或先提交已通过的测试基线，再提交实现）；**不要在 `main` 上留红的提交**。提交信息用 `test:`/`feat:` 并注明 TDD。
+5. **修 bug**：先补一个能复现的失败测试，再修；禁止只改实现不加回归测试。
 
 ---
 
@@ -226,7 +238,7 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 
 - [ ] 改动落在正确的 crate/模块，未新建未声明的结构
 - [ ] `docs/testdata/gen/gen.sh --check` 通过（改了用例则已重新生成并提交 manifest）
-- [ ] `cargo test --workspace` 全绿，新增行为有用例
+- [ ] 新增行为先有失败测试（或 bug 的回归测试），实现后 `cargo test --workspace` 全绿
 - [ ] `cargo clippy -D warnings`、`cargo fmt --check` 通过
 - [ ] 解码路径无 panic 风险，无 `unsafe`，深度/长度上限生效
 - [ ] 文档（`design.md` / `requirements.md` / `testdata/README.md`）按需同步
