@@ -14,7 +14,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /**
  * 基准数据生成器（权威来源）。
@@ -260,6 +265,15 @@ public class Fixtures {
         });
 
         gen(dir, "39-suid-computed.ser", out -> out.writeObject(new NoSuid()));
+
+        gen(dir, "40-java-time.ser", out -> out.writeObject(new Object[] {
+                Duration.ofSeconds(123, 456789000),
+                Instant.ofEpochSecond(1700000000, 123456789),
+                LocalDate.of(2024, 2, 29),
+                LocalDateTime.of(2024, 2, 29, 12, 34, 56, 123456789),
+                ZonedDateTime.of(2024, 2, 29, 12, 34, 56, 123456789,
+                        ZoneId.of("Asia/Shanghai")),
+        }));
     }
 
     static void printSuids() {

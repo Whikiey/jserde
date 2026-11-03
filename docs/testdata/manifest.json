@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 32,
-  "total_bytes": 74559,
+  "case_count": 33,
+  "total_bytes": 74750,
   "cases": [
     {
       "id": "codec/01",
@@ -692,6 +692,45 @@
       },
       "size": 73,
       "sha256": "105bc028231d5e9574a45eec2022a490d915db83afc2b396275111ff64a41fe2"
+    },
+    {
+      "id": "object/40",
+      "file": "fixtures/object/40-java-time.ser",
+      "case": "Object[]{Duration, Instant, LocalDate, LocalDateTime, ZonedDateTime}",
+      "features": [
+        "java.time.Ser",
+        "Duration/Instant/LocalDate/LocalDateTime/ZonedDateTime"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.time.Duration",
+            "seconds": 123,
+            "nanos": 456789000
+          },
+          {
+            "type": "java.time.Instant",
+            "epoch_second": 1700000000,
+            "nano": 123456789
+          },
+          {
+            "type": "java.time.LocalDate",
+            "semantic": "2024-02-29"
+          },
+          {
+            "type": "java.time.LocalDateTime",
+            "semantic": "2024-02-29T12:34:56.123456789"
+          },
+          {
+            "type": "java.time.ZonedDateTime",
+            "semantic": "2024-02-29T12:34:56.123456789+08:00[Asia/Shanghai]"
+          }
+        ]
+      },
+      "size": 191,
+      "sha256": "8e004d85c4256c67b3916ccdabeb693e5628ab298e409e7a648a3d0707101f70"
     }
   ]
 }

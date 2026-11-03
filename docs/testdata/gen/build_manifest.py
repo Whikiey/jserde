@@ -255,6 +255,18 @@ CASES = [
                 "suid": -3559046683250708543, "fields": {"x": 1, "y": "y"},
                 "note": "Rust 侧 computeDefaultSUID 必须算出同一值"},
     ),
+    dict(
+        id="object/40", file="fixtures/object/40-java-time.ser",
+        case="Object[]{Duration, Instant, LocalDate, LocalDateTime, ZonedDateTime}",
+        features=["java.time.Ser", "Duration/Instant/LocalDate/LocalDateTime/ZonedDateTime"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.time.Duration", "seconds": 123, "nanos": 456789000},
+            {"type": "java.time.Instant", "epoch_second": 1700000000, "nano": 123456789},
+            {"type": "java.time.LocalDate", "semantic": "2024-02-29"},
+            {"type": "java.time.LocalDateTime", "semantic": "2024-02-29T12:34:56.123456789"},
+            {"type": "java.time.ZonedDateTime", "semantic": "2024-02-29T12:34:56.123456789+08:00[Asia/Shanghai]"},
+        ]},
+    ),
 ]
 
 

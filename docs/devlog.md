@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 02:00 · test: 扩充 java.time fixture（object/40）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`gen/Fixtures.java` 新增 `object/40-java-time.ser`（Object[]：Duration、Instant、LocalDate、LocalDateTime、ZonedDateTime/Asia/Shanghai）；`build_manifest.py` 登记期望语义；重新生成 `manifest.json`（33 例、74750 字节）；`testdata/README.md` 覆盖表与 `tests/manifest.rs` 计数同步。
+- **验证**：`cd docs/testdata && ./gen/gen.sh --check` 通过；`cargo test --workspace` 通过（33 例全量解码/回放）。
+- **TDD**：先登记 fixture 与期望值，再实现语义解析（见下一条 feat）。
+
+---
+
 ## 2026-11-04 01:45 · docs: 更新 P5 完成状态
 
 - **提交**：本次（hash 见 `git log`）
