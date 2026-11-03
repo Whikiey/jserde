@@ -6,17 +6,17 @@
 
 ---
 
-## 1. 当前状态（2026-11-03）
+## 1. 当前状态（2026-11-04）
 
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2 已完成，P3 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2/P3 已完成，P4 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P2 解码层已完成**：32 例全部可解码；`classDesc`/对象/继承/自定义块/数组/enum/集合/环/`TC_RESET` 与 `Limits` 已实现；58 项测试全绿；写方向未开始 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P2 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P3 编解码层已完成**：32 例全部可解码且**逐字节回放**；`encode_stream`/`encode`、ClassDesc/对象/数组/enum/集合/块/参考、`Limits`、Java interop 已实现；70 项测试全绿 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P3 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0/P1/P2 已完成；下一步是 P3 的 writer、逐字节回放门禁与 Java 读回，不是"重构现有代码"或提前做 P5/P6。
+所以：P0–P3 已完成；下一步是 P4 的动态 POJO/typed API/未知类回写收口，不是"重构现有代码"或提前做 P5/P6。
 
 ---
 
@@ -72,6 +72,8 @@ docs/
     │   ├── Fixtures.java              # 权威生成器（JDK 17+）
     │   ├── build_codec_fixtures.py    # codec 层独立再推导，用于对拍
     │   ├── build_manifest.py          # 生成/校验 manifest
+    │   ├── Verify.java                # Rust 写 → Java 读回校验
+    │   ├── interop.sh                 # Rust ↔ Java 互操作检查
     │   └── gen.sh                     # 编排入口
     └── build/               # 临时产物，已在 .gitignore，不要提交
 ```
@@ -99,6 +101,9 @@ cargo fmt --all -- --check
 cargo test -p jser --test codec        # 只跑 codec 12 例
 cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
+cargo test -p jser --test roundtrip_bytes # 32 例逐字节回放门禁
+cargo run -p jser --example emit       # 生成 build/rust/*.ser
+docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
 ```
 
 要求：
@@ -157,6 +162,9 @@ jser/
 | 13 | 未声明 SUID 由 JDK 的 `computeDefaultSUID` 算出（`Fixtures$NoSuid` = `-3559046683250708543`），实现须与 `build/suid.txt` 对拍。 | `39` |
 | 14 | `java.time.*` 经 `writeReplace` 变成 `java.time.Ser` 代理（flags `0x0C` = Externalizable + block，0 字段，数据在块里）；`Date`/`BigInteger`/`BigDecimal` 有自定义布局。 | `36` |
 | 15 | `TC_STRING` 与 `TC_LONGSTRING` 的头部选择要保留（非规范流可能短串用 long）；`Slot::Str.long` 记录，新建字符串按修改版 UTF-8 字节长度（非 Rust `len()`）选头。 | `06`、`design.md` §4.2 第 3 条 |
+| 16 | `TC_CLASSDESC` 的句柄在写字段描述符（`className1` 字符串）**之前**分配，故 `34` 的 Node 描述符是 `0x7E0000`，两个 `className1` 是 `0x7E0001/2`，对象是 `0x7E0003`。 | `34` |
+| 17 | classdata 按**父 → 子**顺序；每层字段后紧跟该层自定义块（`LinkedHashMap.accessOrder` 在 HashMap entries 块之后）。 | `22`、`30` |
+| 18 | 字段的 `className1` 本身占 wire 句柄；重放必须沿用解码时的字符串句柄（`FieldDesc.class_name_handle`），否则句柄编号漂移。 | `21`、`34` |
 
 `TC_EXCEPTION` 读到即报 `Unsupported`，但错误里保留原始类名。深度/长度上限始终生效。
 

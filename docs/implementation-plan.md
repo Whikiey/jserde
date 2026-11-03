@@ -34,7 +34,7 @@ v0.1 的完成定义：**32 个 fixture 全部解码正确；Rust 写出的流�
 | A-4 | Rust `edition 2021`、`rust-version = 1.75` | 保守、无 nightly 依赖；可在 P0 调整 |
 | A-5 | 首版**不发布** crates.io | 设计 §8 未决；不影响代码结构，只影响文档/CI 投入 |
 | A-6 | 单人开发估算，人日为 1 个熟练 Rust 工程师 | 并行化建议见 §2 |
-| A-7 | 本机可能无 JDK，CI 必须有 JDK 17 | 无 JDK 时 interop 测试 `#[ignore]`，fixture 校验在 CI 跑 |
+| A-7 | 本机可能无 JDK，CI 必须有 JDK 17 | 无 JDK 时 `tests/interop.rs` 运行时跳过，fixture 校验与 interop job 在 CI 跑 |
 
 ---
 
@@ -172,20 +172,24 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P3-1 | `wire/writer.rs` | 流头 `AC ED 00 05`；大端写入；wire 句柄分配与 `TC_REFERENCE`；`JValue::Reset` 清 wire 映射后重新写描述符 | codec 层字节一致 |
-| P3-2 | `wire/block.rs` 写侧 | 1024 字节分块、`u8` vs `i32` 长度、flush 时机（写对象标签/`TC_ENDBLOCKDATA` 前）；顶层 `close` 时 flush | `09`、`11` |
-| P3-3 | `desc/write.rs` | 由 `ClassDesc` 原样写回；新描述符按字段排序规则生成（基本类型按名 → 对象按名）；同类去重；`suid` 来自 schema/解码值 | `20–24`、`39` |
-| P3-4 | `Graph` → 字节 | 按 `items` 顺序编码；同一 `Handle` 首次实体、后续 `TC_REFERENCE`；`Block` 保留头部类型；字符串按 `Str.long` 选 `TC_STRING`/`TC_LONGSTRING`（新建时按 MUTF-8 字节长度，非 Rust `len()`；含合成短串-long 用例）；`Reset` 清表；`SC_WRITE_METHOD` 先字段后自定义块再 `TC_ENDBLOCKDATA`；未知类按保留的元数据回写 | `20–39` |
-| P3-5 | 集合编码 | 按上表布局；`HashMap` 的 `capacity`/`threshold` 由 `size` 反推合理值（Java `readObject` 读但忽略 capacity；阈值为 `table_size * loadFactor` 的整数语义）；`LinkedHashMap` 保持条目顺序 | `28–32`、`38` |
-| P3-6 | **回放门禁（未修改流）** | `encode_stream(decode_stream(bytes)) == bytes` 覆盖 32 例；范围仅限 decode 后不改图；例外登记"文件+原因+负责人+到期"，默认不允许；**不写入 AC** | `tests/roundtrip_bytes.rs` |
-| P3-7 | **防作弊 / mutation 测试** | 解码 fixture → 改一个标量或字段 → 编码 → Java 读到新值；手工构造 `HashMap`/POJO → 编码 → Java 读回；确认 `encode` 不是原始字节回显 | `tests/mutation.rs` + Java `Verify` |
-| P3-8 | Java 校验程序 | `docs/testdata/gen/Verify.java`：读 Rust 产出的 `.ser`，断言类名/字段/集合内容；`interop.sh` 编排；不修改现有 fixture 与 manifest | 手工 + CI |
-| P3-9 | 双向对拍测试 | 解码语义 → 再编码 → 再解码，结构等价（环按句柄判等）；Java 读回作为最终裁决 | `AC-02` |
-| P3-10 | CI interop job | 装 JDK 17；`cargo run --example emit` 写出 `build/rust/*.ser` → `java Verify`；无 JDK 时本地跳过 | CI 绿 |
+| P3-1 ✅ | `wire/writer.rs` | 流头 `AC ED 00 05`；大端写入；wire 句柄分配与 `TC_REFERENCE`；`JValue::Reset` 清 wire 映射后重新写描述符 | codec 层字节一致 |
+| P3-2 ✅ | `wire/block.rs` 写侧 | 1024 字节分块、`u8` vs `i32` 长度、flush 时机（写对象标签/`TC_ENDBLOCKDATA` 前）；顶层 `close` 时 flush | `09`、`11` |
+| P3-3 ✅ | `desc/write.rs` | 由 `ClassDesc` 原样写回；新描述符按字段排序规则生成（基本类型按名 → 对象按名）；同类去重；`suid` 来自 schema/解码值 | `20–24`、`39` |
+| P3-4 ✅ | `Graph` → 字节 | 按 `items` 顺序编码；同一 `Handle` 首次实体、后续 `TC_REFERENCE`；`Block` 保留头部类型；字符串按 `Str.long` 选 `TC_STRING`/`TC_LONGSTRING`（新建时按 MUTF-8 字节长度，非 Rust `len()`；含合成短串-long 用例）；`Reset` 清表；`SC_WRITE_METHOD` 先字段后自定义块再 `TC_ENDBLOCKDATA`；未知类按保留的元数据回写 | `20–39` |
+| P3-5 ✅ | 集合编码 | 按上表布局；`HashMap` 的 `capacity`/`threshold` 由 `size` 反推合理值（Java `readObject` 读但忽略 capacity；阈值为 `table_size * loadFactor` 的整数语义）；`LinkedHashMap` 保持条目顺序 | `28–32`、`38` |
+| P3-6 ✅ | **回放门禁（未修改流）** | `encode_stream(decode_stream(bytes)) == bytes` 覆盖 32 例；范围仅限 decode 后不改图；例外登记"文件+原因+负责人+到期"，默认不允许；**不写入 AC** | `tests/roundtrip_bytes.rs` |
+| P3-7 ✅ | **防作弊 / mutation 测试** | 解码 fixture → 改一个标量或字段 → 编码 → Java 读到新值；手工构造 `HashMap`/POJO → 编码 → Java 读回；确认 `encode` 不是原始字节回显 | `tests/mutation.rs` + Java `Verify` |
+| P3-8 ✅ | Java 校验程序 | `docs/testdata/gen/Verify.java`：读 Rust 产出的 `.ser`，断言类名/字段/集合内容；`interop.sh` 编排；不修改现有 fixture 与 manifest | 手工 + CI |
+| P3-9 ✅ | 双向对拍测试 | 解码语义 → 再编码 → 再解码，结构等价（环按句柄判等）；Java 读回作为最终裁决 | `AC-02` |
+| P3-10 ✅ | CI interop job | 装 JDK 17；`cargo run --example emit` 写出 `build/rust/*.ser` → `java Verify`；无 JDK 时本地跳过 | CI 绿 |
 
 回放门禁的意义：它同时校验字段顺序、块边界、句柄编号、`classDesc` 去重、`reset` 时机。**它不替代 `AC-02`**：门禁只证明"未修改的流能原样写回"，Java 读回与 mutation 测试才证明编码器对构造/修改后的图也正确。若某例无法重放，先怀疑模型缺信息（§3），再按 §5.1 登记例外。
 
+**状态（2026-11-04，TDD）**：P3 完成。`encode_stream`/`encode`、`wire/writer.rs`、`wire/block.rs`、ClassDesc/对象/数组/enum/字符串/块/参考编码落地；**32 例逐字节回放全部通过**。新增 `tests/roundtrip_bytes.rs`（1）、`tests/roundtrip_semantics.rs`（4）、`tests/mutation.rs`（4，含字段、Map 条目、构造 POJO/HashMap）、`tests/interop.rs`（1，无 JDK 自动跳过）、`wire::block` 单测（2）；全仓 **70 passed**。Java `Verify.java` + `interop.sh` 已验证 Point/Mixed/HashMap/环/enum 的 Rust 写入可被 `ObjectInputStream` 读回；CI 增加 `interop` job。
+
 出口：`AC-01` 全量 + `AC-02` + `AC-03`（不含 typed API）+ mutation/构造流 Java 读回。
+
+> 说明：`AC-01` 的 `36` 语义仍按 P2 约定留到 P6；`AC-02` 的代表性用例已由 Java 校验，未修改流的全部 32 例由逐字节回放覆盖。
 
 ---
 
@@ -386,3 +390,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | 补齐 P0 契约测试：manifest 结构/未登记 fixture/错误 Send+Sync/Result 别名；全仓 32 项通过 | P0 TDD |
 | 2026-11-04 | P2 完成（TDD，`6bed153`）：classDesc/对象/继承/自定义块/数组/enum/集合/环/`TC_RESET`/`Limits`；32 例全部可解码，新增 25 项测试，全仓 57 项通过；36 仅结构 | P2 |
 | 2026-11-04 | 收口 P2：补充 `Graph::resolve`/`Ref` 句柄视图与环回归测试；更新 P2 完成状态，全仓 58 项通过 | P2 |
+| 2026-11-04 | P3 完成（TDD）：writer/BlockWriter、ClassDesc 与对象/数组/enum/集合编码、32 例逐字节回放、mutation/构造流、Java Verify + interop.sh + CI job；全仓 70 项通过 | P3 |

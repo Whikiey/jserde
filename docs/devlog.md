@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 00:50 · docs: 更新 P3 完成状态
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`AGENT.md` §1 状态与命令、协议踩坑 #16–18；`docs/implementation-plan.md` P3-1～P3-10 标记、P3 状态与 §19 变更记录；本条目。
+- **验证**：`cargo test --workspace` **70 passed**；`cargo clippy -D warnings`、`cargo fmt --check`、`docs/testdata/gen/gen.sh --check`、`docs/testdata/gen/interop.sh` 全部通过。
+- **TDD**：不适用（状态与文档收口）。
+
+---
+
 ## 2026-11-04 00:45 · feat: 实现 P3 编码层（TDD）
 
 - **提交**：本次（hash 见 `git log`）
