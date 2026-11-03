@@ -213,12 +213,14 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P5-1 | `JavaSerializable` trait | `CLASS`、`SUID`、`schema()`、`to_jvalue`/`from_jvalue`；与 `Graph` 解耦 | 手写实现先跑通 |
-| P5-2 | `#[derive(JavaSerializable)]` | 属性：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段顺序由宏按规则排序；编译期错误信息清晰 | `trybuild` 编译失败用例 |
-| P5-3 | `computeDefaultSUID` | 按 JDK `ObjectStreamClass` 算法：类名、修饰符、接口、字段（名/修饰符/描述符）、构造器、方法 → SHA-1；再按 `i = 7..0` 逐字节左移拼入摘要（**摘要字节的拼接方向与直觉相反**，易错点） | `39` → `-3559046683250708543` |
-| P5-4 | `serialver` 对拍工具 | `cargo run --bin suid -- <class>` 与 JDK `serialver` 输出比对；CI 装 JDK 时执行 | `build/suid.txt` + CI |
-| P5-5 | derive 互通测试 | 定义与 `Fixtures$Point`/`Mixed` 等价的 Rust 结构体，编码后 Java 读回；Java 写出的流 typed 解码 | `20`、`21` |
-| P5-6 | SUID 文档 | 明确"计算值仅供参考"、优先显式声明；不匹配的错误信息含两个 SUID | 文档评审 |
+| P5-1 ✅ | `JavaSerializable` trait | `CLASS`、`SUID`、`schema()`、`to_jvalue`/`from_jvalue`；与 `Graph` 解耦 | 手写实现先跑通 |
+| P5-2 ✅ | `#[derive(JavaSerializable)]` | 属性：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段顺序由宏按规则排序；编译期错误信息清晰 | `trybuild` 编译失败用例 |
+| P5-3 ✅ | `computeDefaultSUID` | 按 JDK `ObjectStreamClass` 算法：类名、修饰符、接口、字段（名/修饰符/描述符）、构造器、方法 → SHA-1；再按 `i = 7..0` 逐字节左移拼入摘要（**摘要字节的拼接方向与直觉相反**，易错点） | `39` → `-3559046683250708543` |
+| P5-4 ✅ | `serialver` 对拍工具 | `cargo run --bin suid -- <class>` 与 JDK `serialver` 输出比对；CI 装 JDK 时执行 | `build/suid.txt` + CI |
+| P5-5 ✅ | derive 互通测试 | 定义与 `Fixtures$Point`/`Mixed` 等价的 Rust 结构体，编码后 Java 读回；Java 写出的流 typed 解码 | `20`、`21` |
+| P5-6 ✅ | SUID 文档 | 明确"计算值仅供参考"、优先显式声明；不匹配的错误信息含两个 SUID | 文档评审 |
+
+**状态（2026-11-04，TDD）**：P5 完成。`src/java.rs` 提供 `JavaSerializable`/`JavaField`；`jser-derive` 生成 trait + `FromJValue`/`IntoJValue`，支持 `class`/`suid`/`rename`/`transient` 与基本类型/String/Vec 数组/Map/Set；`tests/derive.rs` 覆盖 Point/Mixed/WithTransient/Derived/CustomWritable/Map 字段。`src/suid.rs` 实现 `computeDefaultSUID` + `.class` 最小解析，`src/bin/suid.rs` 与 `Fixtures$NoSuid`（`-3559046683250708543`）对拍，`interop.sh` 已接入。P5-2 的编译失败用例以 derive crate 内 `expand` 单测替代（离线环境未引入 `trybuild`）；P5-5 的 Point derive 已由 Java 读回，Mixed 以 Rust 往返与 schema 断言验证。全仓 **102 passed**，Java interop 12 项 + SUID 对拍通过。
 
 出口：derive 的结构体与等价 Java 类双向互通；`39` 的 SUID 一致。
 
@@ -397,3 +399,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P3 完成（TDD）：writer/BlockWriter、ClassDesc 与对象/数组/enum/集合编码、32 例逐字节回放、mutation/构造流、Java Verify + interop.sh + CI job；全仓 70 项通过 | P3 |
 | 2026-11-04 | P4 完成（TDD）：typed API/未知类回写/环共享/reset 双向往返/rustdoc 示例；全仓 82 项通过，Java interop 增加 typed Map/List | P4 |
 | 2026-11-04 | allowlist 完成（用户拍板严格默认）：`Allowlist` 精确/`prefix.*`/`Fixtures$*`、数组按元素、默认 `java.lang.*`+`java.util.*`、`UnsupportedClass` 带类名；fixture 测试显式放行；全仓 90 项通过 | NFR-04 |
+| 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |

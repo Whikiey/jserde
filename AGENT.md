@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2/P3/P4 已完成，P5 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0–P5 已完成，P6 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P4 动态层已完成**：P3 的编解码 + typed API、未知类回写、环/共享、`reset` 双向、rustdoc 示例；**allowlist 严格默认已接入**（P6-3 部分）；90 项测试全绿 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P4 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P5 已完成**：编解码 + typed API + allowlist + `JavaSerializable`/derive + `computeDefaultSUID`/`suid` 工具；102 项测试全绿 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P5 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P4 已完成，P6-3 的 allowlist 部分已提前落地；下一步是 P5 的 `JavaSerializable`/derive 与 `computeDefaultSUID`。`Registry` 与内置类语义仍留 P6。
+所以：P0–P5 已完成；下一步是 P6 的内置类语义（`36`）、`Registry`、serde 桥；allowlist 已在 P6-3 提前完成。
 
 ---
 
@@ -104,6 +104,8 @@ cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
 cargo test -p jser --test roundtrip_bytes # 32 例逐字节回放门禁
 cargo test -p jser --test typed       # typed 转换
 cargo test -p jser --test allowlist   # 默认严格 allowlist
+cargo test -p jser --test derive      # derive 互通
+cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
 docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）

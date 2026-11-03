@@ -154,3 +154,4 @@
 | 2026-11-03 | 收口设计缺口相关需求：`Optional` 非 `Serializable` 移出 FR-13；孤立代理项字符串明确报错（FR-03/类型映射表） | implementation-plan §3 |
 | 2026-11-03 | 明确逐字节回放是内部回归门禁（design §5.1），不替代 AC-02；OUT-01 补充 `java.time.Ser` 已知特例 | 拍板 1 |
 | 2026-11-04 | NFR-04 定案：默认严格 allowlist（`java.lang.*`、`java.util.*`），支持精确名与 `prefix.*`/`Fixtures$*`；数组按元素类检查；默认 `decode_stream` 拒绝未放行类 | 用户拍板 |
+| 2026-11-04 | FR-14（derive）落地：`JavaSerializable`/`#[derive(JavaSerializable)]`、typed 互通；同时实现 `computeDefaultSUID` 与 `suid` 工具，`Fixtures$NoSuid` 与 JDK 一致 | P5 |

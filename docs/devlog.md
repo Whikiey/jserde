@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 01:45 · docs: 更新 P5 完成状态
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`AGENT.md` §1/§5/§6；`docs/implementation-plan.md` P5-1～P5-6、P5 状态与 §19；`docs/requirements.md` 变更记录；本条目。
+- **验证**：`cargo test --workspace` **102 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过（13 项 OK + SUID）。
+- **TDD**：不适用（状态与文档收口）。
+
+---
+
 ## 2026-11-04 01:40 · feat: 实现 P5 derive 与 SUID（TDD）
 
 - **提交**：本次（hash 见 `git log`）
