@@ -7,7 +7,7 @@ mod common;
 
 use common::{load_manifest, read_fixture};
 use jser::wire::{mutf8, StreamReader};
-use jser::{decode_stream, Graph, JValue};
+use jser::{decode_stream, Graph, JValue, Ref};
 
 fn graph(id: &str) -> Graph {
     decode_stream(&read_fixture(id)).unwrap_or_else(|err| panic!("{id}: {err}"))
@@ -130,6 +130,20 @@ fn decodes_shared_top_level_objects_by_handle() {
     let value = &items[0];
     assert_eq!(integer(&graph, field(&graph, value, "x")), 5);
     assert_eq!(integer(&graph, field(&graph, value, "y")), 6);
+}
+
+#[test]
+fn resolves_a_handle_without_expanding_the_cycle() {
+    let graph = graph("object/34");
+    let value = &graph.items()[0];
+    let JValue::Obj(handle) = value else {
+        panic!("expected an object handle");
+    };
+
+    let Ref::Obj(object) = graph.resolve(*handle).unwrap() else {
+        panic!("handle must resolve to an object slot");
+    };
+    assert_eq!(object.classes.len(), 1);
 }
 
 #[test]

@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1 已完成，P2 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2 已完成，P3 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P1 codec 层已完成**：`StreamReader`、MUTF-8、wire 句柄表、顶层分发；codec 12 例全绿；对象/数组/集合尚未实现（P2） |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P2 解码层已完成**：32 例全部可解码；`classDesc`/对象/继承/自定义块/数组/enum/集合/环/`TC_RESET` 与 `Limits` 已实现；58 项测试全绿；写方向未开始 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P2 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0/P1 已完成；下一步是 P2 的 `classDesc`、对象、数组、集合，不是"重构现有代码"。
+所以：P0/P1/P2 已完成；下一步是 P3 的 writer、逐字节回放门禁与 Java 读回，不是"重构现有代码"或提前做 P5/P6。
 
 ---
 

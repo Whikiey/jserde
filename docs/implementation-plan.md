@@ -136,15 +136,15 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | fixture |
 |---|---|---|---|
-| P2-1 | `desc/classdesc.rs` 解析 | `TC_CLASSDESC`：类名（MUTF-8）、`suid: i64`、`flags: u8`、字段数、字段（类型码 + 名 + `L`/`[` 的 `className1`）；`superClassDesc` 链；每遇到新描述符分配句柄，重复出现走 `TC_REFERENCE` | `20`、`22`、`29`、`39` |
-| P2-2 | 类层次与字段布局 | 字段顺序 = 基本类型（按名升序）→ 对象/数组（按名升序）；classdata 顺序与描述符严格一致；`transient` 不出现在描述符；父类字段先于子类字段 | `21`（断言顺序 `b,by,c,d,f,i,l,sh,a,s`）、`37` |
-| P2-3 | `value/` 图模型（按 design D1） | 引用型值（String/数组/对象/enum）统一 `Handle`；`Slot::Desc` 存完整 `ClassDesc`；`JObject { classes }` 分层；对象/数组先占位再填充；`Graph::resolve` 不递归展开环 | `33`、`34` |
-| P2-4 | 对象解码 | `TC_OBJECT`：读 `classDesc` → 分配对象句柄 → 逐层 classdata；基本类型字段读**裸字节**；对象字段递归；`SC_WRITE_METHOD` 读自定义块到 `TC_ENDBLOCKDATA` 并保留原始字节；`SC_EXTERNALIZABLE` + `SC_BLOCK_DATA`（`java.time.Ser`）先按不透明块读取并保留字节，语义留 P6；未知类降级为 `JValue::Obj` | `20–23`、`36`（结构） |
-| P2-5 | 数组 | `TC_ARRAY`：读描述符与长度；基本类型数组按元素宽度连续读裸字节；对象数组逐元素；支持嵌套数组；数组类名两种写法（点号 vs JVM 描述符）；不假设数组 SUID 为 0 | `25–27` |
-| P2-6 | enum | `TC_ENUM`：描述符（flags `0x12`、SUID 0）→ 常量名 `TC_STRING`（占句柄，存为 `Slot::Str`，`Slot::Enum.constant` 指向它） | `24` |
-| P2-7 | 集合解码（注册表） | 见下方布局表；`Integer`/`Number` 等无自定义逻辑的走通用对象路径 | `28–32`、`38` |
-| P2-8 | 上限与健壮性 | `Limits { max_depth, max_elements, max_stream_size }`；`classDesc` 链用迭代；对象/数组嵌套用显式栈或受控深度；默认值写入文档 | fuzz 冒烟 |
-| P2-9 | 读 API 与语义断言 | `decode_stream -> Graph`、`decode`（单元素）、`Reader`、`Graph::items()`；`as_map/as_list/as_set/as_object/as_scalar`；按 `manifest.expect.kind` 写比较器 | 全部 32 例 |
+| P2-1 ✅ | `desc/classdesc.rs` 解析 | `TC_CLASSDESC`：类名（MUTF-8）、`suid: i64`、`flags: u8`、字段数、字段（类型码 + 名 + `L`/`[` 的 `className1`）；`superClassDesc` 链；每遇到新描述符分配句柄，重复出现走 `TC_REFERENCE` | `20`、`22`、`29`、`39` |
+| P2-2 ✅ | 类层次与字段布局 | 字段顺序 = 基本类型（按名升序）→ 对象/数组（按名升序）；classdata 顺序与描述符严格一致；`transient` 不出现在描述符；父类字段先于子类字段 | `21`（断言顺序 `b,by,c,d,f,i,l,sh,a,s`）、`37` |
+| P2-3 ✅ | `value/` 图模型（按 design D1） | 引用型值（String/数组/对象/enum）统一 `Handle`；`Slot::Desc` 存完整 `ClassDesc`；`JObject { classes }` 分层；对象/数组先占位再填充；`Graph::resolve` 不递归展开环 | `33`、`34` |
+| P2-4 ✅ | 对象解码 | `TC_OBJECT`：读 `classDesc` → 分配对象句柄 → 逐层 classdata；基本类型字段读**裸字节**；对象字段递归；`SC_WRITE_METHOD` 读自定义块到 `TC_ENDBLOCKDATA` 并保留原始字节；`SC_EXTERNALIZABLE` + `SC_BLOCK_DATA`（`java.time.Ser`）先按不透明块读取并保留字节，语义留 P6；未知类降级为 `JValue::Obj` | `20–23`、`36`（结构） |
+| P2-5 ✅ | 数组 | `TC_ARRAY`：读描述符与长度；基本类型数组按元素宽度连续读裸字节；对象数组逐元素；支持嵌套数组；数组类名两种写法（点号 vs JVM 描述符）；不假设数组 SUID 为 0 | `25–27` |
+| P2-6 ✅ | enum | `TC_ENUM`：描述符（flags `0x12`、SUID 0）→ 常量名 `TC_STRING`（占句柄，存为 `Slot::Str`，`Slot::Enum.constant` 指向它） | `24` |
+| P2-7 ✅ | 集合解码（注册表） | 见下方布局表；`Integer`/`Number` 等无自定义逻辑的走通用对象路径 | `28–32`、`38` |
+| P2-8 ✅ | 上限与健壮性 | `Limits { max_depth, max_elements, max_stream_size }`；`classDesc` 链用迭代；对象/数组嵌套用显式栈或受控深度；默认值写入文档 | fuzz 冒烟 |
+| P2-9 ✅ | 读 API 与语义断言 | `decode_stream -> Graph`、`decode`（单元素）、`Reader`、`Graph::items()`；`as_map/as_list/as_set/as_object/as_scalar`；按 `manifest.expect.kind` 写比较器 | 全部 32 例 |
 
 集合/内置类的 wire 布局（**以 fixture 字节为准**，实现前用 `xxd` 复核）：
 
@@ -159,6 +159,8 @@ P2 ─────────────────────────�
 | `java.time.Ser` | `0x0C` | 无 | 类型字节 + 字段（`LocalDate` 为 type=3, year, month, day） | `36` |
 
 注意：`BigInteger` 在 JDK 17 的描述符含 `bitCount/bitLength/firstNonzeroByteNum/lowestSetBit/signum` 等字段与 `[B magnitude`，与旧版记忆不同；**不要按记忆写字段表**。语义支持放到 P6。
+
+**状态（2026-11-04，TDD）**：P2 完成。32 个 fixture 全部可解码；object `20–39` 的 manifest 语义断言通过（`36` 仅结构）；新增 `tests/object.rs`（9）、`tests/object_containers.rs`（9）、`tests/limits.rs`（7）、`tests/decode_all.rs`（1），全仓 **58 passed**；clippy/fmt/`gen.sh --check` 全绿。实现中由 `34` 抓到 classDesc 句柄分配时机（先于字段描述符），由 `30` 确认 classdata 父→子且自定义块紧跟本层字段，已回写 `design.md` §4.2/§4.3。
 
 出口：`AC-01`（解码部分）通过；36 先按"结构可解码"验收，语义在 P6 补齐。此时允许编码尚未实现。
 
@@ -352,9 +354,9 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 5. ✅ 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
 6. ✅ 实现有界 `StreamReader` + MUTF-8（P1-1/P1-2）。
 7. ✅ 实现顶层块读取 + 句柄表（P1-3/P1-4），codec 12 例全绿。
-8. 实现 `classDesc` 解析 + 单层对象（P2-1/P2-4），先过 `20`。
-9. 加继承、字段排序、`SC_WRITE_METHOD`（P2-2），过 `21–23`。
-10. 加数组/enum/集合/环/reset（P2-5～P2-8），过 `24–39`。
+8. ✅ 实现 `classDesc` 解析 + 单层对象（P2-1/P2-4），先过 `20`。
+9. ✅ 加继承、字段排序、`SC_WRITE_METHOD`（P2-2），过 `21–23`。
+10. ✅ 加数组/enum/集合/环/reset（P2-5～P2-8），过 `24–39`。
 
 完成第 10 步即可演示"Java 写 → Rust 读"的完整 MVP（`AC-01`），之后按 P3 补写方向。
 
@@ -382,3 +384,5 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | P1 主体完成（TDD）：StreamReader/MUTF-8/块/句柄/顶层分发，codec 12 例与 27 项测试全绿 | P1 |
 | 2026-11-03 | 修正 `11` 号夹具语义预期：976 字节块 >255，JDK 也使用 `TC_BLOCKDATALONG`；同步 manifest/文档 | TDD 发现 |
 | 2026-11-03 | 补齐 P0 契约测试：manifest 结构/未登记 fixture/错误 Send+Sync/Result 别名；全仓 32 项通过 | P0 TDD |
+| 2026-11-04 | P2 完成（TDD，`6bed153`）：classDesc/对象/继承/自定义块/数组/enum/集合/环/`TC_RESET`/`Limits`；32 例全部可解码，新增 25 项测试，全仓 57 项通过；36 仅结构 | P2 |
+| 2026-11-04 | 收口 P2：补充 `Graph::resolve`/`Ref` 句柄视图与环回归测试；更新 P2 完成状态，全仓 58 项通过 | P2 |

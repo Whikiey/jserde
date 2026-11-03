@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 00:40 · chore: 收口 P2 状态并补充句柄视图
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`crates/jser/src/value/mod.rs` 增加 `Ref` 与 `Graph::resolve`（按句柄借用槽位，不展开环）；`crates/jser/src/lib.rs` 导出；`tests/object.rs` 增加 `resolves_a_handle_without_expanding_the_cycle`；`AGENT.md`、`implementation-plan.md` 标记 P2 完成。
+- **验证**：`cargo test --workspace` **58 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 通过。
+- **TDD**：不适用（P2-3 辅助视图收口；回归测试与实现同提交）。
+
+---
+
 ## 2026-11-04 00:32 · feat: 实现 P2 解码层（TDD）
 
 - **提交**：本次（hash 见 `git log`）

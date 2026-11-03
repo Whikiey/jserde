@@ -22,5 +22,5 @@ pub use reader::{
 };
 pub use value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
-    Scalar,
+    Ref, Scalar,
 };

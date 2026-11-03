@@ -178,6 +178,19 @@ pub enum JValue {
     Reset,
 }
 
+/// Borrowed view of one arena slot.
+///
+/// `resolve` returns this without expanding nested values, so cyclic graphs are
+/// safe to inspect.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Ref<'a> {
+    Desc(&'a ClassDesc),
+    Str(&'a str),
+    Arr(&'a [JValue]),
+    Obj(&'a JObject),
+    Enum(&'a str),
+}
+
 /// Scalar view of a decoded value, including boxed `java.lang.*` wrappers.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Scalar<'a> {
@@ -259,6 +272,23 @@ impl Graph {
         match self.slots.get(handle.0 as usize) {
             Some(Slot::Str { long, .. }) => Ok(*long),
             _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    /// Borrow the arena slot behind a handle without recursively expanding it.
+    pub fn resolve(&self, handle: Handle) -> Result<Ref<'_>> {
+        match self.slot(handle)? {
+            Slot::Desc(desc) => Ok(Ref::Desc(desc)),
+            Slot::Str { value, .. } => Ok(Ref::Str(value)),
+            Slot::Arr { elems, .. } => Ok(Ref::Arr(elems)),
+            Slot::Obj(object) => Ok(Ref::Obj(object)),
+            Slot::Enum {
+                constant: Some(constant),
+                ..
+            } => Ok(Ref::Enum(self.str(*constant)?)),
+            Slot::Enum { constant: None, .. } => Err(Error::FieldMismatch {
+                message: "enum constant was not read".to_owned(),
+            }),
         }
     }
 
