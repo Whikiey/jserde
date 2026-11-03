@@ -105,7 +105,7 @@ P2 ─────────────────────────�
 | P0-7 | ✅ CI 骨架（已添加，待远端首次运行） | `.github/workflows/ci.yml`：`fmt` / `clippy -D warnings` / `test`；`fixtures` job 装 JDK 17 跑 `docs/testdata/gen/gen.sh --check` | CI 三个 job 通过（待远端） |
 | P0-8 | ✅ 依赖白名单 | 运行时仅 `thiserror`；dev 为 `serde`/`serde_json`（读 manifest）；`proptest` 在 P4 引入 | `cargo tree` 复核 |
 
-**状态（2026-11-03）**：P0-2～P0-8 已完成。`cargo test --workspace` 通过 6 项集成测试，`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 均通过；CI 配置待远端首次运行验证。
+**状态（2026-11-03）**：P0-2～P0-8 已完成。`cargo test --workspace` 通过 11 项 P0 测试（manifest 7 + error 4），`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 均通过；CI 配置待远端首次运行验证。
 
 出口：`cargo test --workspace` 通过；CI 能跑 `gen.sh --check`；没有业务逻辑。
 
@@ -124,7 +124,7 @@ P2 ─────────────────────────�
 | P1-5 | ✅ 顶层分发（P1 子集） | `TC_NULL`/`TC_STRING`/`TC_LONGSTRING`/`TC_REFERENCE`/`TC_BLOCKDATA*`/`TC_RESET`；返回 `JValue`（`TC_RESET` → `JValue::Reset`）；`reset` 清 wire 映射；对象/数组/enum 留给 P2 | `08`、`10` |
 | P1-6 | ✅ codec 测试 | 数据驱动：`kind = string/null/sequence/blockdata/primitive_stream/reset_stream` 的语义断言；字符串长度上限分支（`06` 70000 字节） | 12 例全绿 |
 
-**状态（2026-11-03，TDD）**：P1 主体完成，codec 12 例全绿；新增 27 项测试（codec 10 个测试函数覆盖 12 例 + MUTF-8 6 + reader 5 + manifest 4 + error 2），`clippy`/`fmt`/`gen.sh --check` 均通过。P1-3 的自定义 `writeObject` 块上下文并入 P2-4。
+**状态（2026-11-03，TDD）**：P1 主体完成，codec 12 例全绿；P1 新增 21 项测试（codec 10 个测试函数覆盖 12 例 + MUTF-8 6 + reader 5），加上 P0 的 11 项共 32 项，`clippy`/`fmt`/`gen.sh --check` 均通过。P1-3 的自定义 `writeObject` 块上下文并入 P2-4。
 
 出口：`cargo test -p jser --test codec` 12 例通过；`cargo fuzz run decode` 初版 10 分钟无 panic（fuzz 目标可延后到 P7，但 reader 必须从第一天就是有界的）。
 
@@ -381,3 +381,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | P0 完成：workspace/错误模型/manifest 夹具/CI；P0-2～P0-8 落地，6 项测试通过 | P0 |
 | 2026-11-03 | P1 主体完成（TDD）：StreamReader/MUTF-8/块/句柄/顶层分发，codec 12 例与 27 项测试全绿 | P1 |
 | 2026-11-03 | 修正 `11` 号夹具语义预期：976 字节块 >255，JDK 也使用 `TC_BLOCKDATALONG`；同步 manifest/文档 | TDD 发现 |
+| 2026-11-03 | 补齐 P0 契约测试：manifest 结构/未登记 fixture/错误 Send+Sync/Result 别名；全仓 32 项通过 | P0 TDD |
