@@ -53,3 +53,15 @@ pub fn load_manifest() -> Manifest {
     serde_json::from_str(&json)
         .unwrap_or_else(|err| panic!("cannot parse {}: {err}", path.display()))
 }
+
+/// Read a fixture by manifest id, e.g. `codec/01`.
+pub fn read_fixture(id: &str) -> Vec<u8> {
+    let manifest = load_manifest();
+    let case = manifest
+        .cases
+        .iter()
+        .find(|case| case.id == id)
+        .unwrap_or_else(|| panic!("manifest has no case `{id}`"));
+    let path = fixture_path(case);
+    fs::read(&path).unwrap_or_else(|err| panic!("cannot read {}: {err}", path.display()))
+}

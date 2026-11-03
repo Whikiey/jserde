@@ -16,6 +16,13 @@ fn every_error_has_an_actionable_display() {
             "need 4",
         ),
         (Error::BadTag(0xFF), "0xFF"),
+        (
+            Error::InvalidLength {
+                kind: "string",
+                value: 99,
+            },
+            "string",
+        ),
         (Error::BadHandle(0x7E_0001), "0x7E0001"),
         (Error::MalformedString { offset: 3 }, "offset 3"),
         (

@@ -15,6 +15,10 @@ pub enum Error {
     #[error("unexpected end of stream: need {needed} more byte(s), {remaining} remaining")]
     Truncated { needed: usize, remaining: usize },
 
+    /// A length prefix cannot be represented on this platform.
+    #[error("invalid {kind} length: {value}")]
+    InvalidLength { kind: &'static str, value: u64 },
+
     /// A stream tag is unknown or not valid in the current context.
     #[error("unexpected tag 0x{0:02X}")]
     BadTag(u8),
