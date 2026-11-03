@@ -5,12 +5,12 @@
 
 mod common;
 
-use common::{load_manifest, read_fixture};
+use common::{decode_fixture, load_manifest, read_fixture};
 use jser::wire::{mutf8, StreamReader};
-use jser::{decode_stream, Graph, JValue, Ref};
+use jser::{Graph, JValue, Ref};
 
 fn graph(id: &str) -> Graph {
-    decode_stream(&read_fixture(id)).unwrap_or_else(|err| panic!("{id}: {err}"))
+    decode_fixture(&read_fixture(id)).unwrap_or_else(|err| panic!("{id}: {err}"))
 }
 
 fn expect(id: &str) -> serde_json::Value {

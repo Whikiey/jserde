@@ -10,11 +10,25 @@ use std::path::PathBuf;
 
 use jser::builtin::new_hash_map;
 use jser::{
-    decode_stream, encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph,
-    JValue,
+    decode_stream_with_allowlist, encode_stream, encode_typed, Allowlist, ClassData, ClassDesc,
+    FieldDesc, FieldType, Graph, JValue,
 };
 
 type BoxError = Box<dyn std::error::Error>;
+
+fn fixture_allowlist() -> Allowlist {
+    Allowlist::strict()
+        .allow("Fixtures$*")
+        .unwrap()
+        .allow("java.math.*")
+        .unwrap()
+        .allow("java.time.*")
+        .unwrap()
+}
+
+fn decode(bytes: &[u8]) -> Result<Graph, BoxError> {
+    Ok(decode_stream_with_allowlist(bytes, &fixture_allowlist())?)
+}
 
 fn main() -> Result<(), BoxError> {
     let testdata = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/testdata");
@@ -22,12 +36,9 @@ fn main() -> Result<(), BoxError> {
     fs::create_dir_all(&out)?;
 
     let point = fs::read(testdata.join("fixtures/object/20-object-point.ser"))?;
-    fs::write(
-        out.join("point.ser"),
-        encode_stream(&decode_stream(&point)?)?,
-    )?;
+    fs::write(out.join("point.ser"), encode_stream(&decode(&point)?)?)?;
 
-    let mut mutated = decode_stream(&point)?;
+    let mut mutated = decode(&point)?;
     let value = mutated.items()[0].clone();
     mutated.set_field(&value, "x", JValue::Int(99))?;
     fs::write(out.join("point-mutated.ser"), encode_stream(&mutated)?)?;
@@ -38,15 +49,12 @@ fn main() -> Result<(), BoxError> {
     )?;
 
     let mixed = fs::read(testdata.join("fixtures/object/21-object-mixed-fields.ser"))?;
-    fs::write(
-        out.join("mixed.ser"),
-        encode_stream(&decode_stream(&mixed)?)?,
-    )?;
+    fs::write(out.join("mixed.ser"), encode_stream(&decode(&mixed)?)?)?;
 
     let map = fs::read(testdata.join("fixtures/object/29-collection-hashmap.ser"))?;
-    fs::write(out.join("map.ser"), encode_stream(&decode_stream(&map)?)?)?;
+    fs::write(out.join("map.ser"), encode_stream(&decode(&map)?)?)?;
 
-    let mut mutated_map = decode_stream(&map)?;
+    let mut mutated_map = decode(&map)?;
     let value = mutated_map.items()[0].clone();
     let entry = {
         let view = mutated_map.as_map(&value)?.unwrap();
@@ -57,16 +65,10 @@ fn main() -> Result<(), BoxError> {
     fs::write(out.join("map-mutated.ser"), encode_stream(&mutated_map)?)?;
 
     let cycle = fs::read(testdata.join("fixtures/object/34-ref-cycle.ser"))?;
-    fs::write(
-        out.join("node-cycle.ser"),
-        encode_stream(&decode_stream(&cycle)?)?,
-    )?;
+    fs::write(out.join("node-cycle.ser"), encode_stream(&decode(&cycle)?)?)?;
 
     let color = fs::read(testdata.join("fixtures/object/24-object-enum.ser"))?;
-    fs::write(
-        out.join("enum.ser"),
-        encode_stream(&decode_stream(&color)?)?,
-    )?;
+    fs::write(out.join("enum.ser"), encode_stream(&decode(&color)?)?)?;
 
     let mut constructed_map = Graph::new();
     let map = new_hash_map(&mut constructed_map, &[("alpha", "one"), ("beta", "two")])?;

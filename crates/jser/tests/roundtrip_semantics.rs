@@ -4,14 +4,14 @@
 
 mod common;
 
-use common::read_fixture;
-use jser::{decode_stream, encode_stream, Graph, JValue};
+use common::{decode_fixture, read_fixture};
+use jser::{encode_stream, Graph, JValue};
 
 fn reencode(id: &str) -> Graph {
     let bytes = read_fixture(id);
-    let graph = decode_stream(&bytes).unwrap_or_else(|err| panic!("{id} decode: {err}"));
+    let graph = decode_fixture(&bytes).unwrap_or_else(|err| panic!("{id} decode: {err}"));
     let encoded = encode_stream(&graph).unwrap_or_else(|err| panic!("{id} encode: {err}"));
-    decode_stream(&encoded).unwrap_or_else(|err| panic!("{id} re-decode: {err}"))
+    decode_fixture(&encoded).unwrap_or_else(|err| panic!("{id} re-decode: {err}"))
 }
 
 fn field<'a>(graph: &'a Graph, value: &'a JValue, name: &str) -> &'a JValue {
@@ -83,7 +83,7 @@ fn encoder_can_insert_a_reset() {
     graph.add_item(JValue::Str(second));
 
     let encoded = encode_stream(&graph).unwrap();
-    let decoded = decode_stream(&encoded).unwrap();
+    let decoded = decode_fixture(&encoded).unwrap();
     let items = decoded.items();
 
     assert_eq!(items.len(), 3);

@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-11-04 01:15 · feat: 实现默认严格 allowlist（P6-3 部分）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `crates/jser/src/allowlist.rs`：`Allowlist` 支持精确名、`prefix.*`、`Fixtures$*`、裸 `*`/`Allowlist::all()`；默认 `strict()` 放行 `java.lang.*` + `java.util.*`；数组类名按元素类检查；`check` 返回带类名的 `UnsupportedClass`。
+  - `crates/jser/src/reader.rs`：`Reader::with_allowlist`，`TC_CLASSDESC` 解析时检查父类链；`decode_stream_with_allowlist`/`decode_stream_with_options`/`decode_with_allowlist`。
+  - `crates/jser/src/typed.rs`：`decode_typed_with_allowlist`。
+  - 测试：`tests/allowlist.rs`（7）；fixture 测试统一通过 `common::fixture_allowlist()` 显式放行 `Fixtures$*`、`java.math.*`、`java.time.*`；Java interop/emit 同步。
+  - `crates/jser/src/lib.rs`：安全说明更新，新增 allowlist rustdoc 示例。
+- **验证**：`cargo test --workspace` **90 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 全通过。
+- **TDD**：Red：先写 `tests/allowlist.rs`，缺少 `Allowlist`/`decode_stream_with_allowlist` 编译失败；Green：实现 allowlist 与 Reader 集成后 7 例通过，再修 fixture 测试的显式放行。
+- **行为变化**：`decode_stream`/`Reader::new`/`decode_typed` 默认严格；未放行类（如 `Fixtures$Point`、`java.math.BigInteger`）返回 `UnsupportedClass`。这是有意的安全默认。
+
+---
+
 ## 2026-11-04 01:02 · docs: 更新 P4 完成状态
 
 - **提交**：本次（hash 见 `git log`）

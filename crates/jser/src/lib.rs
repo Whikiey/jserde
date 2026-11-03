@@ -36,6 +36,17 @@
 //! # Ok::<(), jser::Error>(())
 //! ```
 //!
+//! # Allowlist
+//!
+//! ```
+//! use jser::{decode_stream_with_allowlist, Allowlist};
+//!
+//! # let bytes: &[u8] = &[0xAC, 0xED, 0x00, 0x05];
+//! let allowlist = Allowlist::strict().allow("com.example.*")?;
+//! let _ = decode_stream_with_allowlist(bytes, &allowlist);
+//! # Ok::<(), jser::Error>(())
+//! ```
+//!
 //! # Reading a POJO
 //!
 //! ```no_run
@@ -62,12 +73,15 @@
 //!
 //! # Security
 //!
-//! Decoding has depth/element/stream-size limits, but the class allowlist is not
-//! implemented yet (planned for P6). Do not decode untrusted streams until that
-//! hook exists; Java deserialization gadgets are a real risk.
+//! Decoding uses a strict class [`Allowlist`] by default (`java.lang.*` and
+//! `java.util.*`). Use [`decode_stream_with_allowlist`] / [`Reader::with_allowlist`]
+//! for trusted extra classes. An allowlist reduces exposure but is **not** a
+//! gadget sandbox: allowed classes can still run dangerous `readObject` code.
+//! Keep depth/element/stream-size limits enabled for untrusted data.
 
 #![forbid(unsafe_code)]
 
+pub mod allowlist;
 pub mod builtin;
 pub mod desc;
 pub mod error;
@@ -77,11 +91,13 @@ pub mod value;
 pub mod wire;
 pub mod writer;
 
+pub use allowlist::Allowlist;
 pub use error::{Error, Result};
 pub use reader::{
-    decode, decode_stream, decode_stream_with_limits, decode_with_limits, Limits, Reader,
+    decode, decode_stream, decode_stream_with_allowlist, decode_stream_with_limits,
+    decode_stream_with_options, decode_with_allowlist, decode_with_limits, Limits, Reader,
 };
-pub use typed::{decode_typed, encode_typed, FromJValue, IntoJValue};
+pub use typed::{decode_typed, decode_typed_with_allowlist, encode_typed, FromJValue, IntoJValue};
 pub use value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
     Ref, Scalar,

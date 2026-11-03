@@ -284,9 +284,9 @@ let one = g.new_int(1);
 let m = g.new_map(MapKind::HashMap, [(s, one)])?;
 let out = jser::encode(&g, &[JValue::Obj(m)])?;
 
-// 安全：allowlist
-let mut r = jser::Reader::new(bytes, Limits::default())
-    .allow(&["java.util.*", "com.example.Foo"]);
+// 安全：allowlist（默认严格：java.lang.*、java.util.*）
+let allowlist = jser::Allowlist::strict().allow("com.example.*")?;
+let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 ```
 
 ### 5.1 M2 回放门禁的边界（2026-11-03 定案）
@@ -299,6 +299,15 @@ let mut r = jser::Reader::new(bytes, Limits::default())
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
 - **防作弊**：mutation test（解码 → 改一个字段 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
 - **分级**：P1 只要求 12 个 codec 用例语义正确；P3 才要求全部 32 例回放 + Java 读回。
+
+### 5.2 Allowlist（2026-11-04 定案）
+
+- **默认严格**：`decode_stream` / `Reader::new` / `decode_typed` 使用 `Allowlist::strict()`，只放行 `java.lang.*`、`java.util.*`；fixture 测试额外放行 `Fixtures$*`、`java.math.*`、`java.time.*`。
+- **匹配规则**：精确类名、`prefix.*`、`Fixtures$*`（以 `$` 结尾的命名空间前缀）；裸 `*` / `Allowlist::all()` 表示全放行。非法模式返回 `InvalidSchema`。
+- **检查时机**：每读到一个 `TC_CLASSDESC`（含父类链）立刻检查；数组类名 `[Lcom.example.Foo;` 提取元素类后再检查，基本类型数组直接放行。
+- **错误**：未放行时返回 `UnsupportedClass(<class name>)`，不会先破坏性读取 classdata。
+- **边界**：allowlist 只是入口门禁，**不是 gadget 沙箱**；放行的类仍可能执行危险的 `readObject`。默认严格 + 文档警告，完整沙箱仍是 OUT-06。
+- **API**：`Allowlist::{strict,all,new,add,allow,check,is_allowed}`、`Reader::with_allowlist`、`decode_stream_with_allowlist`、`decode_typed_with_allowlist`。
 
 ## 6. 里程碑与出口条件
 
@@ -337,7 +346,7 @@ let mut r = jser::Reader::new(bytes, Limits::default())
 3. **是否要 serde 集成**（`#[derive(Serialize)]` 直接产出 Java 流）？还是自定义 derive 就够？
 4. **是否要发布到 crates.io**（影响 crate 拆分粒度与文档/CI 投入）。
 5. **性能目标**：是否有最小吞吐（MB/s）或单流大小上限的要求？
-6. **安全默认值**：allowlist 默认"严格"（只放行白名单）还是"宽松"（全放行 + 警告）？
+6. **安全默认值**：**已定案（2026-11-04）**：默认严格 allowlist（`java.lang.*`、`java.util.*`）；`Allowlist::all()` 为显式放宽，文档警告 gadget 风险。
 
 > 回放门禁的边界（适用范围、例外、防作弊）已在 §5.1 定案；验收仍以 `AC-02` 为准。
 

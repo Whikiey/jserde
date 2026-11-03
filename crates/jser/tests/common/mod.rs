@@ -2,6 +2,7 @@
 
 #![allow(dead_code)]
 
+use jser::Allowlist;
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -64,4 +65,18 @@ pub fn read_fixture(id: &str) -> Vec<u8> {
         .unwrap_or_else(|| panic!("manifest has no case `{id}`"));
     let path = fixture_path(case);
     fs::read(&path).unwrap_or_else(|err| panic!("cannot read {}: {err}", path.display()))
+}
+
+/// Allowlist used by fixture tests: strict defaults plus the test classes.
+pub fn fixture_allowlist() -> Allowlist {
+    let mut allowlist = Allowlist::strict();
+    for pattern in ["Fixtures$*", "java.math.*", "java.time.*"] {
+        allowlist.add(pattern).expect("valid fixture allowlist");
+    }
+    allowlist
+}
+
+/// Decode a committed fixture with the fixture allowlist.
+pub fn decode_fixture(bytes: &[u8]) -> jser::Result<jser::Graph> {
+    jser::decode_stream_with_allowlist(bytes, &fixture_allowlist())
 }

@@ -2,8 +2,7 @@
 
 mod common;
 
-use common::{load_manifest, read_fixture};
-use jser::decode_stream;
+use common::{decode_fixture, load_manifest, read_fixture};
 
 #[test]
 fn every_fixture_decodes() {
@@ -11,7 +10,7 @@ fn every_fixture_decodes() {
 
     for case in &manifest.cases {
         let bytes = read_fixture(&case.id);
-        decode_stream(&bytes).unwrap_or_else(|err| {
+        decode_fixture(&bytes).unwrap_or_else(|err| {
             panic!(
                 "{} ({} bytes, {}) failed to decode: {err}",
                 case.id,

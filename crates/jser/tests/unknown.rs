@@ -3,14 +3,14 @@
 
 mod common;
 
-use common::read_fixture;
-use jser::{decode_stream, encode_stream};
+use common::{decode_fixture, read_fixture};
+use jser::encode_stream;
 
 #[test]
 fn unknown_classes_replay_byte_exactly() {
     for id in ["object/23", "object/36", "object/39"] {
         let bytes = read_fixture(id);
-        let graph = decode_stream(&bytes).unwrap_or_else(|err| panic!("{id} decode: {err}"));
+        let graph = decode_fixture(&bytes).unwrap_or_else(|err| panic!("{id} decode: {err}"));
         let encoded = encode_stream(&graph).unwrap_or_else(|err| panic!("{id} encode: {err}"));
 
         assert_eq!(encoded, bytes, "{id} must replay byte-for-byte");

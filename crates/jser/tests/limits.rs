@@ -2,8 +2,8 @@
 
 mod common;
 
-use common::read_fixture;
-use jser::{decode_stream, Error, Limits, Reader};
+use common::{fixture_allowlist, read_fixture};
+use jser::{decode_stream, decode_stream_with_allowlist, Error, Limits, Reader};
 
 fn limits(max_depth: usize, max_elements: usize, max_stream_size: usize) -> Limits {
     Limits {
@@ -65,7 +65,7 @@ fn invalid_reference_handle_returns_an_error() {
     let length = bytes.len();
     bytes[length - 4..].copy_from_slice(&0x00_7E_00_09u32.to_be_bytes());
 
-    let error = decode_stream(&bytes).unwrap_err();
+    let error = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap_err();
     assert!(matches!(error, Error::BadHandle(0x00_7E_00_09)));
 }
 

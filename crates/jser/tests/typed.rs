@@ -5,11 +5,16 @@ mod common;
 
 use std::collections::{HashMap, HashSet};
 
-use common::read_fixture;
+use common::{fixture_allowlist, read_fixture};
 use jser::{
-    decode_typed, encode_typed, ClassData, ClassDesc, Error, FieldDesc, FieldType, FromJValue,
-    Graph, IntoJValue, JValue,
+    decode_typed, decode_typed_with_allowlist, encode_typed, ClassData, ClassDesc, Error,
+    FieldDesc, FieldType, FromJValue, Graph, IntoJValue, JValue,
 };
+
+fn fixture_typed<T: FromJValue>(id: &str) -> T {
+    decode_typed_with_allowlist(&read_fixture(id), &fixture_allowlist())
+        .unwrap_or_else(|err| panic!("{id}: {err}"))
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Point {
@@ -63,31 +68,31 @@ impl IntoJValue for Point {
 
 #[test]
 fn decodes_vecs_from_lists_and_arrays() {
-    let strings: Vec<String> = decode_typed(&read_fixture("object/28")).unwrap();
+    let strings: Vec<String> = fixture_typed("object/28");
     assert_eq!(strings, ["alpha", "beta"]);
 
-    let integers: Vec<i32> = decode_typed(&read_fixture("object/32")).unwrap();
+    let integers: Vec<i32> = fixture_typed("object/32");
     assert_eq!(integers, [1, 2, 3]);
 
-    let nested: Vec<Vec<i32>> = decode_typed(&read_fixture("object/27")).unwrap();
+    let nested: Vec<Vec<i32>> = fixture_typed("object/27");
     assert_eq!(nested, vec![vec![1, 2], vec![3]]);
 }
 
 #[test]
 fn decodes_options_inside_vectors() {
-    let values: Vec<Option<String>> = decode_typed(&read_fixture("object/26")).unwrap();
+    let values: Vec<Option<String>> = fixture_typed("object/26");
     assert_eq!(values, [Some("a".to_owned()), Some("b".to_owned()), None]);
 }
 
 #[test]
 fn decodes_maps_and_sets() {
-    let map: HashMap<String, i32> = decode_typed(&read_fixture("object/29")).unwrap();
+    let map: HashMap<String, i32> = fixture_typed("object/29");
     assert_eq!(map.len(), 3);
     assert_eq!(map["one"], 1);
     assert_eq!(map["two"], 2);
     assert_eq!(map["three"], 3);
 
-    let set: HashSet<String> = decode_typed(&read_fixture("object/31")).unwrap();
+    let set: HashSet<String> = fixture_typed("object/31");
     assert_eq!(set.len(), 2);
     assert!(set.contains("x"));
     assert!(set.contains("y"));
@@ -95,7 +100,7 @@ fn decodes_maps_and_sets() {
 
 #[test]
 fn decodes_a_manual_pojo() {
-    let point: Point = decode_typed(&read_fixture("object/20")).unwrap();
+    let point: Point = fixture_typed("object/20");
     assert_eq!(point, Point { x: 1, y: 2 });
 }
 
@@ -111,7 +116,9 @@ fn missing_fields_are_errors() {
         }
     }
 
-    let error = decode_typed::<Missing>(&read_fixture("object/20")).unwrap_err();
+    let error =
+        decode_typed_with_allowlist::<Missing>(&read_fixture("object/20"), &fixture_allowlist())
+            .unwrap_err();
     assert!(matches!(error, Error::FieldMismatch { .. }));
     assert!(error.to_string().contains("doesNotExist"));
 }
@@ -140,6 +147,6 @@ fn encodes_typed_scalars_and_collections() {
 fn encodes_nested_point_vectors() {
     let points = vec![Point { x: 1, y: 2 }, Point { x: 3, y: 4 }];
     let bytes = encode_typed(points.clone()).unwrap();
-    let decoded: Vec<Point> = decode_typed(&bytes).unwrap();
+    let decoded: Vec<Point> = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
     assert_eq!(decoded, points);
 }

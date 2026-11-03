@@ -9,11 +9,10 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use common::{read_fixture, testdata_dir};
+use common::{decode_fixture, read_fixture, testdata_dir};
 use jser::builtin::new_hash_map;
 use jser::{
-    decode_stream, encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph,
-    JValue,
+    encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
 };
 
 fn has(command: &str) -> bool {
@@ -110,11 +109,11 @@ fn java_can_read_rust_written_streams() {
     let point = read_fixture("object/20");
     fs::write(
         classes.join("point.ser"),
-        encode_stream(&decode_stream(&point).unwrap()).unwrap(),
+        encode_stream(&decode_fixture(&point).unwrap()).unwrap(),
     )
     .unwrap();
 
-    let mut mutated = decode_stream(&point).unwrap();
+    let mut mutated = decode_fixture(&point).unwrap();
     let value = mutated.items()[0].clone();
     mutated.set_field(&value, "x", JValue::Int(99)).unwrap();
     fs::write(
@@ -132,11 +131,11 @@ fn java_can_read_rust_written_streams() {
     let map = read_fixture("object/29");
     fs::write(
         classes.join("map.ser"),
-        encode_stream(&decode_stream(&map).unwrap()).unwrap(),
+        encode_stream(&decode_fixture(&map).unwrap()).unwrap(),
     )
     .unwrap();
 
-    let mut mutated_map = decode_stream(&map).unwrap();
+    let mut mutated_map = decode_fixture(&map).unwrap();
     let value = mutated_map.items()[0].clone();
     let entry = {
         let view = mutated_map.as_map(&value).unwrap().unwrap();

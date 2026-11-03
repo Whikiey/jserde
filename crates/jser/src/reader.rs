@@ -4,6 +4,7 @@
 //! objects (including inheritance and custom `writeObject` data), arrays,
 //! enums, shared references, cycles and `TC_RESET`, with configurable limits.
 
+use crate::allowlist::Allowlist;
 use crate::error::{Error, Result};
 use crate::value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue,
@@ -45,17 +46,23 @@ pub struct Reader<'a> {
     graph: Graph,
     handles: WireHandles,
     limits: Limits,
+    allowlist: Allowlist,
     elements: usize,
 }
 
 impl<'a> Reader<'a> {
     /// Validate the stream header and create a reader with default limits.
     pub fn new(bytes: &'a [u8]) -> Result<Self> {
-        Self::with_limits(bytes, Limits::default())
+        Self::with_allowlist(bytes, Limits::default(), Allowlist::strict())
     }
 
-    /// Validate the stream header and create a reader with explicit limits.
+    /// Validate the stream header with explicit limits and the strict allowlist.
     pub fn with_limits(bytes: &'a [u8], limits: Limits) -> Result<Self> {
+        Self::with_allowlist(bytes, limits, Allowlist::strict())
+    }
+
+    /// Validate the stream header with explicit limits and an allowlist.
+    pub fn with_allowlist(bytes: &'a [u8], limits: Limits, allowlist: Allowlist) -> Result<Self> {
         if bytes.len() > limits.max_stream_size {
             return Err(Error::LimitExceeded {
                 kind: "stream size",
@@ -81,6 +88,7 @@ impl<'a> Reader<'a> {
             graph: Graph::default(),
             handles: WireHandles::new(),
             limits,
+            allowlist,
             elements: 0,
         })
     }
@@ -276,6 +284,7 @@ impl<'a> Reader<'a> {
     /// Parse one `TC_CLASSDESC` node (the tag has already been consumed).
     fn read_class_desc_node(&mut self, depth: usize) -> Result<Handle> {
         let name = self.read_utf()?;
+        self.allowlist.check(&name)?;
         let suid = self.input.read_i64()?;
         let flags = self.input.read_u8()?;
         let field_count = usize::from(self.input.read_u16()?);
@@ -519,7 +528,21 @@ pub fn decode_stream(bytes: &[u8]) -> Result<Graph> {
 
 /// Decode every top-level element into one arena with explicit limits.
 pub fn decode_stream_with_limits(bytes: &[u8], limits: Limits) -> Result<Graph> {
-    let mut reader = Reader::with_limits(bytes, limits)?;
+    decode_stream_with_options(bytes, limits, Allowlist::strict())
+}
+
+/// Decode every top-level element with default limits and an explicit allowlist.
+pub fn decode_stream_with_allowlist(bytes: &[u8], allowlist: &Allowlist) -> Result<Graph> {
+    decode_stream_with_options(bytes, Limits::default(), allowlist.clone())
+}
+
+/// Decode every top-level element with explicit limits and allowlist.
+pub fn decode_stream_with_options(
+    bytes: &[u8],
+    limits: Limits,
+    allowlist: Allowlist,
+) -> Result<Graph> {
+    let mut reader = Reader::with_allowlist(bytes, limits, allowlist)?;
     while reader.read_next()?.is_some() {}
     Ok(reader.into_graph())
 }
@@ -532,6 +555,20 @@ pub fn decode(bytes: &[u8]) -> Result<Graph> {
 /// Decode a single-element stream with explicit limits.
 pub fn decode_with_limits(bytes: &[u8], limits: Limits) -> Result<Graph> {
     let graph = decode_stream_with_limits(bytes, limits)?;
+    let items = graph.items();
+
+    if items.len() != 1 || matches!(&items[0], JValue::Reset) {
+        return Err(Error::FieldMismatch {
+            message: "decode expects exactly one value; use decode_stream".to_owned(),
+        });
+    }
+
+    Ok(graph)
+}
+
+/// Decode a single-element stream with an explicit allowlist.
+pub fn decode_with_allowlist(bytes: &[u8], allowlist: &Allowlist) -> Result<Graph> {
+    let graph = decode_stream_with_allowlist(bytes, allowlist)?;
     let items = graph.items();
 
     if items.len() != 1 || matches!(&items[0], JValue::Reset) {

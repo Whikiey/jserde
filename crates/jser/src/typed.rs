@@ -34,6 +34,16 @@ pub fn decode_typed<T: FromJValue>(bytes: &[u8]) -> Result<T> {
     T::from_jvalue(value, &graph)
 }
 
+/// Decode a single-element stream with an explicit class allowlist.
+pub fn decode_typed_with_allowlist<T: FromJValue>(
+    bytes: &[u8],
+    allowlist: &crate::Allowlist,
+) -> Result<T> {
+    let graph = crate::decode_with_allowlist(bytes, allowlist)?;
+    let value = &graph.items()[0];
+    T::from_jvalue(value, &graph)
+}
+
 /// Convert `value` to a single-element stream.
 pub fn encode_typed<T: IntoJValue>(value: T) -> Result<Vec<u8>> {
     let mut graph = Graph::new();

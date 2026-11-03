@@ -3,16 +3,14 @@
 
 mod common;
 
-use common::read_fixture;
+use common::{decode_fixture, read_fixture};
 use jser::builtin::new_hash_map;
-use jser::{
-    decode_stream, encode_stream, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
-};
+use jser::{encode_stream, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue};
 
 #[test]
 fn mutating_a_field_changes_the_encoded_stream() {
     let original = read_fixture("object/20");
-    let mut graph = decode_stream(&original).unwrap();
+    let mut graph = decode_fixture(&original).unwrap();
     let point = graph.items()[0].clone();
 
     assert!(graph
@@ -31,7 +29,7 @@ fn mutating_a_field_changes_the_encoded_stream() {
         "encoder must not echo the original bytes"
     );
 
-    let decoded = decode_stream(&encoded).unwrap();
+    let decoded = decode_fixture(&encoded).unwrap();
     let point = &decoded.items()[0];
     assert_eq!(
         decoded
@@ -50,7 +48,7 @@ fn mutating_a_field_changes_the_encoded_stream() {
 #[test]
 fn appending_a_map_entry_updates_the_custom_block() {
     let original = read_fixture("object/29");
-    let mut graph = decode_stream(&original).unwrap();
+    let mut graph = decode_fixture(&original).unwrap();
     let map = graph.items()[0].clone();
 
     let value = {
@@ -63,7 +61,7 @@ fn appending_a_map_entry_updates_the_custom_block() {
         .unwrap();
 
     let encoded = encode_stream(&graph).unwrap();
-    let decoded = decode_stream(&encoded).unwrap();
+    let decoded = decode_fixture(&encoded).unwrap();
     let map = &decoded.items()[0];
     let view = decoded.as_map(map).unwrap().unwrap();
 
@@ -116,7 +114,7 @@ fn encodes_a_constructed_point() {
     graph.add_item(JValue::Obj(object));
 
     let encoded = encode_stream(&graph).unwrap();
-    let decoded = decode_stream(&encoded).unwrap();
+    let decoded = decode_fixture(&encoded).unwrap();
     let point = &decoded.items()[0];
 
     assert_eq!(decoded.class_name(point).unwrap(), "Fixtures$Point");
@@ -141,7 +139,7 @@ fn encodes_a_constructed_hash_map() {
     graph.add_item(JValue::Obj(map));
 
     let encoded = encode_stream(&graph).unwrap();
-    let decoded = decode_stream(&encoded).unwrap();
+    let decoded = decode_fixture(&encoded).unwrap();
     let map = &decoded.items()[0];
     let view = decoded.as_map(map).unwrap().unwrap();
 

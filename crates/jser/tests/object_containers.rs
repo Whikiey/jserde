@@ -3,11 +3,11 @@
 
 mod common;
 
-use common::{load_manifest, read_fixture};
-use jser::{decode_stream, Graph, JValue, MapView};
+use common::{decode_fixture, load_manifest, read_fixture};
+use jser::{Graph, JValue, MapView};
 
 fn graph(id: &str) -> Graph {
-    decode_stream(&read_fixture(id)).unwrap_or_else(|err| panic!("{id}: {err}"))
+    decode_fixture(&read_fixture(id)).unwrap_or_else(|err| panic!("{id}: {err}"))
 }
 
 fn expect(id: &str) -> serde_json::Value {

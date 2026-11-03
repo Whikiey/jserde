@@ -4,8 +4,8 @@
 
 mod common;
 
-use common::{load_manifest, read_fixture};
-use jser::{decode_stream, encode_stream};
+use common::{decode_fixture, load_manifest, read_fixture};
+use jser::encode_stream;
 
 #[test]
 fn every_fixture_replays_byte_exactly() {
@@ -13,7 +13,7 @@ fn every_fixture_replays_byte_exactly() {
 
     for case in &manifest.cases {
         let bytes = read_fixture(&case.id);
-        let graph = decode_stream(&bytes).unwrap_or_else(|err| panic!("{}: {err}", case.id));
+        let graph = decode_fixture(&bytes).unwrap_or_else(|err| panic!("{}: {err}", case.id));
         let encoded = encode_stream(&graph).unwrap_or_else(|err| panic!("{}: {err}", case.id));
 
         assert_eq!(
