@@ -71,3 +71,27 @@ fn errors_debug_format_includes_the_variant() {
         "unexpected debug output: {debug}"
     );
 }
+
+#[test]
+fn error_is_thread_safe_and_has_no_source() {
+    fn assert_send_sync_static<T: Send + Sync + 'static>() {}
+
+    assert_send_sync_static::<Error>();
+
+    let error = Error::BadMagic { found: 0x0000 };
+    assert!(std::error::Error::source(&error).is_none());
+}
+
+#[test]
+fn result_alias_is_usable() {
+    fn ok() -> jser::Result<()> {
+        Ok(())
+    }
+
+    fn err() -> jser::Result<()> {
+        Err(Error::BadTag(0))
+    }
+
+    ok().unwrap();
+    assert!(err().is_err());
+}

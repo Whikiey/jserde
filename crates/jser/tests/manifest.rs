@@ -6,6 +6,7 @@ mod common;
 use common::{fixture_path, load_manifest, testdata_dir};
 use std::collections::HashSet;
 use std::fs;
+use std::path::{Path, PathBuf};
 
 #[test]
 fn manifest_declares_32_fixture_cases() {
@@ -40,6 +41,12 @@ fn case_ids_are_unique_and_paths_are_safe() {
         assert!(
             !case.file.contains(".."),
             "{} must not escape testdata: {}",
+            case.id,
+            case.file
+        );
+        assert!(
+            case.file.ends_with(".ser"),
+            "{} must reference a .ser file: {}",
             case.id,
             case.file
         );
@@ -103,5 +110,99 @@ fn every_fixture_starts_with_the_stream_header() {
             "{} does not start with AC ED 00 05",
             case.id
         );
+    }
+}
+
+#[test]
+fn case_ids_match_their_fixture_tier() {
+    let manifest = load_manifest();
+
+    for case in &manifest.cases {
+        let (tier, _) = case
+            .id
+            .split_once('/')
+            .unwrap_or_else(|| panic!("case id has no tier: {}", case.id));
+        assert!(
+            case.file.starts_with(&format!("fixtures/{tier}/")),
+            "{} points outside its tier: {}",
+            case.id,
+            case.file
+        );
+    }
+}
+
+#[test]
+fn expectations_use_known_kinds() {
+    const KINDS: &[&str] = &[
+        "array",
+        "blockdata",
+        "cycle",
+        "enum",
+        "list",
+        "map",
+        "null",
+        "object",
+        "primitive_stream",
+        "reset_stream",
+        "sequence",
+        "set",
+        "string",
+    ];
+
+    for case in &load_manifest().cases {
+        let kind = case
+            .expect
+            .get("kind")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_else(|| panic!("{} has no expect.kind", case.id));
+        assert!(
+            KINDS.contains(&kind),
+            "{} uses unknown expect.kind `{kind}`",
+            case.id
+        );
+    }
+}
+
+#[test]
+fn every_ser_file_is_registered_in_the_manifest() {
+    let manifest = load_manifest();
+    let testdata = testdata_dir();
+    let registered: HashSet<String> = manifest
+        .cases
+        .iter()
+        .map(|case| case.file.clone())
+        .collect();
+
+    let mut found = Vec::new();
+    collect_ser_files(&testdata.join("fixtures"), &mut found);
+    assert_eq!(found.len(), manifest.cases.len());
+
+    for path in found {
+        let relative = path
+            .strip_prefix(&testdata)
+            .expect("fixture must live under docs/testdata")
+            .to_string_lossy()
+            .replace('\\', "/");
+        assert!(
+            registered.contains(&relative),
+            "unregistered fixture: {relative}"
+        );
+    }
+}
+
+fn collect_ser_files(dir: &Path, found: &mut Vec<PathBuf>) {
+    let entries = fs::read_dir(dir)
+        .unwrap_or_else(|err| panic!("cannot read fixture directory {}: {err}", dir.display()));
+
+    for entry in entries {
+        let entry =
+            entry.unwrap_or_else(|err| panic!("cannot read entry in {}: {err}", dir.display()));
+        let path = entry.path();
+
+        if path.is_dir() {
+            collect_ser_files(&path, found);
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("ser") {
+            found.push(path);
+        }
     }
 }
