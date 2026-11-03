@@ -56,10 +56,12 @@
 ## 4. 目录地图
 
 ```
+AGENT.md                     # 本文件（仓库根）
 docs/
 ├── requirements.md          # 要做什么：FR/NFR/AC/范围外/待确认问题
 ├── design.md                # 怎么做：决策 D1–D5、协议要点、模块、里程碑、风险
-├── AGENT.md                 # 本文件
+├── implementation-plan.md   # P0–P7 任务拆分、门禁与进度
+├── devlog.md                # 每次提交的开发日志（§10.2）
 └── testdata/
     ├── README.md            # 基准数据的用途、用法、覆盖表
     ├── manifest.json        # 机读契约（32 例，含期望语义值 + sha256）
@@ -167,7 +169,7 @@ jser/
 3. **最小实现**：按 §6 的结构落位；改协议行为时同步更新 `design.md` §4.2/§4.3。
 4. **验证**：`docs/testdata/gen/gen.sh --check`、`cargo test --workspace`、`cargo clippy -D warnings`、`cargo fmt --check`。
 5. **自检**：解码路径有没有 `unwrap`/`expect`/索引越界/`unsafe`？新代码是否引入了平台相关或需要网络的依赖？
-6. **提交**：`git status --short` 确认改动范围 → 按路径 `git add` → `git commit -m "<type>: <简述>"`。一个逻辑变更一个提交；自己负责的改动必须已提交（见 §10.1）。
+6. **提交**：先在 `docs/devlog.md` 追加本次条目（§10.2）→ `git status --short` 确认范围 → 按路径 `git add`（含日志）→ `git commit -m "<type>: <简述>"`。一个逻辑变更一个提交；自己负责的改动必须已提交。
 7. **报账**：说明改了哪些文件、哪几条 `AC-*` 现在满足、哪些仍未覆盖，以及本次提交 hash。
 
 里程碑顺序：M1 读通 fixture → M2 写 + 双向对拍 → M3 动态 POJO/环/`TC_RESET` → M4 derive + SUID → M5 内置类/serde → M6 加固（fuzz、bench）。**不要跳过 M1 直接做 M5。**
@@ -220,6 +222,17 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 - **不要改写已汇报的历史**：不 `git commit --amend` 已汇报的提交、不 force-push；修正用新提交。
 - **收尾要报 hash**：在最终答复里给出本次提交的 hash 与工作区状态。
 
+### 10.2 提交日志（强制）
+
+每次 `git commit` 前，在 `docs/devlog.md` 追加一条记录：
+
+- 日期、类型、提交标题（与 commit message 一致）
+- 主要改动（文件/模块）
+- 验证命令与结果（测试数、clippy/fmt/gen.sh）
+- TDD 的 Red / Green 内容（若适用）
+
+日志与本次改动放在**同一个提交**里。日志条目不写自身 hash（避免自指）：历史条目可写 hash，当前条目写“本次”，完整 hash 以 `git log` 为准。顺序是：先更新日志，再 `git add` 日志和改动，最后提交。
+
 ---
 
 ## 11. 明确不要做
@@ -242,5 +255,6 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 - [ ] `cargo clippy -D warnings`、`cargo fmt --check` 通过
 - [ ] 解码路径无 panic 风险，无 `unsafe`，深度/长度上限生效
 - [ ] 文档（`design.md` / `requirements.md` / `testdata/README.md`）按需同步
+- [ ] `docs/devlog.md` 已追加本次提交条目，并与改动一起提交
 - [ ] 已提交（一个逻辑变更一个 commit），`git status --short` 干净，报告含 commit hash
 - [ ] 报告里写明满足/未满足的 `AC-*` 与遗留风险
