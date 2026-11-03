@@ -41,7 +41,7 @@ cd testdata
 |---|---|---|
 | codec | 01–06 | 修改版 UTF-8（空串、`U+0000`、CJK、代理对 6 字节、>65535 走 `TC_LONGSTRING`） |
 | codec | 07–08 | `TC_NULL`、句柄回指 `TC_REFERENCE` |
-| codec | 09–11 | 块缓冲合并、`TC_RESET`、1024 字节块边界（`TC_BLOCKDATALONG` + `TC_BLOCKDATA`） |
+| codec | 09–11 | 块缓冲合并、`TC_RESET`、1024 字节块边界（1024 与 976 两块都 >255，均用 `TC_BLOCKDATALONG`） |
 | codec | 12 | 1/2/3 字节宽度混合的 UTF 编码 |
 | object | 20–22 | 简单 POJO、10 字段混排（字段排序规则）、继承链 |
 | object | 23–24 | 自定义 `writeObject`（`SC_WRITE_METHOD` + `TC_ENDBLOCKDATA`）、enum |

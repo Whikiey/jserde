@@ -108,7 +108,7 @@ CASES = [
     # reset() 清空句柄表，TC_RESET 单独出现（不在块数据里）
     ("10-reset.ser",
      lambda: HEADER + tc_string("a") + bytes((TC_RESET,)) + tc_string("b")),
-    # 一次写 2000 字节：先 1024 字节块（LONG），余 976 字节块（SHORT）
+    # 一次写 2000 字节：先 1024 字节块（LONG），余 976 字节 > 255，同样是 LONG
     ("11-blockdata-long.ser",
      lambda: HEADER + buffered(bytes(i & 0xFF for i in range(2000)))),
     ("12-utf-widths.ser", lambda: HEADER + tc_string("a\u00e9\u4e2d")),

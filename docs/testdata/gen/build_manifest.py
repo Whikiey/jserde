@@ -96,7 +96,7 @@ CASES = [
         case="顶层一次写 2000 字节原始数据",
         features=["TC_BLOCKDATALONG", "1024 字节块边界"],
         expect={"kind": "blockdata", "total_bytes": 2000,
-                "blocks": [{"type": "long", "len": 1024}, {"type": "short", "len": 976}]},
+                "blocks": [{"type": "long", "len": 1024}, {"type": "long", "len": 976}]},
     ),
     dict(
         id="codec/12", file="fixtures/codec/12-utf-widths.ser",

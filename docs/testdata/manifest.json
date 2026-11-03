@@ -196,7 +196,7 @@
             "len": 1024
           },
           {
-            "type": "short",
+            "type": "long",
             "len": 976
           }
         ]

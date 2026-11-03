@@ -107,7 +107,7 @@ pub struct BlockData { pub bytes: Vec<u8>, pub long: bool }  // long = 用 TC_BL
 - **classDesc 也进 arena**：`29` 中后续 `Integer` 的 classDesc 用 `TC_REFERENCE` 回指；重放要按原顺序写描述符或回指。
 - **内部句柄 ≠ wire 句柄**：wire 句柄从 `0x7E0000` 起、`TC_RESET` 后重用；内部 `Handle` 整条流单调递增。`Reader` 维护 `wire -> Handle` 映射，`reset` 只清映射、不回收 arena。否则 `35` 的两个 `Point` 会撞到同一索引。
 - **先占位、后填充**：对象在读完 `classDesc` 后、读 classdata 前分配句柄（`34` 中 `b.next` 先回指 `a`）；数组同样先分配句柄再读元素。
-- **块边界保留**：`11` 是 `LONG 1024 + SHORT 976`，`23` 是单块 `77 0C`；重放必须逐块写回。
+- **块边界保留**：`11` 是 `LONG 1024 + LONG 976`（976 > 255，仍用 long 头），`23` 是单块 `77 0C`；重放必须逐块写回。
 - **顶层是多元素流**：`08`、`09`、`10`、`11`、`33`、`35` 都不是单根；`Reset` 作为流元素出现，编码时原样重放（`writeObject` 内部调用 `reset()` 时也可能出现在自定义段）。
 
 - **为何不用 `Rc<RefCell<..>>` 直接建环**：`Rc` 环会泄漏，`RefCell` 与后续 serde 桥、并发使用都冲突；`Handle(u32)` + arena 让"先创建再填充"的合法做法（Java 流正是这样写的）变成自然实现。
@@ -226,7 +226,7 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
 | `java.time.*` 经 `writeReplace` 变成 `java.time.Ser` 代理 | `36-misc-java-types.ser` |
 | `transient` 字段不出现在 classDesc 中 | `37-object-with-transient.ser` |
 | 修改版 UTF-8：`U+0000` → `C0 80`；`U+1F600` → 6 字节代理对 | `03-string-nul.ser`、`05-string-surrogate-pair.ser` |
-| 块缓冲：1024 字节块用 `TC_BLOCKDATALONG`，余量用 `TC_BLOCKDATA` | `11-blockdata-long.ser` |
+| 块缓冲：1024 字节块与余量 976 字节都 >255，均用 `TC_BLOCKDATALONG` | `11-blockdata-long.ser` |
 | `classDesc` 的 `classAnnotation` 以 `TC_ENDBLOCKDATA` 收尾，且位于 `superClassDesc` 之前（`78 70`） | `20-object-point.ser`、`22-object-inheritance.ser` |
 | `java.time.Ser` 的 flags 为 `0x0C`、0 字段；`LocalDate` 的块为 `type=3` + year/month/day | `36-misc-java-types.ser` |
 | `ArrayList`/`LinkedList`/`HashSet`/`LinkedHashMap` 的 classdata 与块布局（见 §4.2 第 14 条） | `28`–`32` |
