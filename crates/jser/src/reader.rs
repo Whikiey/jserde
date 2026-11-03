@@ -300,16 +300,18 @@ impl<'a> Reader<'a> {
             let code = self.input.read_u8()?;
             let typecode = FieldType::from_code(code).ok_or(Error::BadTag(code))?;
             let name = self.read_utf()?;
-            let class_name1 = if typecode.is_primitive() {
-                None
+            let (class_name1, class_name_handle) = if typecode.is_primitive() {
+                (None, None)
             } else {
                 let handle = self.read_string_handle()?;
-                Some(self.graph.string_value(handle)?.to_owned())
+                let class_name1 = self.graph.string_value(handle)?.to_owned();
+                (Some(class_name1), Some(handle))
             };
             fields.push(FieldDesc {
                 name,
                 typecode,
                 class_name1,
+                class_name_handle,
             });
         }
         self.graph.set_desc_fields(handle, fields)?;

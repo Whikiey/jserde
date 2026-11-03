@@ -81,15 +81,17 @@ pub struct ClassDesc {
     pub flags: u8,                           // SC_* 原样保留
     pub fields: Vec<FieldDesc>,              // 描述符顺序
     pub super_desc: Option<Handle>,
+    pub annotations: Vec<JValue>,            // classAnnotation 内容，通常为空
 }
 
 pub struct FieldDesc {
     pub name: String,
     pub typecode: FieldType,                 // B/C/D/F/I/J/S/Z 或 Object/Array
     pub class_name1: Option<String>,         // L...; 或 [I，原样保留
+    pub class_name_handle: Option<Handle>,   // 解码时的 className1 字符串槽，回放用；新建为 None
 }
 
-pub struct JObject { pub classes: Vec<ClassData> }   // 父类 → 子类，与 wire 顺序一致
+pub struct JObject { pub classes: Vec<ClassData> }   // 父类 → 子类，与 classdata 顺序一致
 
 pub struct ClassData {
     pub desc: Handle,                        // 该层 classDesc
@@ -105,6 +107,7 @@ pub struct BlockData { pub bytes: Vec<u8>, pub long: bool }  // long = 用 TC_BL
 - **字符串也走句柄**：`08` 第二次写同一字符串是 `TC_REFERENCE`；若 `JValue::Str` 内联字符串，回指无法表达，重放会多写一份。enum 的常量名也是 `TC_STRING`（`24`），同样必须占句柄。
 - **字符串头也保留**：`Slot::Str { value, long }` 的 `long` 记录原文是 `TC_LONGSTRING` 还是 `TC_STRING`。Java 按长度选头，但非规范/手写流可能短串用 long；不保留该位就无法逐字节回放。新建字符串时按**修改版 UTF-8 字节长度**（不是 Rust `String::len()`）选头：超过 65535 用 `TC_LONGSTRING`。
 - **classDesc 也进 arena**：`29` 中后续 `Integer` 的 classDesc 用 `TC_REFERENCE` 回指；重放要按原顺序写描述符或回指。
+- **className1 也保留句柄**：字段的 `className1` 是 `TC_STRING`/`TC_REFERENCE`，同样占 wire 句柄；`FieldDesc.class_name_handle` 记录它，重放时才能保持句柄编号与回指。没有该字段时（新建描述符）编码器按 MUTF-8 长度重新写一个字符串。
 - **内部句柄 ≠ wire 句柄**：wire 句柄从 `0x7E0000` 起、`TC_RESET` 后重用；内部 `Handle` 整条流单调递增。`Reader` 维护 `wire -> Handle` 映射，`reset` 只清映射、不回收 arena。否则 `35` 的两个 `Point` 会撞到同一索引。
 - **先占位、后填充**：对象在读完 `classDesc` 后、读 classdata 前分配句柄（`34` 中 `b.next` 先回指 `a`）；数组同样先分配句柄再读元素。
 - **块边界保留**：`11` 是 `LONG 1024 + LONG 976`（976 > 255，仍用 long 头），`23` 是单块 `77 0C`；重放必须逐块写回。

@@ -16,6 +16,8 @@
 | `gen/Fixtures.java` | **权威生成器**（JDK 17+），同时把各类的 `serialVersionUID` 打到 stdout | 是 |
 | `gen/build_codec_fixtures.py` | codec 层的**独立再推导**：按规范字面规则重算同一批字节，用于对拍 | 是 |
 | `gen/build_manifest.py` | 扫描 `fixtures/`、计算 size/sha256、生成 `manifest.json`；`--check` 只校验 | 是 |
+| `gen/Verify.java` | Rust 写出的 `.ser` 用 `ObjectInputStream` 读回并断言类名/字段/Map 条目 | 是 |
+| `gen/interop.sh` | Rust → Java 互操作检查（gen --check、emit、javac、Verify） | 是 |
 | `gen/gen.sh` | 编排：编译 → 生成 → 对拍 → 生成/校验 manifest | 是 |
 | `build/` | 临时产物（class 文件、对拍中间目录、SUID 表、日志） | 否（`.gitignore`） |
 
@@ -31,6 +33,7 @@
 cd testdata
 ./gen/gen.sh           # 重新生成 fixtures/ 与 manifest.json
 ./gen/gen.sh --check   # CI：重新生成到 build/，与已提交内容逐字节比对
+./gen/interop.sh       # Rust 写 → Java 读回（需 JDK；写 build/rust/*.ser）
 ```
 
 `--check` 会依次验证：fixtures 与重新生成结果一致 → codec 手写推导一致 → manifest 的 size/sha256 一致 → 没有未登记的 `.ser` 文件。

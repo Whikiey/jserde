@@ -1,0 +1,198 @@
+//! P3 Java interop: Rust-written streams must be readable by
+//! `ObjectInputStream`. Skipped when no JDK is available (CI runs the same flow
+//! in the `interop` job via `docs/testdata/gen/interop.sh`).
+
+mod common;
+
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+
+use common::{read_fixture, testdata_dir};
+use jser::builtin::new_hash_map;
+use jser::{
+    decode_stream, encode_stream, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
+};
+
+fn has(command: &str) -> bool {
+    Command::new(command)
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+fn run_java(classes: &Path, file: &Path, class: &str, fields: &[&str]) {
+    let mut command = Command::new("java");
+    command
+        .arg("-cp")
+        .arg(classes)
+        .arg("Verify")
+        .arg(file)
+        .arg(class);
+    for field in fields {
+        command.arg(field);
+    }
+
+    let output = command.output().expect("run java Verify");
+    assert!(
+        output.status.success(),
+        "java Verify failed for {}:\nstdout: {}\nstderr: {}",
+        file.display(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn constructed_point() -> Graph {
+    let mut graph = Graph::new();
+    let desc = graph
+        .add_class_desc(ClassDesc {
+            name: "Fixtures$Point".to_owned(),
+            suid: 1,
+            flags: 0x02,
+            fields: vec![
+                FieldDesc {
+                    name: "x".to_owned(),
+                    typecode: FieldType::Int,
+                    class_name1: None,
+                    class_name_handle: None,
+                },
+                FieldDesc {
+                    name: "y".to_owned(),
+                    typecode: FieldType::Int,
+                    class_name1: None,
+                    class_name_handle: None,
+                },
+            ],
+            super_desc: None,
+            annotations: Vec::new(),
+        })
+        .unwrap();
+
+    let object = graph
+        .new_object(vec![ClassData {
+            desc,
+            fields: vec![
+                ("x".to_owned(), JValue::Int(7)),
+                ("y".to_owned(), JValue::Int(8)),
+            ],
+            custom: None,
+        }])
+        .unwrap();
+    graph.add_item(JValue::Obj(object));
+    graph
+}
+
+#[test]
+fn java_can_read_rust_written_streams() {
+    if !has("java") || !has("javac") {
+        eprintln!("skipping Java interop test: JDK not available");
+        return;
+    }
+
+    let testdata = testdata_dir();
+    let classes = std::env::temp_dir().join(format!("jser-interop-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&classes);
+    fs::create_dir_all(&classes).unwrap();
+
+    let status = Command::new("javac")
+        .arg("-d")
+        .arg(&classes)
+        .arg(testdata.join("gen/Fixtures.java"))
+        .arg(testdata.join("gen/Verify.java"))
+        .status()
+        .expect("run javac");
+    assert!(status.success(), "javac failed");
+
+    let point = read_fixture("object/20");
+    fs::write(
+        classes.join("point.ser"),
+        encode_stream(&decode_stream(&point).unwrap()).unwrap(),
+    )
+    .unwrap();
+
+    let mut mutated = decode_stream(&point).unwrap();
+    let value = mutated.items()[0].clone();
+    mutated.set_field(&value, "x", JValue::Int(99)).unwrap();
+    fs::write(
+        classes.join("point-mutated.ser"),
+        encode_stream(&mutated).unwrap(),
+    )
+    .unwrap();
+
+    fs::write(
+        classes.join("point-constructed.ser"),
+        encode_stream(&constructed_point()).unwrap(),
+    )
+    .unwrap();
+
+    let map = read_fixture("object/29");
+    fs::write(
+        classes.join("map.ser"),
+        encode_stream(&decode_stream(&map).unwrap()).unwrap(),
+    )
+    .unwrap();
+
+    let mut mutated_map = decode_stream(&map).unwrap();
+    let value = mutated_map.items()[0].clone();
+    let entry = {
+        let view = mutated_map.as_map(&value).unwrap().unwrap();
+        view.entries[0].1.clone()
+    };
+    let key = mutated_map.new_string("four");
+    mutated_map
+        .insert_map_entry(&value, JValue::Str(key), entry)
+        .unwrap();
+    fs::write(
+        classes.join("map-mutated.ser"),
+        encode_stream(&mutated_map).unwrap(),
+    )
+    .unwrap();
+
+    let mut constructed_map = Graph::new();
+    let map = new_hash_map(&mut constructed_map, &[("alpha", "one"), ("beta", "two")]).unwrap();
+    constructed_map.add_item(JValue::Obj(map));
+    fs::write(
+        classes.join("map-constructed.ser"),
+        encode_stream(&constructed_map).unwrap(),
+    )
+    .unwrap();
+
+    run_java(
+        &classes,
+        &classes.join("point.ser"),
+        "Fixtures$Point",
+        &["x=1", "y=2"],
+    );
+    run_java(
+        &classes,
+        &classes.join("point-mutated.ser"),
+        "Fixtures$Point",
+        &["x=99", "y=2"],
+    );
+    run_java(
+        &classes,
+        &classes.join("point-constructed.ser"),
+        "Fixtures$Point",
+        &["x=7", "y=8"],
+    );
+    run_java(
+        &classes,
+        &classes.join("map.ser"),
+        "java.util.HashMap",
+        &["one=1", "two=2", "three=3"],
+    );
+    run_java(
+        &classes,
+        &classes.join("map-mutated.ser"),
+        "java.util.HashMap",
+        &["one=1", "two=2", "three=3", "four=1"],
+    );
+    run_java(
+        &classes,
+        &classes.join("map-constructed.ser"),
+        "java.util.HashMap",
+        &["alpha=one", "beta=two"],
+    );
+}

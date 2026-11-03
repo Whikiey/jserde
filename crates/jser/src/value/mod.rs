@@ -88,6 +88,11 @@ pub struct FieldDesc {
     pub typecode: FieldType,
     /// JVM descriptor for object/array fields (`Ljava/lang/String;`, `[I`).
     pub class_name1: Option<String>,
+    /// The decoded `className1` string slot, kept for byte-exact replay.
+    ///
+    /// `None` for primitive fields and for descriptors constructed by the
+    /// caller; the writer then emits a fresh `TC_STRING`.
+    pub class_name_handle: Option<Handle>,
 }
 
 /// Parsed `TC_CLASSDESC` payload.
@@ -244,6 +249,155 @@ impl Graph {
     /// Create an empty graph.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Add a new Java string to the arena. Header width is chosen from the
+    /// modified UTF-8 byte length, not Rust `String::len()`.
+    pub fn new_string(&mut self, value: impl Into<String>) -> Handle {
+        let value = value.into();
+        let long = crate::wire::mutf8::encoded_len(&value) > usize::from(u16::MAX);
+        self.insert_str(value, long)
+    }
+
+    /// Append a top-level stream item.
+    pub fn add_item(&mut self, value: JValue) {
+        self.push_item(value);
+    }
+
+    /// Add a caller-built class descriptor.
+    pub fn add_class_desc(&mut self, desc: ClassDesc) -> Result<Handle> {
+        if let Some(super_desc) = desc.super_desc {
+            self.expect_desc(super_desc)?;
+        }
+        Ok(self.insert_desc(desc))
+    }
+
+    /// Add a caller-built object. `classes` must be ordered parent → child.
+    pub fn new_object(&mut self, classes: Vec<ClassData>) -> Result<Handle> {
+        if classes.is_empty() {
+            return Err(Error::FieldMismatch {
+                message: "an object needs at least one class layer".to_owned(),
+            });
+        }
+        for class in &classes {
+            self.expect_desc(class.desc)?;
+        }
+
+        let handle = self.insert_object_placeholder();
+        self.set_object(handle, JObject { classes })?;
+        Ok(handle)
+    }
+
+    /// Add a caller-built array.
+    pub fn new_array(&mut self, desc: Handle, elems: Vec<JValue>) -> Result<Handle> {
+        self.expect_desc(desc)?;
+        let handle = self.insert_array_placeholder(desc);
+        self.set_array_elements(handle, elems)?;
+        Ok(handle)
+    }
+
+    /// Add a caller-built enum constant.
+    pub fn new_enum(&mut self, desc: Handle, constant: Handle) -> Result<Handle> {
+        self.expect_desc(desc)?;
+        if !matches!(self.value_for_handle(constant)?, JValue::Str(_)) {
+            return Err(Error::FieldMismatch {
+                message: "an enum constant name must be a Java String".to_owned(),
+            });
+        }
+        let handle = self.insert_enum_placeholder(desc);
+        self.set_enum_constant(handle, constant)?;
+        Ok(handle)
+    }
+
+    /// Append one entry to a decoded `HashMap`/`LinkedHashMap`.
+    ///
+    /// The custom-data header is updated in place; Java's `readObject` reads
+    /// `capacity`/`size` and reconstructs the table, so the caller does not have
+    /// to rebuild the whole map.
+    pub fn insert_map_entry(&mut self, map: &JValue, key: JValue, value: JValue) -> Result<()> {
+        let JValue::Obj(handle) = map else {
+            return Err(Error::FieldMismatch {
+                message: "insert_map_entry expects a map object".to_owned(),
+            });
+        };
+
+        let layer = {
+            let object = match self.slots.get(handle.0 as usize) {
+                Some(Slot::Obj(object)) => object,
+                _ => return Err(Error::BadHandle(handle.0)),
+            };
+            object
+                .classes
+                .iter()
+                .position(|class| {
+                    self.descriptor(class.desc)
+                        .map(|desc| desc.name == crate::builtin::HASH_MAP)
+                        .unwrap_or(false)
+                })
+                .ok_or_else(|| Error::FieldMismatch {
+                    message: "object is not a java.util.HashMap".to_owned(),
+                })?
+        };
+
+        let object = match self.slots.get_mut(handle.0 as usize) {
+            Some(Slot::Obj(object)) => object,
+            _ => return Err(Error::BadHandle(handle.0)),
+        };
+        let class = &mut object.classes[layer];
+        let custom = class.custom.as_mut().ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap has no custom data".to_owned(),
+        })?;
+
+        let Some(JValue::Block(block)) = custom.first_mut() else {
+            return Err(Error::FieldMismatch {
+                message: "java.util.HashMap custom data has no header block".to_owned(),
+            });
+        };
+        if block.long || block.bytes.len() != 8 {
+            return Err(Error::FieldMismatch {
+                message: "java.util.HashMap header block must be 8 short-header bytes".to_owned(),
+            });
+        }
+
+        let size =
+            i32::from_be_bytes(
+                block.bytes[4..8]
+                    .try_into()
+                    .map_err(|_| Error::FieldMismatch {
+                        message: "java.util.HashMap header block is truncated".to_owned(),
+                    })?,
+            );
+        let size = size.checked_add(1).ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap entry count overflows".to_owned(),
+        })?;
+        block.bytes[4..8].copy_from_slice(&size.to_be_bytes());
+        custom.push(key);
+        custom.push(value);
+        Ok(())
+    }
+
+    /// Replace one field of an object (used by mutation tests and callers).
+    pub fn set_field(&mut self, object: &JValue, name: &str, value: JValue) -> Result<bool> {
+        let JValue::Obj(handle) = object else {
+            return Err(Error::FieldMismatch {
+                message: "set_field expects an object".to_owned(),
+            });
+        };
+
+        match self.slots.get_mut(handle.0 as usize) {
+            Some(Slot::Obj(object)) => {
+                for class in &mut object.classes {
+                    for (field_name, field_value) in &mut class.fields {
+                        if field_name == name {
+                            *field_value = value;
+                            return Ok(true);
+                        }
+                    }
+                }
+                Ok(false)
+            }
+            _ => Err(Error::BadHandle(handle.0)),
+        }
     }
 
     /// Top-level items in stream order, including `JValue::Reset`.
@@ -689,6 +843,40 @@ impl Graph {
 
     pub(crate) fn string_value(&self, handle: Handle) -> Result<&str> {
         self.str(handle)
+    }
+
+    pub(crate) fn string_parts(&self, handle: Handle) -> Result<(&str, bool)> {
+        match self.slots.get(handle.0 as usize) {
+            Some(Slot::Str { value, long }) => Ok((value, *long)),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    pub(crate) fn array_parts(&self, handle: Handle) -> Result<(Handle, &[JValue])> {
+        match self.slots.get(handle.0 as usize) {
+            Some(Slot::Arr { desc, elems }) => Ok((*desc, elems)),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    pub(crate) fn object_parts(&self, handle: Handle) -> Result<&JObject> {
+        match self.slots.get(handle.0 as usize) {
+            Some(Slot::Obj(object)) => Ok(object),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    pub(crate) fn enum_parts(&self, handle: Handle) -> Result<(Handle, Handle)> {
+        match self.slots.get(handle.0 as usize) {
+            Some(Slot::Enum {
+                desc,
+                constant: Some(constant),
+            }) => Ok((*desc, *constant)),
+            Some(Slot::Enum { constant: None, .. }) => Err(Error::FieldMismatch {
+                message: "enum constant was not read".to_owned(),
+            }),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
     }
 
     fn slot(&self, handle: Handle) -> Result<&Slot> {

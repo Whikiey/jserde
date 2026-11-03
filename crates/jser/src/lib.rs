@@ -15,6 +15,7 @@ pub mod error;
 pub mod reader;
 pub mod value;
 pub mod wire;
+pub mod writer;
 
 pub use error::{Error, Result};
 pub use reader::{
@@ -24,3 +25,4 @@ pub use value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
     Ref, Scalar,
 };
+pub use writer::{encode, encode_stream};

@@ -1,10 +1,13 @@
 //! Wire-level stream primitives: reader, modified UTF-8 and the wire handle
 //! table. Block buffers and class descriptors build on these in P1/P2.
 
+pub mod block;
 pub mod handle;
 pub mod mutf8;
 pub mod reader;
+pub mod writer;
 
+pub use block::BlockWriter;
 pub use handle::WireHandles;
 pub use reader::StreamReader;
 

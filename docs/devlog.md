@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-11-04 00:45 · feat: 实现 P3 编码层（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `crates/jser/src/writer.rs`：`encode_stream`/`encode`；按 `items` 顺序写顶层元素；wire 句柄分配/`TC_REFERENCE`/`TC_RESET`；字符串按 `Str.long` 选头；ClassDesc 去重与字段/`className1` 写回；对象、数组、enum、块、自定义数据。
+  - `crates/jser/src/wire/writer.rs`：大端 `StreamWriter`；`crates/jser/src/wire/block.rs`：1024 字节分块与 `u8`/`i32` 长度选择。
+  - `crates/jser/src/value/mod.rs`：`FieldDesc.class_name_handle`（回放 className1 句柄）、`Graph::new_string/add_item/add_class_desc/new_object/new_array/new_enum/set_field/insert_map_entry` 与编码侧槽位访问器。
+  - `crates/jser/src/builtin/mod.rs`：`new_hash_map` 从零构造 HashMap（capacity/threshold/自定义块）。
+  - 新测试：`tests/roundtrip_bytes.rs`（1，32 例逐字节回放）、`tests/roundtrip_semantics.rs`（4）、`tests/mutation.rs`（4，字段/Map 条目/构造 POJO/HashMap）、`tests/interop.rs`（1，无 JDK 跳过）、`wire::block` 单测（2）。
+  - `crates/jser/examples/emit.rs`、`docs/testdata/gen/Verify.java`、`docs/testdata/gen/interop.sh`、CI `interop` job。
+  - `docs/design.md` D1：补 `ClassDesc.annotations`、`FieldDesc.class_name_handle` 与 className1 句柄不变量。
+- **验证**：`cargo test --workspace` **70 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`cd docs/testdata && ./gen/gen.sh --check` 全通过；`docs/testdata/gen/interop.sh` 的 9 个 Java 校验全部 OK。
+- **TDD**：
+  - Red：先加 `tests/roundtrip_bytes.rs`，因缺少 `encode_stream` 编译失败。
+  - Green：实现 writer 后 32 例逐字节回放一次通过；继续补 block writer、mutation、构造 Map/POJO 与 Java interop，逐项到全绿。
+- **AC 状态**：`AC-01` 读方向 32 例（36 语义留 P6）；`AC-02` 由 Java `Verify` 覆盖 Point/Mixed/HashMap（回放、mutation、构造）/环/enum 代表用例；`AC-03` 的 33/34/35 读→写→读通过；`AC-04`/`AC-06` 未覆盖。
+
+---
+
 ## 2026-11-04 00:40 · chore: 收口 P2 状态并补充句柄视图
 
 - **提交**：本次（hash 见 `git log`）
