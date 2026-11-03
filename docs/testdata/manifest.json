@@ -1,0 +1,697 @@
+{
+  "schema": "jser-fixtures/1",
+  "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
+  "generator": "gen/Fixtures.java",
+  "cross_check": "gen/build_codec_fixtures.py",
+  "case_count": 32,
+  "total_bytes": 74559,
+  "cases": [
+    {
+      "id": "codec/01",
+      "file": "fixtures/codec/01-string-ascii.ser",
+      "case": "顶层 String \"hello\"",
+      "features": [
+        "STREAM_HEADER",
+        "TC_STRING"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": "hello"
+      },
+      "size": 12,
+      "sha256": "bd25e1b0bfcfe8f8ed06819e1a48885c3f218826552b25122f7988a165f4c25b"
+    },
+    {
+      "id": "codec/02",
+      "file": "fixtures/codec/02-string-empty.ser",
+      "case": "空字符串",
+      "features": [
+        "TC_STRING",
+        "零长度"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": ""
+      },
+      "size": 7,
+      "sha256": "55800d7983a2a9904d34a306a176e303c5cd2b75dd99b8a761e92140ef9d4510"
+    },
+    {
+      "id": "codec/03",
+      "file": "fixtures/codec/03-string-nul.ser",
+      "case": "含 U+0000 的字符串 \"a\\0b\"",
+      "features": [
+        "修改版 UTF-8",
+        "NUL -> C0 80"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": "a\u0000b"
+      },
+      "size": 11,
+      "sha256": "818f89fa8b10776b38e230294436a1f3e7652b6a6c22aeec35e10c255e765522"
+    },
+    {
+      "id": "codec/04",
+      "file": "fixtures/codec/04-string-cjk.ser",
+      "case": "中日韩字符 \"中文\"",
+      "features": [
+        "修改版 UTF-8",
+        "3 字节序列"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": "中文"
+      },
+      "size": 13,
+      "sha256": "ce5d027f2d71720c1c2c8d43fcc5a8164a9e3edcbbcf5dc8ff4f2ad79b3d496f"
+    },
+    {
+      "id": "codec/05",
+      "file": "fixtures/codec/05-string-surrogate-pair.ser",
+      "case": "补充平面字符 \"😀\"（U+1F600）",
+      "features": [
+        "修改版 UTF-8",
+        "代理对 -> 两个 3 字节序列（6 字节）"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": "😀",
+        "note": "标准 UTF-8 是 4 字节 F0 9F 98 80；Java 写 6 字节"
+      },
+      "size": 13,
+      "sha256": "6ff912c8c6a210f9adde7bea8eb847a60ec62cec8c693909abd3095030f53676"
+    },
+    {
+      "id": "codec/06",
+      "file": "fixtures/codec/06-string-long.ser",
+      "case": "70000 字符的字符串（UTF 字节数 > 65535）",
+      "features": [
+        "TC_LONGSTRING",
+        "8 字节长度"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": {
+          "repeat": "x",
+          "count": 70000
+        }
+      },
+      "size": 70013,
+      "sha256": "9fc501bac650ec19dfb771ebf564407661ddf951b8c7c9eb209d07631ce49b31"
+    },
+    {
+      "id": "codec/07",
+      "file": "fixtures/codec/07-null.ser",
+      "case": "顶层 null",
+      "features": [
+        "TC_NULL"
+      ],
+      "expect": {
+        "kind": "null"
+      },
+      "size": 5,
+      "sha256": "4e68143408826326220a32d6bff59e1cca3dd85f74b018aebd6723c5686c54e5"
+    },
+    {
+      "id": "codec/08",
+      "file": "fixtures/codec/08-string-shared-ref.ser",
+      "case": "同一个 String 实例写两次",
+      "features": [
+        "句柄表",
+        "TC_REFERENCE"
+      ],
+      "expect": {
+        "kind": "sequence",
+        "items": [
+          {
+            "kind": "string",
+            "value": "ab"
+          },
+          {
+            "kind": "reference",
+            "handle": "0x7E0000"
+          }
+        ]
+      },
+      "size": 14,
+      "sha256": "e45a9950848abc4dd79c59d5d3b1bcdb59fa249c61c91258a6d132a461947d4f"
+    },
+    {
+      "id": "codec/09",
+      "file": "fixtures/codec/09-primitives-block.ser",
+      "case": "顶层 writeInt(1) + writeBoolean(true) + writeDouble(1.5)",
+      "features": [
+        "TC_BLOCKDATA",
+        "块缓冲合并"
+      ],
+      "expect": {
+        "kind": "primitive_stream",
+        "writes": [
+          {
+            "int": 1
+          },
+          {
+            "boolean": true
+          },
+          {
+            "double": 1.5
+          }
+        ],
+        "note": "三个写操作合并为一个 13 字节的 TC_BLOCKDATA 块"
+      },
+      "size": 19,
+      "sha256": "4d2271f60cc242af2a18f562cef7771cde9db7d222ec631cfab75f4d2439e4ea"
+    },
+    {
+      "id": "codec/10",
+      "file": "fixtures/codec/10-reset.ser",
+      "case": "写 \"a\" → reset() → 写 \"b\"",
+      "features": [
+        "TC_RESET",
+        "句柄表清空"
+      ],
+      "expect": {
+        "kind": "reset_stream",
+        "first": "a",
+        "second": "b"
+      },
+      "size": 13,
+      "sha256": "e1c1bf887b4924031d6044397ab623f2a7cdc26aec458d5e13b63739ed82e507"
+    },
+    {
+      "id": "codec/11",
+      "file": "fixtures/codec/11-blockdata-long.ser",
+      "case": "顶层一次写 2000 字节原始数据",
+      "features": [
+        "TC_BLOCKDATALONG",
+        "1024 字节块边界"
+      ],
+      "expect": {
+        "kind": "blockdata",
+        "total_bytes": 2000,
+        "blocks": [
+          {
+            "type": "long",
+            "len": 1024
+          },
+          {
+            "type": "short",
+            "len": 976
+          }
+        ]
+      },
+      "size": 2014,
+      "sha256": "d200064851b090e2a8181bf84c89b665edf2e925ca4d28ee95ef5bf8accf6c49"
+    },
+    {
+      "id": "codec/12",
+      "file": "fixtures/codec/12-utf-widths.ser",
+      "case": "混合 1/2/3 字节宽度的字符串 \"a\\u00e9\\u4e2d\"",
+      "features": [
+        "修改版 UTF-8",
+        "宽度混合"
+      ],
+      "expect": {
+        "kind": "string",
+        "value": "aé中"
+      },
+      "size": 13,
+      "sha256": "89b8d5529a9301a0af4bff85dde5c403efe4de2a9ed4b75d03f02c7801f4124c"
+    },
+    {
+      "id": "object/20",
+      "file": "fixtures/object/20-object-point.ser",
+      "case": "简单 POJO：Point{int x, int y}",
+      "features": [
+        "TC_OBJECT",
+        "TC_CLASSDESC",
+        "SC_SERIALIZABLE",
+        "裸字节 classdata"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$Point",
+        "fields": {
+          "x": 1,
+          "y": 2
+        }
+      },
+      "size": 51,
+      "sha256": "b565c89d0e7d21e7c380357dcab82989af825d0227d7e30dbfd50722734e1e8e"
+    },
+    {
+      "id": "object/21",
+      "file": "fixtures/object/21-object-mixed-fields.ser",
+      "case": "10 个字段混排：9 个基本类型 + int[] + String",
+      "features": [
+        "字段排序规则",
+        "基本类型裸字节",
+        "TC_ARRAY 出现在 classdata 中"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$Mixed",
+        "fields": {
+          "i": 7,
+          "l": 8,
+          "s": "mix",
+          "a": [
+            1,
+            2
+          ],
+          "b": true,
+          "d": 1.5,
+          "f": 0.5,
+          "c": "中",
+          "sh": -3,
+          "by": 9
+        },
+        "field_order": [
+          "b",
+          "by",
+          "c",
+          "d",
+          "f",
+          "i",
+          "l",
+          "sh",
+          "a",
+          "s"
+        ],
+        "note": "先基本类型按名字升序，再对象/数组按名字升序；'a' 排最后但字母序最前"
+      },
+      "size": 170,
+      "sha256": "350f3f6125b08174238dfa0d3ede5e48f59a622e22af42eb476c87a0025ef060"
+    },
+    {
+      "id": "object/22",
+      "file": "fixtures/object/22-object-inheritance.ser",
+      "case": "继承：Derived extends Base，父类字段在父 classDesc 中",
+      "features": [
+        "superClassDesc 链",
+        "父类字段先于子类字段"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$Derived",
+        "superclass": "Fixtures$Base",
+        "fields": {
+          "a": 1,
+          "b": "b"
+        }
+      },
+      "size": 102,
+      "sha256": "8d23c2745a0c9343211ad68446e6114d8285e4152ad4ae97721930c29cd0b776"
+    },
+    {
+      "id": "object/23",
+      "file": "fixtures/object/23-object-custom-write-method.ser",
+      "case": "自定义 writeObject：defaultWriteObject + writeInt + writeUTF",
+      "features": [
+        "SC_WRITE_METHOD",
+        "TC_ENDBLOCKDATA",
+        "自定义部分走块缓冲"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$CustomWritable",
+        "fields": {
+          "value": 42
+        },
+        "custom_data": {
+          "int": 1234,
+          "utf": "custom"
+        }
+      },
+      "size": 71,
+      "sha256": "14fd8af068d54002f5185beed45ec2f79cda4507f80affadfb9bf6957f223788"
+    },
+    {
+      "id": "object/24",
+      "file": "fixtures/object/24-object-enum.ser",
+      "case": "枚举常量 Color.GREEN",
+      "features": [
+        "TC_ENUM",
+        "SC_ENUM",
+        "SUID=0",
+        "超类 java.lang.Enum"
+      ],
+      "expect": {
+        "kind": "enum",
+        "class": "Fixtures$Color",
+        "constant": "GREEN"
+      },
+      "size": 72,
+      "sha256": "491f2643f8dcdd1f068034778824385bdbaf97f986858c517226b23437196c31"
+    },
+    {
+      "id": "object/25",
+      "file": "fixtures/object/25-array-int.ser",
+      "case": "int[]{1,2,3}",
+      "features": [
+        "TC_ARRAY",
+        "数组类描述符",
+        "数组类 SUID 非零"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "int",
+        "values": [
+          1,
+          2,
+          3
+        ],
+        "array_suid": "0x4DBA602676EAB2A5"
+      },
+      "size": 39,
+      "sha256": "abbf698b1c0dbff55375905f642726b9c22693a0f5529b3783682fc2918e3355"
+    },
+    {
+      "id": "object/26",
+      "file": "fixtures/object/26-array-string-null.ser",
+      "case": "String[]{\"a\",\"b\",null}",
+      "features": [
+        "TC_ARRAY",
+        "对象数组",
+        "元素为 TC_NULL"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.String",
+        "values": [
+          "a",
+          "b",
+          null
+        ]
+      },
+      "size": 53,
+      "sha256": "341fab6d4df55e9f3a6e02b4bc6277b45d5144404057cb806991d002fc065af5"
+    },
+    {
+      "id": "object/27",
+      "file": "fixtures/object/27-array-2d.ser",
+      "case": "int[][]{{1,2},{3}}",
+      "features": [
+        "TC_ARRAY",
+        "数组的数组"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "int[][]",
+        "values": [
+          [
+            1,
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "size": 73,
+      "sha256": "c1bac06e1eb07824d2ae2334d6e12258a3a21ffed068069064a3fc025f8833b1"
+    },
+    {
+      "id": "object/28",
+      "file": "fixtures/object/28-collection-arraylist.ser",
+      "case": "ArrayList{\"alpha\",\"beta\"}",
+      "features": [
+        "java.util 自定义 writeObject",
+        "size + 元素"
+      ],
+      "expect": {
+        "kind": "list",
+        "class": "java.util.ArrayList",
+        "values": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "size": 73,
+      "sha256": "e2a061fe1c8444c4ee38bd2b4381b5f46ac61225f80db62252676bb48dba4c6a"
+    },
+    {
+      "id": "object/29",
+      "file": "fixtures/object/29-collection-hashmap.ser",
+      "case": "HashMap{\"one\":1,\"two\":2,\"three\":3}",
+      "features": [
+        "MAP 头部",
+        "loadFactor+threshold 字段",
+        "capacity+size 块",
+        "同类元素回指类描述符"
+      ],
+      "expect": {
+        "kind": "map",
+        "class": "java.util.HashMap",
+        "load_factor": 0.75,
+        "capacity": 16,
+        "entries": {
+          "one": 1,
+          "two": 2,
+          "three": 3
+        },
+        "note": "readObject 读但忽略 capacity；写一侧写合理值即可"
+      },
+      "size": 199,
+      "sha256": "cab267794f05c7fe4497ead07b7387c8d22643726bf6b5e8727eba2aef2c574c"
+    },
+    {
+      "id": "object/30",
+      "file": "fixtures/object/30-collection-linkedhashmap.ser",
+      "case": "LinkedHashMap{\"a\":1,\"b\":2}（保持插入序）",
+      "features": [
+        "MAP 头部",
+        "插入序"
+      ],
+      "expect": {
+        "kind": "map",
+        "class": "java.util.LinkedHashMap",
+        "ordered_entries": [
+          [
+            "a",
+            1
+          ],
+          [
+            "b",
+            2
+          ]
+        ]
+      },
+      "size": 230,
+      "sha256": "a56f5909f28563ca260da296de9e1d90e27c39741402e1ba1258fb017e5ed40d"
+    },
+    {
+      "id": "object/31",
+      "file": "fixtures/object/31-collection-hashset.ser",
+      "case": "HashSet{\"x\",\"y\"}",
+      "features": [
+        "SET 头部",
+        "capacity+loadFactor+size"
+      ],
+      "expect": {
+        "kind": "set",
+        "class": "java.util.HashSet",
+        "values": [
+          "x",
+          "y"
+        ]
+      },
+      "size": 61,
+      "sha256": "3ea6d95163310dfd46efb38049a2fbcf3c1d5b269f52b1d65fa48a216ab8244d"
+    },
+    {
+      "id": "object/32",
+      "file": "fixtures/object/32-collection-linkedlist.ser",
+      "case": "LinkedList{1,2,3}",
+      "features": [
+        "有序列自定义 writeObject"
+      ],
+      "expect": {
+        "kind": "list",
+        "class": "java.util.LinkedList",
+        "values": [
+          1,
+          2,
+          3
+        ]
+      },
+      "size": 145,
+      "sha256": "00da063604e5b1d10956ac39cd63ba0cfd2b346e213725c9ecfb6b2ad5682cb5"
+    },
+    {
+      "id": "object/33",
+      "file": "fixtures/object/33-ref-shared-top.ser",
+      "case": "同一个 Point 实例写两次（顶层）",
+      "features": [
+        "句柄表",
+        "对象级 TC_REFERENCE"
+      ],
+      "expect": {
+        "kind": "sequence",
+        "items": [
+          {
+            "kind": "object",
+            "class": "Fixtures$Point",
+            "fields": {
+              "x": 5,
+              "y": 6
+            }
+          },
+          {
+            "kind": "reference",
+            "note": "指向同一实例，不是新对象"
+          }
+        ]
+      },
+      "size": 56,
+      "sha256": "21b2ff1ed08751139b99eadaebebcbe347e3d8a0eb7177f17aa423da9646dfcd"
+    },
+    {
+      "id": "object/34",
+      "file": "fixtures/object/34-ref-cycle.ser",
+      "case": "循环引用：a.next=b, b.next=a",
+      "features": [
+        "循环引用",
+        "回指未完成填充的对象"
+      ],
+      "expect": {
+        "kind": "cycle",
+        "class": "Fixtures$Node",
+        "graph": "a -> b -> a",
+        "note": "b.next 先返回 a 的句柄，a 的字段晚于该回指填充"
+      },
+      "size": 106,
+      "sha256": "ad8dc19ab34d1bc16c6ea4227f31d5c9e111dae162306a598c2bd476df079b89"
+    },
+    {
+      "id": "object/35",
+      "file": "fixtures/object/35-reset-mid-stream.ser",
+      "case": "写 Point(1,2) → reset() → 写 Point(3,4)",
+      "features": [
+        "TC_RESET",
+        "类描述符与句柄表重置后重写"
+      ],
+      "expect": {
+        "kind": "reset_stream",
+        "items": [
+          {
+            "kind": "object",
+            "class": "Fixtures$Point",
+            "fields": {
+              "x": 1,
+              "y": 2
+            }
+          },
+          {
+            "kind": "object",
+            "class": "Fixtures$Point",
+            "fields": {
+              "x": 3,
+              "y": 4
+            }
+          }
+        ],
+        "note": "reset 后 Point 的 classDesc 会重新出现一次"
+      },
+      "size": 99,
+      "sha256": "5d0419de49cba87f1441a0f81976bba9248c8acb0d8666f65c8b52d1b3fa9b32"
+    },
+    {
+      "id": "object/36",
+      "file": "fixtures/object/36-misc-java-types.ser",
+      "case": "Object[]{Date(0), BigInteger(30 位), BigDecimal(\"1.50\"), LocalDate(2024-02-29)}",
+      "features": [
+        "内置类",
+        "writeReplace（java.time 走 java.time.Ser 代理）"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.util.Date",
+            "epoch_millis": 0
+          },
+          {
+            "type": "java.math.BigInteger",
+            "decimal": "123456789012345678901234567890"
+          },
+          {
+            "type": "java.math.BigDecimal",
+            "decimal": "1.50",
+            "scale": 2
+          },
+          {
+            "type": "java.time.Ser",
+            "semantic": "2024-02-29"
+          }
+        ]
+      },
+      "size": 463,
+      "sha256": "7db5714017de344607fd44dfe41ea916e60773a5b1799229b14e79a271b1e6db"
+    },
+    {
+      "id": "object/37",
+      "file": "fixtures/object/37-object-with-transient.ser",
+      "case": "含 transient 字段的 POJO",
+      "features": [
+        "transient 字段不写入流"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$WithTransient",
+        "fields": {
+          "a": 1,
+          "s": "s"
+        },
+        "absent_fields": [
+          "t"
+        ]
+      },
+      "size": 80,
+      "sha256": "2b6afdff7811fa8ed7033fb043fc8188fe663831a1e210e2dbab0f6a43b9865d"
+    },
+    {
+      "id": "object/38",
+      "file": "fixtures/object/38-collection-nested-map.ser",
+      "case": "嵌套 Map：{\"outer\": {\"k\": 7}}",
+      "features": [
+        "嵌套集合",
+        "多级 MAP 头部"
+      ],
+      "expect": {
+        "kind": "map",
+        "class": "java.util.HashMap",
+        "entries": {
+          "outer": {
+            "k": 7
+          }
+        }
+      },
+      "size": 196,
+      "sha256": "86e0b12031b535ee955c80bf74a7d11e0582a80ec6c6a11829a550fd095f76ae"
+    },
+    {
+      "id": "object/39",
+      "file": "fixtures/object/39-suid-computed.ser",
+      "case": "未声明 serialVersionUID 的类（由 JDK 计算）",
+      "features": [
+        "computeDefaultSUID",
+        "SUID 对拍"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$NoSuid",
+        "suid": -3559046683250708543,
+        "fields": {
+          "x": 1,
+          "y": "y"
+        },
+        "note": "Rust 侧 computeDefaultSUID 必须算出同一值"
+      },
+      "size": 73,
+      "sha256": "105bc028231d5e9574a45eec2022a490d915db83afc2b396275111ff64a41fe2"
+    }
+  ]
+}

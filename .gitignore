@@ -1,0 +1,6 @@
+# Rust 构建产物
+/target/
+**/target/
+
+# JVM 构建产物（testdata 的临时目录另见 docs/testdata/.gitignore）
+*.class
