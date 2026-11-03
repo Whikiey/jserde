@@ -8,6 +8,23 @@
 
 ---
 
+## 2026-11-04 00:32 · feat: 实现 P2 解码层（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `crates/jser/src/value/mod.rs`：新增 `FieldType`/`FieldDesc`/`ClassDesc`/`ClassData`/`JObject`，`Slot` 扩展为 `Desc/Str/Arr/Obj/Enum`；`Graph` 增加插入/回填 API 与 `as_object/as_array/as_enum_constant/as_map/as_list/as_set/as_scalar`、`field(s)`、`descriptor`、`as_i64/as_i32/as_f64/as_bool/as_char`。
+  - `crates/jser/src/reader.rs`：实现 `TC_CLASSDESC`/`TC_OBJECT`/`TC_ARRAY`/`TC_ENUM`、继承链、`SC_WRITE_METHOD`/`SC_BLOCK_DATA` 自定义块、未知类降级、共享/环、`TC_RESET`；新增 `Limits` 与 `Reader::with_limits`。
+  - `crates/jser/src/builtin/mod.rs`：解析 `ArrayList`/`LinkedList`/`HashMap`/`LinkedHashMap`/`HashSet` 的自定义块；`crates/jser/src/wire/mod.rs` 增加 `SC_*` 常量。
+  - 新测试：`tests/object.rs`（8）、`tests/object_containers.rs`（9）、`tests/limits.rs`（7）、`tests/decode_all.rs`（1）。
+  - `docs/design.md` §4.2/§4.3：补充 classDesc 句柄分配时机、classdata 父→子顺序、每层自定义块位置。
+- **验证**：`cargo test --workspace` **57 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`cd docs/testdata && ./gen/gen.sh --check` 全通过；32 个 fixture 全部可解码。
+- **TDD**：
+  - Red：先新增 `tests/object.rs`，因缺少 `JObject`/`as_object`/`field`/`as_i64` 编译失败。
+  - Green：实现 classDesc + 对象层后 8 例通过；继续加容器/限制/全量解码测试，逐项修到全绿。过程中由 `object/34` 抓到“classDesc 句柄先于字段描述符分配”的顺序错误。
+- **AC 状态**：`AC-01` 的读方向覆盖 codec 12 例与 object 20–39（36 仅结构，语义留 P6）；`AC-03`/`AC-05` 只到读侧结构，写方向未做；`AC-02`/`AC-04`/`AC-06` 未覆盖。
+
+---
+
 ## 2026-11-04 00:15 · docs: 增加提交日志规则并补齐历史
 
 - **提交**：本次（hash 见 `git log`）

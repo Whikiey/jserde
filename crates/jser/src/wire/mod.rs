@@ -28,3 +28,9 @@ pub const TC_EXCEPTION: u8 = 0x7B;
 pub const TC_LONGSTRING: u8 = 0x7C;
 pub const TC_PROXYCLASSDESC: u8 = 0x7D;
 pub const TC_ENUM: u8 = 0x7E;
+
+pub const SC_WRITE_METHOD: u8 = 0x01;
+pub const SC_SERIALIZABLE: u8 = 0x02;
+pub const SC_EXTERNALIZABLE: u8 = 0x04;
+pub const SC_BLOCK_DATA: u8 = 0x08;
+pub const SC_ENUM: u8 = 0x10;

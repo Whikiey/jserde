@@ -184,7 +184,7 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
    - **自定义 `writeObject` 里的 `writeInt`/`writeUTF` 等才走块缓冲**：先进 1024 字节块，遇到对象标签或 `TC_ENDBLOCKDATA` 前 flush 成 `TC_BLOCKDATA <u8 长度> <数据>`；长度 > 255 用 `TC_BLOCKDATALONG <i32 长度>`。
    - 依据：`fixtures/object/20-object-point.ser`、`21-object-mixed-fields.ser`、`23-object-custom-write-method.ser`。
 3. **字符串是"修改版 UTF-8"**（CESU-8 风格）：`NUL` 写成 `C0 80`；补充平面字符写成两个三字节代理对（`😀` 是 6 字节，而标准 UTF-8 是 4 字节）；`TC_STRING` 用 2 字节长度（上限 65535），超限用 `TC_LONGSTRING` + 8 字节长度。头部类型记入 `Slot::Str.long`，回放沿用（非规范流可能短串用 long）；新建字符串按**修改版 UTF-8 字节长度**（非 Rust `len()`）选头，>65535 才用 `TC_LONGSTRING`。**孤立代理项**（Java `String` 允许、Rust `String` 不允许）解码时返回 `MalformedString`，不 panic、不做有损替换；`char` 字段走 `JValue::Char(u16)`，保留原始 UTF-16 码元。
-4. **类名字符串占句柄**：每个 `TC_CLASSDESC`、`TC_STRING`、数组、对象、enum 都依次在 wire 句柄表中拿一个新句柄；对象的句柄在**读完 `classDesc` 之后、读 classdata 之前**分配。内部 `Handle` 与 wire 句柄分离（见 D1），`Reader` 维护 `wire -> Handle` 映射。
+4. **类名字符串占句柄**：每个 `TC_CLASSDESC`、`TC_STRING`、数组、对象、enum 都依次在 wire 句柄表中拿一个新句柄；`TC_CLASSDESC` 自身的句柄在读完类名/SUID/flags 后、读字段描述符**之前**分配（`34`），对象的句柄在**读完 `classDesc` 之后、读 classdata 之前**分配。内部 `Handle` 与 wire 句柄分离（见 D1），`Reader` 维护 `wire -> Handle` 映射。
 5. **类描述符只写一次**：同一类在同一条流里重复出现时，后续用 `TC_REFERENCE` + 句柄回指（`writeClassDesc` 查表）。`classDesc` 的 `classAnnotation` 以 `TC_ENDBLOCKDATA` 收尾，且该标记位于 `superClassDesc` **之前**（`20`：字段后是 `78 70`，再进入 classdata）。
 6. **字段排序规则（已核实）**：`classDesc` 里的字段顺序 = **先基本类型字段（按字段名升序），再对象/数组字段（按字段名升序）**。注意这是"分组内按名字"，不是全局按名字：`Mixed` 里 `a`（int[]）字母序最前，却排在最后。classdata 的写出顺序与描述符顺序严格一致。
 7. **类名两种写法并存**：`classDesc.className` 用点号（`java.util.HashMap`），而对象/数组字段的 `className1` 用 JVM 描述符（`Ljava/lang/String;`、`[I`）。解析器要分别处理，别统一替换。
@@ -228,6 +228,8 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
 | 修改版 UTF-8：`U+0000` → `C0 80`；`U+1F600` → 6 字节代理对 | `03-string-nul.ser`、`05-string-surrogate-pair.ser` |
 | 块缓冲：1024 字节块与余量 976 字节都 >255，均用 `TC_BLOCKDATALONG` | `11-blockdata-long.ser` |
 | `classDesc` 的 `classAnnotation` 以 `TC_ENDBLOCKDATA` 收尾，且位于 `superClassDesc` 之前（`78 70`） | `20-object-point.ser`、`22-object-inheritance.ser` |
+| `classDesc` 的 wire 句柄在写字段（`className1` 字符串）**之前**分配；因此 Node 描述符是 `0x7E0000`，两个 `className1` 字符串是 `0x7E0001/2`，对象是 `0x7E0003` | `34-ref-cycle.ser`（`b.next` 回指 `0x7E0003`） |
+| classdata 按**父 → 子**顺序；每层字段后紧跟该层的自定义块。`LinkedHashMap` 的 `accessOrder` 排在父类 `HashMap` 的 entries 块之后 | `22-object-inheritance.ser`、`30-collection-linkedhashmap.ser` |
 | `java.time.Ser` 的 flags 为 `0x0C`、0 字段；`LocalDate` 的块为 `type=3` + year/month/day | `36-misc-java-types.ser` |
 | `ArrayList`/`LinkedList`/`HashSet`/`LinkedHashMap` 的 classdata 与块布局（见 §4.2 第 14 条） | `28`–`32` |
 | `Date` 的自定义块是 `long`；`BigInteger` 有 6 个描述符字段（含 `[B magnitude`）；`BigDecimal` 是 `scale` + `intVal` | `36-misc-java-types.ser` |
