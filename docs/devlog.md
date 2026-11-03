@@ -8,6 +8,23 @@
 
 ---
 
+## 2026-11-04 01:40 · feat: 实现 P5 derive 与 SUID（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `crates/jser/src/java.rs`：`JavaSerializable`/`JavaField`（CLASS/SUID/schema/to_jvalue/from_jvalue）。
+  - `crates/jser-derive`：`#[derive(JavaSerializable)]`，支持 `#[java(class/suid)]`、`#[java(rename)]`、`#[java(transient)]`；字段排序、基本类型/String/Option/Vec（Java 数组）/HashMap/HashSet；生成 `FromJValue`/`IntoJValue`。
+  - `crates/jser/src/builtin/mod.rs`：`new_java_array`（常用一维数组类与 SUID）。
+  - `crates/jser/src/suid.rs`：`computeDefaultSUID` 移植（SHA-1 摘要前 8 字节反向折叠）、`.class` 最小解析；`src/bin/suid.rs` 输出计算值。
+  - 测试：`tests/derive.rs`（7）、`tests/java_trait.rs`（1）、`tests/suid.rs`（1）、derive crate 编译错误单测（3）。
+  - `examples/emit.rs`/`interop.sh`：增加 derive Point 的 Java 读回与 `Fixtures$NoSuid` SUID 对拍。
+- **验证**：`cargo test --workspace` **102 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 全通过（含 SUID `-3559046683250708543`）。
+- **TDD**：Red：先写 derive/SUID 测试，宏未实现、`encode_typed` 缺实现导致编译/断言失败；Green：实现 trait/macro/SUID 后逐步修到全绿；derive 生成代码曾因 `vec![...]` 同时可变借用 `graph` 失败，改为顺序 `push`。
+- **P5-2 说明**：离线环境未引入 `trybuild`，用 derive crate 内的 `expand` 单元测试覆盖缺 class/不支持类型/元组结构体的编译错误路径。
+- **AC 状态**：P5 不新增 AC；`39` 的 SUID 一致，derive Point 已 Java 读回；Mixed 以 Rust 往返 + schema 断言验证。
+
+---
+
 ## 2026-11-04 01:18 · docs: 记录 allowlist 定案
 
 - **提交**：本次（hash 见 `git log`）

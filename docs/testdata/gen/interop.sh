@@ -24,6 +24,14 @@ mkdir -p build/rust
 cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser --example emit
 javac -cp build/classes -d build/classes gen/Verify.java
 
+expected_suid=$(awk '$1 == "Fixtures$NoSuid" { print $2 }' build/suid.txt)
+actual_suid=$(cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser --bin suid -- 'build/classes/Fixtures$NoSuid.class')
+if [ "$actual_suid" != "$expected_suid" ]; then
+    echo "SUID mismatch: Rust=$actual_suid JDK=$expected_suid" >&2
+    exit 1
+fi
+echo "SUID OK Fixtures\$NoSuid = $actual_suid"
+
 verify() {
     java -cp build/classes Verify "$@"
 }
@@ -37,6 +45,7 @@ verify build/rust/map-mutated.ser 'java.util.HashMap' one=1 two=2 three=3 four=1
 verify build/rust/map-constructed.ser 'java.util.HashMap' alpha=one beta=two
 verify build/rust/typed-map.ser 'java.util.HashMap' alpha=1 beta=2
 verify build/rust/typed-list.ser 'java.util.ArrayList' 0=1 1=2 2=3
+verify build/rust/point-derived.ser 'Fixtures$Point' x=9 y=10
 verify build/rust/node-cycle.ser 'Fixtures$Node' name=a
 verify build/rust/enum.ser 'Fixtures$Color'
 

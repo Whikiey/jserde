@@ -64,3 +64,8 @@ Fixtures$NoSuid	-3559046683250708543
 ```
 
 除 `NoSuid` 外都是显式声明 `1L`，保证字节跨 JDK 版本稳定；`NoSuid` 专门用来校验"默认 SUID 计算"是否与 JDK 一致（对应 `39-suid-computed.ser`）。
+
+```bash
+# 与 build/suid.txt 的 Fixtures$NoSuid 对拍（interop.sh 也会执行）
+cargo run -p jser --bin suid -- 'build/classes/Fixtures$NoSuid.class'
+```

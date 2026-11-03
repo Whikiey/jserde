@@ -123,6 +123,12 @@ serde 的数据模型**表达不了** Java 流的这些必需信息：字段类�
 因此主路径是自定义 trait。注意签名必须带 `Graph`：构造字符串/对象/数组时要在 arena 里分配句柄：
 
 ```rust
+pub struct JavaField {
+    pub name: &'static str,
+    pub typecode: FieldType,
+    pub class_name1: Option<&'static str>,
+}
+
 pub trait JavaSerializable: Sized {
     const CLASS: &'static str;                     // "com.example.Foo"
     const SUID: i64;                               // 显式给出，或编解码期用工具计算
@@ -132,7 +138,7 @@ pub trait JavaSerializable: Sized {
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（proc-macro crate）。
+`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`Vec<T>`（数组）、`HashMap`/`HashSet`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
@@ -308,6 +314,13 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 - **错误**：未放行时返回 `UnsupportedClass(<class name>)`，不会先破坏性读取 classdata。
 - **边界**：allowlist 只是入口门禁，**不是 gadget 沙箱**；放行的类仍可能执行危险的 `readObject`。默认严格 + 文档警告，完整沙箱仍是 OUT-06。
 - **API**：`Allowlist::{strict,all,new,add,allow,check,is_allowed}`、`Reader::with_allowlist`、`decode_stream_with_allowlist`、`decode_typed_with_allowlist`。
+
+### 5.3 SUID 工具（P5）
+
+- `jser::suid::compute_default_suid(&ClassSignature) -> Result<i64>` 移植 `ObjectStreamClass.computeDefaultSUID`：类名、修饰符、排序后的接口/字段/构造器/非私有方法 → SHA-1；摘要前 8 字节**从末尾向前**拼成 i64。
+- `jser::suid::parse_class_file(&[u8])` 读取 `.class` 的最小元数据（常量池、字段、方法、`<clinit>`）。
+- `cargo run -p jser --bin suid -- path/to/Foo.class` 输出现值；`interop.sh` 用 `build/suid.txt` 的 `Fixtures$NoSuid = -3559046683250708543` 与之对拍。
+- 限制：这是默认算法值，**优先显式声明 `suid`**；Java 版本/类成员变化会改变计算值，文档不承诺跨版本稳定。
 
 ## 6. 里程碑与出口条件
 

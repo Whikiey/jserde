@@ -470,6 +470,87 @@ fn box_wrapper(
     Ok(JValue::Obj(graph.new_object(classes)?))
 }
 
+/// Build a Java array with a known one-dimensional array class.
+///
+/// Only the array classes needed by the derive layer are supported; object
+/// elements must already be references (or `null`).
+pub fn new_java_array(
+    graph: &mut Graph,
+    class_name: &str,
+    elements: Vec<JValue>,
+) -> Result<Handle> {
+    let suid = array_suid(class_name).ok_or_else(|| {
+        Error::InvalidSchema(format!("unsupported Java array class `{class_name}`"))
+    })?;
+
+    if let Some(typecode) = primitive_array_element(class_name) {
+        for element in &elements {
+            if !matches_primitive(typecode, element) {
+                return Err(Error::FieldMismatch {
+                    message: format!(
+                        "array `{class_name}` expects {typecode:?} elements, got {element:?}"
+                    ),
+                });
+            }
+        }
+    } else {
+        for element in &elements {
+            check_collection_value(element, "array element")?;
+        }
+    }
+
+    let desc = graph.add_class_desc(ClassDesc {
+        name: class_name.to_owned(),
+        suid,
+        flags: 0x02,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    graph.new_array(desc, elements)
+}
+
+fn primitive_array_element(class_name: &str) -> Option<FieldType> {
+    let bytes = class_name.as_bytes();
+    if bytes.len() == 2 && bytes[0] == b'[' {
+        let typecode = FieldType::from_code(bytes[1])?;
+        if typecode.is_primitive() {
+            return Some(typecode);
+        }
+    }
+    None
+}
+
+fn matches_primitive(typecode: FieldType, value: &JValue) -> bool {
+    matches!(
+        (typecode, value),
+        (FieldType::Byte, JValue::Byte(_))
+            | (FieldType::Char, JValue::Char(_))
+            | (FieldType::Double, JValue::Double(_))
+            | (FieldType::Float, JValue::Float(_))
+            | (FieldType::Int, JValue::Int(_))
+            | (FieldType::Long, JValue::Long(_))
+            | (FieldType::Short, JValue::Short(_))
+            | (FieldType::Boolean, JValue::Bool(_))
+    )
+}
+
+fn array_suid(class_name: &str) -> Option<i64> {
+    Some(match class_name {
+        "[Z" => 6_309_297_032_502_205_922,
+        "[B" => -5_984_413_125_824_719_648,
+        "[C" => -5_753_798_564_021_173_076,
+        "[S" => -1_188_055_269_542_874_886,
+        "[I" => 5_600_894_804_908_749_477,
+        "[J" => 8_655_923_659_555_304_851,
+        "[F" => 836_686_056_779_680_834,
+        "[D" => 4_514_449_696_888_150_558,
+        "[Ljava.lang.String;" => -5_921_575_005_990_323_385,
+        "[Ljava.lang.Object;" => -8_012_369_246_846_506_644,
+        _ => return None,
+    })
+}
+
 fn table_size_for(size: usize) -> Result<i32> {
     let needed = ((size as f64) / 0.75).ceil() as usize;
     let mut capacity = 16usize;

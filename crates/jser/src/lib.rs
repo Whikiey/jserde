@@ -85,7 +85,9 @@ pub mod allowlist;
 pub mod builtin;
 pub mod desc;
 pub mod error;
+pub mod java;
 pub mod reader;
+pub mod suid;
 pub mod typed;
 pub mod value;
 pub mod wire;
@@ -93,9 +95,13 @@ pub mod writer;
 
 pub use allowlist::Allowlist;
 pub use error::{Error, Result};
+pub use java::{JavaField, JavaSerializable};
 pub use reader::{
     decode, decode_stream, decode_stream_with_allowlist, decode_stream_with_limits,
     decode_stream_with_options, decode_with_allowlist, decode_with_limits, Limits, Reader,
+};
+pub use suid::{
+    compute_default_suid, parse_class_file, ClassSignature, FieldSignature, MemberSignature,
 };
 pub use typed::{decode_typed, decode_typed_with_allowlist, encode_typed, FromJValue, IntoJValue};
 pub use value::{

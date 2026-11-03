@@ -13,8 +13,18 @@ use jser::{
     decode_stream_with_allowlist, encode_stream, encode_typed, Allowlist, ClassData, ClassDesc,
     FieldDesc, FieldType, Graph, JValue,
 };
+use jser_derive::JavaSerializable;
 
 type BoxError = Box<dyn std::error::Error>;
+
+#[derive(JavaSerializable, Clone)]
+#[java(class = "Fixtures$Point", suid = 1)]
+struct DerivedPoint {
+    #[java(rename = "x")]
+    x: i32,
+    #[java(rename = "y")]
+    y: i32,
+}
 
 fn fixture_allowlist() -> Allowlist {
     Allowlist::strict()
@@ -84,6 +94,10 @@ fn main() -> Result<(), BoxError> {
     fs::write(out.join("typed-map.ser"), encode_typed(typed_map)?)?;
 
     fs::write(out.join("typed-list.ser"), encode_typed(vec![1i32, 2, 3])?)?;
+    fs::write(
+        out.join("point-derived.ser"),
+        encode_typed(DerivedPoint { x: 9, y: 10 })?,
+    )?;
 
     Ok(())
 }
