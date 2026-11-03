@@ -122,7 +122,7 @@
 1. **FR-02（写方向）是否必须**：只读实现的工作量约为双向的 60%；写方向要额外承担 `classDesc` 生成与 `serialVersionUID` 计算。
 2. **目标 Java 版本**（8 / 17 / 21）：只影响 `java.time` 等新类的覆盖，wire 格式自 1.2 起未变。
 3. **NFR-02 的数值**：`≥ 50 MB/s`、`< 3× 内存` 是我给的建议值，请确认或改成你的实际要求。
-4. **NFR-04 的默认策略**：默认"严格白名单"还是"宽松 + 警告"。
+4. **NFR-04 的默认策略**：**已定案（2026-11-04）**：严格默认——只放行 `java.lang.*`、`java.util.*`；其它类需显式加入 `Allowlist`。放宽用 `Allowlist::all()`，并须在文档中警告 gadget 风险。
 5. **FR-13/14/15（内置类、derive、serde）是否纳入首个版本**，还是先做 FR-01～FR-12（FR-13 不含 `Optional`）。
 
 ---
@@ -153,3 +153,4 @@
 | 2026-11-03 | 建立需求基线：从 `ideas.md` #6 拆出 S-1/S-2/S-3，导出 FR-01～FR-15、NFR-01～NFR-06、AC-01～AC-06 | 本轮 |
 | 2026-11-03 | 收口设计缺口相关需求：`Optional` 非 `Serializable` 移出 FR-13；孤立代理项字符串明确报错（FR-03/类型映射表） | implementation-plan §3 |
 | 2026-11-03 | 明确逐字节回放是内部回归门禁（design §5.1），不替代 AC-02；OUT-01 补充 `java.time.Ser` 已知特例 | 拍板 1 |
+| 2026-11-04 | NFR-04 定案：默认严格 allowlist（`java.lang.*`、`java.util.*`），支持精确名与 `prefix.*`/`Fixtures$*`；数组按元素类检查；默认 `decode_stream` 拒绝未放行类 | 用户拍板 |

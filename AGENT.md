@@ -13,10 +13,10 @@
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2/P3/P4 已完成，P5 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P4 动态层已完成**：P3 的编解码 + typed API（`decode_typed`/`encode_typed`/`FromJValue`/`IntoJValue`）、未知类回写、环/共享、`reset` 双向、rustdoc 示例；82 项测试全绿 |
+| Rust 代码 | **P4 动态层已完成**：P3 的编解码 + typed API、未知类回写、环/共享、`reset` 双向、rustdoc 示例；**allowlist 严格默认已接入**（P6-3 部分）；90 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P4 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P4 已完成；下一步是 P5 的 `JavaSerializable`/derive 与 `computeDefaultSUID`，不是提前做 P6 的内置类语义或 serde。
+所以：P0–P4 已完成，P6-3 的 allowlist 部分已提前落地；下一步是 P5 的 `JavaSerializable`/derive 与 `computeDefaultSUID`。`Registry` 与内置类语义仍留 P6。
 
 ---
 
@@ -103,6 +103,7 @@ cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
 cargo test -p jser --test roundtrip_bytes # 32 例逐字节回放门禁
 cargo test -p jser --test typed       # typed 转换
+cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
 docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
@@ -126,6 +127,8 @@ jser/
 │   │   ├── src/wire/         # StreamReader/Writer、BlockBuffer、Mutf8、HandleTable
 │   │   ├── src/desc/         # ClassDesc 解析/生成、SUID 计算
 │   │   ├── src/value/        # JValue、JObject、Graph、Rust 类型转换
+│   │   ├── src/typed.rs      # FromJValue/IntoJValue、typed 编解码
+│   │   ├── src/allowlist.rs  # 默认严格类白名单
 │   │   └── src/builtin/      # HashMap/HashSet/ArrayList/Date/BigInteger...
 │   ├── jser-derive/          # #[derive(JavaSerializable)]（proc-macro）
 │   └── jser-serde/           # 可选桥，feature 默认关闭
@@ -137,7 +140,7 @@ jser/
 - 核心数据模型是**句柄化动态图 + arena 句柄表**（`JValue` + `Handle(u32)` + `Graph`）：引用型值（`String`/数组/对象/enum）统一走 `Handle`，`classDesc` 也占句柄；内部 `Handle` 单调递增，`TC_RESET` 只清 wire 映射。不要用 `Rc<RefCell<..>>` 建环（泄漏且与 serde/并发冲突）。
 - 写出走 `JavaSerializable` trait + `JavaSchema`，**不要**试图只用 serde derive 表达 `serialVersionUID` / 字段类型码 / `classDescFlags` / 集合头部。
 - serde 只做单根、无环、无回指、已知 POJO 的便利层；遇到 `TC_REFERENCE`、`Reset`、多元素流或未知类直接报错，不做半成品支持。
-- 已知类走注册表 + 特例 codec；未知类降级为 `JValue::Obj` 并支持原样回写。
+- 已知类走注册表 + 特例 codec；未知类在 allowlist 放行时降级为 `JValue::Obj` 并支持原样回写。
 - 错误用 `thiserror` 枚举，至少区分：协议错误 / 不支持（**带类名**）/ 结构不匹配。
 - 解析器用迭代式而非深递归，并显式限制最大深度、最大元素数、最大流大小。
 
@@ -253,7 +256,7 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 - 不把 serde 做成能处理环/共享的"半成品"。
 - 不添加未在 §5 声明的重量级依赖（async runtime、平台特定库）；新增依赖先说明理由。
 - 不在没有 fixture 证据的情况下"修正"协议细节。
-- 不擅自决定 `requirements.md` §6 / `design.md` §8 里仍待用户拍板的问题（目标 Java 版本、serde 形式、crates.io 发布、性能数值、allowlist 默认严格还是宽松）——阻塞时提问，不阻塞时按里程碑 M1→M2 推进。注意：写方向已是基线 `FR-02 MUST`，默认双向实现，不再当开放问题。
+- 不擅自决定 `requirements.md` §6 / `design.md` §8 里仍待用户拍板的问题（目标 Java 版本、serde 形式、crates.io 发布、性能数值）——阻塞时提问，不阻塞时按里程碑推进。**allowlist 默认已定案为严格**（2026-11-04）：`java.lang.*`、`java.util.*`；放宽用 `Allowlist::all()` 并警告。写方向已是基线 `FR-02 MUST`。
 
 ---
 

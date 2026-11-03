@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 01:18 · docs: 记录 allowlist 定案
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`requirements.md` §6/§8、`design.md` §5.2/§8、`implementation-plan.md` A-3/P6-3/§19、`AGENT.md` §1/§5/§6/§11；本条目。
+- **验证**：`cargo test --workspace` **90 passed**；clippy/fmt/gen.sh --check/interop.sh 通过。
+- **TDD**：不适用（决策与文档收口）。
+
+---
+
 ## 2026-11-04 01:15 · feat: 实现默认严格 allowlist（P6-3 部分）
 
 - **提交**：本次（hash 见 `git log`）

@@ -30,7 +30,7 @@ v0.1 的完成定义：**32 个 fixture 全部解码正确；Rust 写出的流�
 |---|---|---|
 | A-1 | 目标 **Java 17**（fixture 为 17.0.20.1） | wire 格式自 1.2 未变；17 决定 `java.time`/`BigInteger` 的字段集合 |
 | A-2 | **双向**实现（读 + 写） | `FR-02` 为 `MUST`，`S-2` 明确双向 |
-| A-3 | 默认 **严格 allowlist**（`java.lang.*`、`java.util.*` + 显式放行） | `NFR-04` 的安全默认；放宽需显式配置并在文档警告 |
+| A-3 | **已确认**：默认 **严格 allowlist**（`java.lang.*`、`java.util.*` + 显式放行） | `NFR-04` 的安全默认；放宽用 `Allowlist::all()` 并文档警告 |
 | A-4 | Rust `edition 2021`、`rust-version = 1.75` | 保守、无 nightly 依赖；可在 P0 调整 |
 | A-5 | 首版**不发布** crates.io | 设计 §8 未决；不影响代码结构，只影响文档/CI 投入 |
 | A-6 | 单人开发估算，人日为 1 个熟练 Rust 工程师 | 并行化建议见 §2 |
@@ -230,10 +230,12 @@ P2 ─────────────────────────�
 |---|---|---|---|
 | P6-1 | `Date`/`BigInteger`/`BigDecimal` 语义 | 以 fixture 字段为准；`Date` 自定义块 `long`；`BigDecimal` 的 `scale`+`intVal`；`BigInteger` 的 6 字段 + `[B` | `36` |
 | P6-2 | `java.time.Ser` | 按类型字节实现 `LocalDate`（`36`），再扩 `Instant`/`LocalDateTime`/`Duration`/`ZonedDateTime`；新增 fixture 覆盖 | 新增用例 + 双向 |
-| P6-3 | 注册表与 allowlist | `Registry` 按类名分派 codec；未知类降级；allowlist 支持精确名 + `prefix.*`；默认严格；越界返回带类名的错误 | 单元 + 文档 |
+| P6-3 ◐ | 注册表与 allowlist | **allowlist 已完成**（精确名/`prefix.*`/`Fixtures$*`、数组按元素、默认严格、带类名错误）；`Registry` 按类名分派 codec 留 P6 | `tests/allowlist.rs` + 文档 |
 | P6-4 | `jser-serde` | feature 默认关闭；只支持单根、无环、无回指、已知 POJO；遇 `Reset`/多元素/回指/未知类明确报错 | serde 测试 + 负例 |
 | P6-5 | 扩充 fixture 流程 | 改 `gen/Fixtures.java` + `gen/build_manifest.py` 的 `CASES` → `./gen/gen.sh` → `--check`；同步 `testdata/README.md` 覆盖表 | `gen.sh --check` |
 | P6-6 | 文档收口 | 内置类支持矩阵、`Optional` 不支持说明（非 `Serializable`）、serde 限制 | 文档评审 |
+
+**状态（2026-11-04，部分）**：P6-3 的 allowlist 部分已完成并作为默认安全策略接入 `Reader`/`decode_stream`/`decode_typed`；fixture 测试显式放行 `Fixtures$*`、`java.math.*`、`java.time.*`。`Registry` 与内置类语义仍待 P6。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -394,3 +396,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | 收口 P2：补充 `Graph::resolve`/`Ref` 句柄视图与环回归测试；更新 P2 完成状态，全仓 58 项通过 | P2 |
 | 2026-11-04 | P3 完成（TDD）：writer/BlockWriter、ClassDesc 与对象/数组/enum/集合编码、32 例逐字节回放、mutation/构造流、Java Verify + interop.sh + CI job；全仓 70 项通过 | P3 |
 | 2026-11-04 | P4 完成（TDD）：typed API/未知类回写/环共享/reset 双向往返/rustdoc 示例；全仓 82 项通过，Java interop 增加 typed Map/List | P4 |
+| 2026-11-04 | allowlist 完成（用户拍板严格默认）：`Allowlist` 精确/`prefix.*`/`Fixtures$*`、数组按元素、默认 `java.lang.*`+`java.util.*`、`UnsupportedClass` 带类名；fixture 测试显式放行；全仓 90 项通过 | NFR-04 |
