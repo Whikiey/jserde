@@ -96,7 +96,7 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 产出 | 验证 |
 |---|---|---|---|
-| P0-1 | 初始化版本控制并提交当前文档基线（仓库目前不是 git） | `.git/`、首次提交 | `git log` 可见文档快照（需你确认） |
+| P0-1 | 初始化版本控制并提交当前文档基线（**已完成**：`main` @ `ad46c43`） | `.git/`、首次提交 | `git log` 可见文档快照 |
 | P0-2 | workspace 骨架 | `Cargo.toml`（`members = ["crates/*"]`、`resolver = "2"`、`rust-version = "1.75"`）、`rust-toolchain.toml`（可选） | `cargo metadata` 通过 |
 | P0-3 | 核心 crate 空壳 | `crates/jser/{Cargo.toml,src/lib.rs}`，`#![forbid(unsafe_code)]`，模块占位 `wire/ desc/ value/ builtin/` | `cargo check` |
 | P0-4 | derive / serde 占位 crate | `crates/jser-derive`（`proc-macro = true`）、`crates/jser-serde`（默认不启用） | `cargo check --workspace` |
@@ -373,3 +373,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | 初版：P0–P7 阶段拆分、任务表、测试矩阵、CI 门禁、风险与开工清单；识别 8 项设计缺口（§3） | 本轮 |
 | 2026-11-03 | 按 §3 回写 `design.md`：句柄化 D1、D2 签名、多元素 API、java.time.Ser 特例、`Optional` 移出、代理项策略；同步 P1/P2/P6 任务与 §18/§19 | 补缺口 |
 | 2026-11-03 | 完善回放门禁：限定"未修改的 32 例"、例外登记、mutation/构造流防作弊；补 `Slot::Str.long`（G-11）；明确门禁不是 AC | 拍板 1 |
+| 2026-11-03 | P0-1 完成：git 初始化并提交文档/testdata（`ad46c43`） | 版本控制 |

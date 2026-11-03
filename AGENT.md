@@ -14,7 +14,7 @@
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 任务拆分、测试矩阵、CI 门禁；计划假设待确认，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
 | Rust 代码 | **尚不存在**：没有 `Cargo.toml`、没有 `src/`、没有 CI 配置 |
-| 版本控制 | 当前目录**不是 git 仓库** |
+| 版本控制 | 已初始化 git（`main`）；首批文档与 testdata 已提交（`ad46c43`），**之后每次改动都必须提交**（见 §10.1） |
 
 所以：第一步是搭 workspace 骨架并让解码器读通 fixture（里程碑 M1），不是"重构现有代码"。
 
@@ -99,7 +99,7 @@ cargo test -p jser --test decode       # 只跑解码对拍（测试文件建好
 
 要求：
 
-- 提交前跑 `./gen/gen.sh --check` + `cargo test`；两者都必须全绿。
+- 提交前跑 `docs/testdata/gen/gen.sh --check` + `cargo test`；两者都必须全绿。
 - 测试**从 `manifest.json` 数据驱动**（路径基于 `CARGO_MANIFEST_DIR` 定位 `docs/testdata`），不要把期望值复制进 Rust 代码。
 - 不新增需要网络的测试或依赖。
 
@@ -163,9 +163,10 @@ jser/
 1. **定位需求**：找到对应的 `FR-*` / `AC-*` 与里程碑（`design.md` §6），确认不在 OUT 范围内。
 2. **先写失败测试**：从 `manifest.json` 取用例，或为尚未覆盖的协议细节新增一个 fixture + 期望值。新增 fixture 必须同步：`Fixtures.java` → `./gen/gen.sh`（会重算 manifest 与 size/sha256）。
 3. **最小实现**：按 §6 的结构落位；改协议行为时同步更新 `design.md` §4.2/§4.3。
-4. **验证**：`./gen/gen.sh --check`、`cargo test --workspace`、`cargo clippy -D warnings`、`cargo fmt --check`。
+4. **验证**：`docs/testdata/gen/gen.sh --check`、`cargo test --workspace`、`cargo clippy -D warnings`、`cargo fmt --check`。
 5. **自检**：解码路径有没有 `unwrap`/`expect`/索引越界/`unsafe`？新代码是否引入了平台相关或需要网络的依赖？
-6. **报账**：说明改了哪些文件、哪几条 `AC-*` 现在满足、哪些仍未覆盖。
+6. **提交**：`git status --short` 确认改动范围 → 按路径 `git add` → `git commit -m "<type>: <简述>"`。一个逻辑变更一个提交；自己负责的改动必须已提交（见 §10.1）。
+7. **报账**：说明改了哪些文件、哪几条 `AC-*` 现在满足、哪些仍未覆盖，以及本次提交 hash。
 
 里程碑顺序：M1 读通 fixture → M2 写 + 双向对拍 → M3 动态 POJO/环/`TC_RESET` → M4 derive + SUID → M5 内置类/serde → M6 加固（fuzz、bench）。**不要跳过 M1 直接做 M5。**
 
@@ -196,6 +197,17 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 - 改动需求或协议事实时，同步更新：`requirements.md` 的追踪矩阵/变更记录、`design.md` 的对应章节、`testdata/README.md` 的覆盖表（若新增用例）。
 - 不提交 `docs/testdata/build/`、`target/`；不提交任何自动生成的 `.class`。
 
+### 10.1 Git 提交规则（强制）
+
+- **每次改动都必须提交**：完成一个任务或一个逻辑变更后立即 `git commit`；任务结束时，自己产生的改动不得留在工作区，`git status --short` 不应列出它们。
+- **一个逻辑变更一个提交**：不要把无关的文档、代码、fixture 混在同一个提交里；大改动拆成多个可回滚的提交。
+- **提交前先验证**：按 §5 跑对应检查。改了 `docs/testdata/` 必须按 §5 跑 `docs/testdata/gen/gen.sh --check`；改了代码必须 `cargo test`、`cargo clippy`、`cargo fmt --check`。
+- **提交信息**：`<type>: <简述>`，`type` 用 `docs` / `feat` / `fix` / `test` / `refactor` / `chore`；正文可写原因与验证结果。
+- **只提交自己的改动**：工作区若有无关的未提交文件，不要 `git add -A` / `git add .`，按路径显式添加；无法判断时先问。
+- **fixture 变更要成组提交**：`.ser`、`manifest.json`、`Fixtures.java` / 生成脚本、`testdata/README.md` 同一个提交，保证可复现。
+- **不要改写已汇报的历史**：不 `git commit --amend` 已汇报的提交、不 force-push；修正用新提交。
+- **收尾要报 hash**：在最终答复里给出本次提交的 hash 与工作区状态。
+
 ---
 
 ## 11. 明确不要做
@@ -213,9 +225,10 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture
 ## 12. 完成任务前的检查清单
 
 - [ ] 改动落在正确的 crate/模块，未新建未声明的结构
-- [ ] `./gen/gen.sh --check` 通过（改了用例则已重新生成并提交 manifest）
+- [ ] `docs/testdata/gen/gen.sh --check` 通过（改了用例则已重新生成并提交 manifest）
 - [ ] `cargo test --workspace` 全绿，新增行为有用例
 - [ ] `cargo clippy -D warnings`、`cargo fmt --check` 通过
 - [ ] 解码路径无 panic 风险，无 `unsafe`，深度/长度上限生效
 - [ ] 文档（`design.md` / `requirements.md` / `testdata/README.md`）按需同步
+- [ ] 已提交（一个逻辑变更一个 commit），`git status --short` 干净，报告含 commit hash
 - [ ] 报告里写明满足/未满足的 `AC-*` 与遗留风险
