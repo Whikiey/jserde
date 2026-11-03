@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 33,
-  "total_bytes": 74750,
+  "case_count": 34,
+  "total_bytes": 74947,
   "cases": [
     {
       "id": "codec/01",
@@ -731,6 +731,36 @@
       },
       "size": 191,
       "sha256": "8e004d85c4256c67b3916ccdabeb693e5628ab298e409e7a648a3d0707101f70"
+    },
+    {
+      "id": "object/41",
+      "file": "fixtures/object/41-nested-objects.ser",
+      "case": "三层对象嵌套：Outer -> Middle -> Leaf",
+      "features": [
+        "多层对象嵌套",
+        "classdata 中的对象字段",
+        "TC_OBJECT 递归"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$Outer",
+        "fields": {
+          "middle": {
+            "class": "Fixtures$Middle",
+            "fields": {
+              "name": "mid",
+              "leaf": {
+                "class": "Fixtures$Leaf",
+                "fields": {
+                  "value": 42
+                }
+              }
+            }
+          }
+        }
+      },
+      "size": 197,
+      "sha256": "9ba8174e2fe106e98944c0412073feaa29230e740e695cdf46d651c13fa6e136"
     }
   ]
 }

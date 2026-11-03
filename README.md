@@ -18,7 +18,7 @@
 | `Date`、`BigInteger`、`BigDecimal`、`java.time` 语义视图 | ✅ |
 | 严格默认 allowlist | ✅ |
 | schema 驱动 serde 桥（单根扁平 POJO） | ✅（限制见下） |
-| 33 个 JDK 生成 fixture 逐字节回放 | ✅ |
+| 34 个 JDK 生成 fixture 逐字节回放 | ✅ |
 | Rust 写 → Java 读回 | ✅（Point/Mixed/Map/环/enum/serde） |
 
 ## 快速开始
@@ -85,7 +85,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
 cd docs/testdata
-./gen/gen.sh --check       # 校验 JDK 生成的 33 个 fixture / 74750 字节
+./gen/gen.sh --check       # 校验 JDK 生成的 34 个 fixture / 74947 字节
 ./gen/interop.sh           # Rust 写 → Java 读回 + SUID 对拍（需 JDK 17）
 
 # 可选

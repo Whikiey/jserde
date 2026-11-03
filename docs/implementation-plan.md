@@ -3,7 +3,7 @@
 - 状态：Draft（第 1 节假设与第 3 节设计缺口待确认后转 Accepted）
 - 上游：[requirements.md](requirements.md)（`AC-*` 是验收依据）、[design.md](design.md)（`D1–D5` 是技术路线）
 - 工作规则：[AGENT.md](../AGENT.md)（事实来源优先级、命令、提交前检查）
-- 基准数据：[testdata/](testdata/)（33 例，JDK 17.0.20.1）
+- 基准数据：[testdata/](testdata/)（34 例，JDK 17.0.20.1）
 - 日期：2026-11-03
 - 范围：v0.1（设计 §2 的 MVP + M4/M5/M6 收尾），不含 `OUT-01`～`OUT-06`
 
@@ -13,7 +13,7 @@
 
 ## 0. 交付目标与总策略
 
-v0.1 的完成定义：**33 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
+v0.1 的完成定义：**34 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
 
 总策略四条：
 
@@ -239,7 +239,7 @@ P2 ─────────────────────────�
 
 **状态（2026-11-04，TDD）**：P6 完成。
 - P6-1：`Registry`/`Graph::builtin` 语义解析 `Date`、`BigInteger`（十进制度转换）、`BigDecimal`（保留 scale）。
-- P6-2：`java.time.Ser` 支持 Duration/Instant/LocalDate/LocalTime/LocalDateTime/ZonedDateTime；新增 `object/40`（33 例、74750 字节）。
+- P6-2：`java.time.Ser` 支持 Duration/Instant/LocalDate/LocalTime/LocalDateTime/ZonedDateTime；新增 `object/40`，后续 `object/41`（共 34 例、74947 字节）。
 - P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
 - P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`，仅支持单根扁平 POJO、标量/String/Option/数组；拒绝多根、`TC_RESET`、未知类/嵌套对象。
 - P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
@@ -266,7 +266,7 @@ P2 ─────────────────────────�
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
 - P7-5：`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
-- P7-6：全仓 **111 passed**，clippy/fmt/gen/interop 通过。
+- P7-6：全仓 **113 passed**，clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -415,4 +415,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | allowlist 完成（用户拍板严格默认）：`Allowlist` 精确/`prefix.*`/`Fixtures$*`、数组按元素、默认 `java.lang.*`+`java.util.*`、`UnsupportedClass` 带类名；fixture 测试显式放行；全仓 90 项通过 | NFR-04 |
 | 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |
 | 2026-11-04 | P6 完成（TDD）：内置类语义（Date/BigInteger/BigDecimal/java.time）、Registry、`object/40` fixture、schema 驱动 serde 桥；全仓 110 项通过，Java interop 14 项 + SUID | P6 |
-| 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.7GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 111 项通过 | P7 |
+| 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.7GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 113 项通过 | P7 |

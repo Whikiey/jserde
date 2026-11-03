@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-04 03:00 · test: 增加三层嵌套对象 fixture（object/41）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`Fixtures.java` 新增 `Leaf`/`Middle`/`Outer` 与 `object/41-nested-objects.ser`（Outer → Middle → Leaf，197 字节）；`build_manifest.py` 登记嵌套语义；重新生成 manifest（34 例、74947 字节）；新增 `tests/nested.rs` 验证三层解码与深层字段修改后重编码；同步 `tests/manifest.rs`、README、AGENT、design/plan 的 fixture 计数。
+- **验证**：`cargo test --workspace` **113 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过。
+- **TDD**：先加入 fixture/期望与失败测试，再确认动态对象递归解码/编码通过；该用例补上了此前仅靠 `36`/`38` 间接覆盖的多层 POJO 缺口。
+- **覆盖边界**：动态 `JValue` 层支持任意深度对象；derive 仍只支持扁平字段，`jser-serde` 明确拒绝嵌套对象字段，手写 typed 结构可自行递归实现。
+
+---
+
 ## 2026-11-04 02:35 · docs: 更新 P7 完成状态
 
 - **提交**：本次（hash 见 `git log`）

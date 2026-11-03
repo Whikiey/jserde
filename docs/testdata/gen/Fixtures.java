@@ -124,6 +124,36 @@ public class Fixtures {
         String y = "y";
     }
 
+    /** 三层对象嵌套：Outer -> Middle -> Leaf。 */
+    static class Leaf implements Serializable {
+        private static final long serialVersionUID = 1L;
+        int value;
+
+        Leaf(int value) {
+            this.value = value;
+        }
+    }
+
+    static class Middle implements Serializable {
+        private static final long serialVersionUID = 1L;
+        String name;
+        Leaf leaf;
+
+        Middle(String name, Leaf leaf) {
+            this.name = name;
+            this.leaf = leaf;
+        }
+    }
+
+    static class Outer implements Serializable {
+        private static final long serialVersionUID = 1L;
+        Middle middle;
+
+        Outer(Middle middle) {
+            this.middle = middle;
+        }
+    }
+
     // ================= 生成逻辑 =================
 
     static int count = 0;
@@ -274,12 +304,16 @@ public class Fixtures {
                 ZonedDateTime.of(2024, 2, 29, 12, 34, 56, 123456789,
                         ZoneId.of("Asia/Shanghai")),
         }));
+
+        gen(dir, "41-nested-objects.ser", out -> out.writeObject(
+                new Outer(new Middle("mid", new Leaf(42)))));
     }
 
     static void printSuids() {
         Class<?>[] classes = {
                 Point.class, Mixed.class, Base.class, Derived.class, CustomWritable.class,
                 Color.class, Node.class, WithTransient.class, NoSuid.class,
+                Leaf.class, Middle.class, Outer.class,
         };
         System.out.println("# name\tsuid");
         for (Class<?> c : classes) {

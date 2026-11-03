@@ -267,6 +267,17 @@ CASES = [
             {"type": "java.time.ZonedDateTime", "semantic": "2024-02-29T12:34:56.123456789+08:00[Asia/Shanghai]"},
         ]},
     ),
+    dict(
+        id="object/41", file="fixtures/object/41-nested-objects.ser",
+        case="三层对象嵌套：Outer -> Middle -> Leaf",
+        features=["多层对象嵌套", "classdata 中的对象字段", "TC_OBJECT 递归"],
+        expect={"kind": "object", "class": "Fixtures$Outer", "fields": {
+            "middle": {"class": "Fixtures$Middle", "fields": {
+                "name": "mid",
+                "leaf": {"class": "Fixtures$Leaf", "fields": {"value": 42}},
+            }},
+        }},
+    ),
 ]
 
 

@@ -16,7 +16,7 @@
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
 - Schema-driven `jser-serde` bridge (single-root flat POJO).
-- 33 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
+- 34 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
   SUID comparison, deterministic fuzz smoke and a benchmark example.
 
 ### Known limitations
