@@ -19,6 +19,7 @@ peak RSS: 207568 kB
 ```
 
 - 100 MB 级输入：解码吞吐约 **4.8 GB/s**，峰值 RSS 约 **203 MiB**（约输入 100 MiB 的 2.0×），满足“< 3× 输入”的目标。
-- `block-100MB` 是合成的 `TC_BLOCKDATALONG` 顶层块，用于测大输入；它不覆盖 2500 万个元素的数组/对象内存开销，后者需在真实负载上复测。
+- `block-100MB` 是合成的 `TC_BLOCKDATALONG` 顶层块，用于测大输入；它不覆盖 2500 万个元素的数组/对象内存开销。
+- **已知缺口**：当前 `JValue` 为 32 B/元素，2500 万 `int` 数组约 800 MB，加上 100 MB 输入会超过 3×；需要 P8 的 primitive raw 存储（见 `implementation-plan.md` §20）。
 - 小对象吞吐受固定开销影响，不代表大对象吞吐。
 - 该 bench 不依赖 criterion，可离线运行；`/proc/self/status` 仅用于 Linux 峰值 RSS。

@@ -344,17 +344,19 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 
 serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Option`/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。
 
+嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现，derive 只支持扁平字段，serde 明确拒绝嵌套对象字段。
+
 ## 6. 里程碑与出口条件
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | ✅ **数据部分已完成**（2026-11-03）：32 个用例、74559 字节；P6/P7 新增 `40`/`41` 后共 34 例、74947 字节，codec 层手写推导与 JDK 输出逐字节一致；剩余工作是 Rust 侧解码器读到能复现这些字节 |
-| M1 | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码（`36` 先只验结构）；多元素流与 `TC_RESET` 可读 |
-| M2 | **写** + 回放门禁 + 双向对拍 | 未修改的 fixture（当前 34 例）`encode_stream(decode_stream(x)) == x`（例外需登记）；构造/修改过的图由 Java 读回验证语义；Rust 写 → Java 读回，语义相等 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 34 例/74947 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
+| M2 ✅ | **写** + 回放门禁 + 双向对拍 | 34 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
 | M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |
-| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 无 panic；吞吐达到约定目标；P7 已完成 bench/fuzz 目标与冒烟，30 分钟 fuzz 待夜间执行 |
+| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 合成 100 MB bench 达标（约 4.8 GB/s、2.0×）；fuzz 目标/冒烟完成；30 分钟完整 fuzz 和真实 primitive 大数组待 P8 |
 
 ## 7. 风险与缓解
 

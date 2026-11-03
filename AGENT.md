@@ -10,13 +10,13 @@
 
 | 项 | 状态 |
 |---|---|
-| 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
+| 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P7；P8 缺口见计划 §20 |
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成，P7-1 的 30 分钟 fuzz 仍需夜间/手工执行；计划假设按默认执行，设计缺口已定案） |
-| 基准数据 | **已完成**：34 个用例、74947 字节（P6 新增 object/40/41），JDK 17.0.20.1 生成，见 `docs/testdata/` |
+| 基准数据 | **已完成**：34 个用例、74947 字节（P6/P7 新增 object/40/41），JDK 17.0.20.1 生成，见 `docs/testdata/` |
 | Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；113 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P7 已完成；剩余加固项是手工/夜间跑满 30 分钟 `cargo fuzz`（AC-04）与真实 100 MB 对象负载复测。
+所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20：P7-1 的 30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
 
 ---
 
@@ -110,6 +110,7 @@ cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --test derive      # derive 互通
 cargo test -p jser --test builtin     # Date/BigInteger/java.time 语义
 cargo test -p jser-serde              # serde 桥
+cargo test -p jser --test nested      # 三层嵌套对象
 cargo test -p jser --test fuzz_smoke  # 离线 fuzz 冒烟
 cargo run --release -p jser --example bench -- 100 # 100MB 级 bench
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
@@ -137,10 +138,14 @@ jser/
 │   │   ├── src/desc/         # ClassDesc 解析/生成、SUID 计算
 │   │   ├── src/value/        # JValue、JObject、Graph、Rust 类型转换
 │   │   ├── src/typed.rs      # FromJValue/IntoJValue、typed 编解码
+│   │   ├── src/java.rs       # JavaSerializable/JavaField
+│   │   ├── src/suid.rs       # computeDefaultSUID + .class 解析
+│   │   ├── src/bin/suid.rs   # serialver 对拍工具
 │   │   ├── src/allowlist.rs  # 默认严格类白名单
-│   │   └── src/builtin/      # HashMap/HashSet/ArrayList/Date/BigInteger...
+│   │   ├── src/builtin/      # 集合布局 + semantic.rs
+│   │   └── examples/         # emit / bench
 │   ├── jser-derive/          # #[derive(JavaSerializable)]（proc-macro）
-│   └── jser-serde/           # 可选桥，feature 默认关闭
+│   └── jser-serde/           # schema 驱动 serde 桥
 └── tests/                    # 对拍、fuzz 目标、bench
 ```
 

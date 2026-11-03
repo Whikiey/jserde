@@ -12,7 +12,7 @@
 |---|---|---|
 | `manifest.json` | **机读契约**：34 个用例的编号、文件、覆盖特性、期望语义值、size、sha256 | 是 |
 | `fixtures/codec/` | codec 层：无类描述符的流原语（字符串/空/块数据/句柄回指/reset） | 是 |
-| `fixtures/object/` | object 层：类描述符、SUID、继承、自定义 `writeObject`、enum、数组、集合、循环引用 | 是 |
+| `fixtures/object/` | object 层：类描述符、SUID、继承、自定义 `writeObject`、enum、数组、集合、循环引用、三层对象嵌套 | 是 |
 | `gen/Fixtures.java` | **权威生成器**（JDK 17+），同时把各类的 `serialVersionUID` 打到 stdout | 是 |
 | `gen/build_codec_fixtures.py` | codec 层的**独立再推导**：按规范字面规则重算同一批字节，用于对拍 | 是 |
 | `gen/build_manifest.py` | 扫描 `fixtures/`、计算 size/sha256、生成 `manifest.json`；`--check` 只校验 | 是 |
@@ -51,7 +51,8 @@ cd testdata
 | object | 25–27 | 基本类型数组、含 `null` 的对象数组、二维数组 |
 | object | 28–32 | `ArrayList`/`HashMap`/`LinkedHashMap`/`HashSet`/`LinkedList` 的自定义布局 |
 | object | 33–35 | 对象共享、循环引用、流中 `reset()` |
-| object | 36–41 | `Date`/`BigInteger`/`BigDecimal`/`java.time.Ser`、`transient`、JDK 计算的 SUID、java.time 多类型、三层对象嵌套 |
+| object | 36–40 | `Date`/`BigInteger`/`BigDecimal`/`java.time.Ser`、`transient`、JDK 计算的 SUID、java.time 多类型 |
+| object | 41 | 三层对象嵌套 `Outer → Middle → Leaf`（对象字段递归） |
 
 ## SUID 表
 

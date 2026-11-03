@@ -102,6 +102,19 @@
 
 > 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 34 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
 
+### 4.1 当前实现状态（2026-11-04）
+
+| AC | 状态 | 证据/缺口 |
+|---|---|---|
+| AC-01 | ✅ | 34 个 fixture 全部解码；`36`/`40` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
+| AC-02 | ✅（代表性） | `tests/interop.rs` + `Verify.java` 覆盖 Point/Mixed/Map/环/enum/derive/serde；未逐类覆盖全部 Java 类型 |
+| AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
+| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；30 分钟完整运行待夜间 |
+| AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
+| AC-06 | ◐ | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；真实 2500 万元素 `int[]` 因 `JValue` 32 B/元素尚未达标 |
+
+> 剩余缺口与处理优先级见 `implementation-plan.md` §20。
+
 ---
 
 ## 5. 明确的范围外（OUT）
@@ -119,11 +132,11 @@
 
 ## 6. 待确认（影响基线判定）
 
-1. **FR-02（写方向）是否必须**：只读实现的工作量约为双向的 60%；写方向要额外承担 `classDesc` 生成与 `serialVersionUID` 计算。
-2. **目标 Java 版本**（8 / 17 / 21）：只影响 `java.time` 等新类的覆盖，wire 格式自 1.2 起未变。
-3. **NFR-02 的数值**：`≥ 50 MB/s`、`< 3× 内存` 是我给的建议值，请确认或改成你的实际要求。
+1. **FR-02（写方向）**：已实现并通过 P3/P6/P7 回归。
+2. **目标 Java 版本**：按 **Java 17** 实现与生成 fixture（wire 自 1.2 未变）。
+3. **NFR-02 的数值**：合成 100 MB 块流约 4.8 GB/s、2.0× RSS；真实 primitive 大数组的内存目标仍待 P8 紧凑数组。
 4. **NFR-04 的默认策略**：**已定案（2026-11-04）**：严格默认——只放行 `java.lang.*`、`java.util.*`；其它类需显式加入 `Allowlist`。放宽用 `Allowlist::all()`，并须在文档中警告 gadget 风险。
-5. **FR-13/14/15（内置类、derive、serde）是否纳入首个版本**，还是先做 FR-01～FR-12（FR-13 不含 `Optional`）。
+5. **FR-13/14/15**：已纳入当前开发线；内置类/derive 完成，serde 为 schema 驱动的受限桥（单根扁平 POJO）。
 
 ---
 

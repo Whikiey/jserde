@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 03:10 · docs: 同步当前进度与缺口
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：统一更新 README/SECURITY/CHANGELOG、AGENT、requirements、design、implementation-plan、testdata README、bench：
+  - 当前基线：**34 个 fixture / 74947 字节，113 项测试通过，Java/SUID 互操作 14 项**。
+  - P0–P7 状态；P7-1 的 30 分钟 fuzz 标注为待夜间。
+  - 新增 `implementation-plan.md` §20“当前进度与后续缺口”，按 P8-1～P8-6 列出 AC-04、AC-06 真实 primitive 数组、嵌套 derive/serde、OUT 负例、Year 等、跨平台。
+  - 明确 100 MB bench 是合成块流，真实 2500 万 `int[]` 受 `JValue` 32 B/元素影响尚未达标。
+- **验证**：文档变更，无代码改动；当前 `cargo test --workspace` 113 passed、clippy/fmt/gen/interop 维持通过。
+- **TDD**：不适用（文档同步）。
+
+---
+
 ## 2026-11-04 03:00 · test: 增加三层嵌套对象 fixture（object/41）
 
 - **提交**：本次（hash 见 `git log`）

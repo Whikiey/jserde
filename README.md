@@ -4,6 +4,13 @@
 
 当前版本：`0.1.0`（P0–P7 开发线；尚未发布 crates.io）。
 
+## 当前进度
+
+- P0–P7 已实现：34 个 fixture / 74947 字节、113 项测试通过、Java/SUID 互操作 14 项。
+- 已覆盖：动态编解码、集合、环/共享、typed、derive、SUID、内置类语义、allowlist、serde 桥、三层嵌套对象。
+- 未收口：30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
+- 缺口与优先级见 [implementation-plan.md §20](docs/implementation-plan.md#20-当前进度与后续缺口2026-11-04)。
+
 ## 能力
 
 | 能力 | 状态 |
@@ -80,7 +87,7 @@ struct Point {
 ## 构建与验证
 
 ```bash
-cargo test --workspace
+cargo test --workspace          # 113 passed
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
@@ -105,7 +112,9 @@ cargo test -p jser --test fuzz_smoke
 ## 已知限制
 
 - `Externalizable` 通用语义、动态代理、`TC_CLASS` 完整语义、RMI/JNDI 不在范围。
-- serde 桥只支持单根扁平 POJO、标量/String/Option/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流。
+- 动态 `JValue` 层支持任意深度嵌套（`object/41` 验证 3 层）；serde 桥只支持单根扁平 POJO，derive 只支持扁平字段，二者都不支持嵌套自定义对象。
+- serde 桥不支持 Map/Set 字段、环/共享、`TC_RESET`、多元素流。
 - `Year`/`YearMonth`/`MonthDay`/`Period` 暂无语义视图。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
+- `docs/bench.md` 的 100 MB 是合成块流；真实 2500 万元素 `int[]` 受 `JValue` 32 字节/元素影响，尚未满足 3× 内存目标。
 - 默认 allowlist 不能替代完整反序列化沙箱。

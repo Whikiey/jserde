@@ -18,6 +18,9 @@
 - Schema-driven `jser-serde` bridge (single-root flat POJO).
 - 34 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
   SUID comparison, deterministic fuzz smoke and a benchmark example.
+- Three-level nested POJO fixture (`object/41`) and regression tests.
+- P7 hardening: panic audit, compact bulk decoding of large top-level blocks,
+  libFuzzer targets, nightly-ready CI smoke, README/SECURITY/CHANGELOG.
 
 ### Known limitations
 
@@ -27,3 +30,6 @@
 - `Year`/`YearMonth`/`MonthDay`/`Period` semantic views are not implemented.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.
+- AC-04: full 30-minute fuzz run still pending; offline smoke is in CI.
+- AC-06: synthetic 100 MB block stream passes; a real 25M-element `int[]`
+  currently exceeds the 3× memory target because primitive arrays use `JValue`.
