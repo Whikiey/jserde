@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2/P3 已完成，P4 待做；计划假设按默认执行，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0/P1/P2/P3/P4 已完成，P5 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P3 编解码层已完成**：32 例全部可解码且**逐字节回放**；`encode_stream`/`encode`、ClassDesc/对象/数组/enum/集合/块/参考、`Limits`、Java interop 已实现；70 项测试全绿 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P3 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P4 动态层已完成**：P3 的编解码 + typed API（`decode_typed`/`encode_typed`/`FromJValue`/`IntoJValue`）、未知类回写、环/共享、`reset` 双向、rustdoc 示例；82 项测试全绿 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P4 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P3 已完成；下一步是 P4 的动态 POJO/typed API/未知类回写收口，不是"重构现有代码"或提前做 P5/P6。
+所以：P0–P4 已完成；下一步是 P5 的 `JavaSerializable`/derive 与 `computeDefaultSUID`，不是提前做 P6 的内置类语义或 serde。
 
 ---
 
@@ -102,6 +102,8 @@ cargo test -p jser --test codec        # 只跑 codec 12 例
 cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
 cargo test -p jser --test roundtrip_bytes # 32 例逐字节回放门禁
+cargo test -p jser --test typed       # typed 转换
+cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
 docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
 ```

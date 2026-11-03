@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 01:02 · docs: 更新 P4 完成状态
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`AGENT.md` §1/§5/§6；`docs/implementation-plan.md` P4-1～P4-5 标记、P4 状态与 §19 变更记录；本条目。
+- **验证**：`cargo test --workspace` **82 passed**；clippy/fmt/gen.sh --check/interop.sh 通过。
+- **TDD**：不适用（状态与文档收口）。
+
+---
+
 ## 2026-11-04 00:58 · feat: 实现 P4 typed 转换与动态 POJO 收口（TDD）
 
 - **提交**：本次（hash 见 `git log`）

@@ -197,11 +197,13 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P4-1 | typed 转换 | `decode_typed::<T>`、`FromJValue`/`IntoJValue`；标量、`Option`、`Vec`、`HashMap`、`HashSet`、嵌套结构；字段缺失报 `FieldMismatch` 而非静默丢 | 单元 + `20–32` |
-| P4-2 | 未知类回写 | 无 Rust 定义时保留类名/字段/自定义块，`encode` 后字节等价；`AC-05` | `23`、`39`、36 |
-| P4-3 | 环/共享 API | `Graph::resolve`、`Handle` 比较；`34` 往返后 `a.next.next == a`（按句柄）；`33` 第二次出现是同一 `Handle`（回指） | `33`、`34` |
-| P4-4 | `reset` 双向 | 解码时清表；编码时可主动 `reset()`；`35` 重放时描述符重新写出 | `35` |
-| P4-5 | API 文档示例 | `docs/` 或 crate rustdoc：读 Map、读 POJO、写 Map、allowlist | `cargo test --doc` |
+| P4-1 ✅ | typed 转换 | `decode_typed::<T>`、`FromJValue`/`IntoJValue`；标量、`Option`、`Vec`、`HashMap`、`HashSet`、嵌套结构；字段缺失报 `FieldMismatch` 而非静默丢 | 单元 + `20–32` |
+| P4-2 ✅ | 未知类回写 | 无 Rust 定义时保留类名/字段/自定义块，`encode` 后字节等价；`AC-05` | `23`、`39`、36 |
+| P4-3 ✅ | 环/共享 API | `Graph::resolve`、`Handle` 比较；`34` 往返后 `a.next.next == a`（按句柄）；`33` 第二次出现是同一 `Handle`（回指） | `33`、`34` |
+| P4-4 ✅ | `reset` 双向 | 解码时清表；编码时可主动 `reset()`；`35` 重放时描述符重新写出 | `35` |
+| P4-5 ✅ | API 文档示例 | `docs/` 或 crate rustdoc：读 Map、读 POJO、写 Map、allowlist | `cargo test --doc` |
+
+**状态（2026-11-04，TDD）**：P4 完成。新增 `crates/jser/src/typed.rs`（`FromJValue`/`IntoJValue`、`decode_typed`/`encode_typed`，覆盖标量/`Option`/`Vec`/`HashMap`/`HashSet`/手写 POJO；集合原始类型自动装箱）；`Graph::require_field`/`add_reset`；未知类回写与 reset 测试；crate rustdoc 三个示例。新增 `tests/typed.rs`（7）、`tests/unknown.rs`（1）、reset 回归（1）与 3 个 doctest；全仓 **82 passed**。Java interop 增加 typed `HashMap<String,i32>` 与 `ArrayList<Integer>` 读回。allowlist 示例仍留 P6。
 
 出口：`AC-03`、`AC-05` 通过；`Graph` 对用户可用（示例可编译）。
 
@@ -391,3 +393,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P2 完成（TDD，`6bed153`）：classDesc/对象/继承/自定义块/数组/enum/集合/环/`TC_RESET`/`Limits`；32 例全部可解码，新增 25 项测试，全仓 57 项通过；36 仅结构 | P2 |
 | 2026-11-04 | 收口 P2：补充 `Graph::resolve`/`Ref` 句柄视图与环回归测试；更新 P2 完成状态，全仓 58 项通过 | P2 |
 | 2026-11-04 | P3 完成（TDD）：writer/BlockWriter、ClassDesc 与对象/数组/enum/集合编码、32 例逐字节回放、mutation/构造流、Java Verify + interop.sh + CI job；全仓 70 项通过 | P3 |
+| 2026-11-04 | P4 完成（TDD）：typed API/未知类回写/环共享/reset 双向往返/rustdoc 示例；全仓 82 项通过，Java interop 增加 typed Map/List | P4 |
