@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 任务拆分、测试矩阵、CI 门禁；计划假设待确认，设计缺口已定案） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0 已完成，P1 待做；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **尚不存在**：没有 `Cargo.toml`、没有 `src/`、没有 CI 配置 |
-| 版本控制 | 已初始化 git（`main`）；首批文档与 testdata 已提交（`ad46c43`），**之后每次改动都必须提交**（见 §10.1） |
+| Rust 代码 | **P0 骨架已完成**：workspace、`jser` 错误模型与模块占位、manifest 测试夹具、CI；解码器尚未实现 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：第一步是搭 workspace 骨架并让解码器读通 fixture（里程碑 M1），不是"重构现有代码"。
+所以：P0 工程骨架已完成；下一步是 P1 的 `StreamReader`/MUTF-8/块缓冲/句柄表，让 12 个 codec fixture 全绿，不是"重构现有代码"。
 
 ---
 

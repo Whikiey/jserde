@@ -97,13 +97,15 @@ P2 ─────────────────────────�
 | ID | 任务 | 产出 | 验证 |
 |---|---|---|---|
 | P0-1 | 初始化版本控制并提交当前文档基线（**已完成**：`main` @ `ad46c43`） | `.git/`、首次提交 | `git log` 可见文档快照 |
-| P0-2 | workspace 骨架 | `Cargo.toml`（`members = ["crates/*"]`、`resolver = "2"`、`rust-version = "1.75"`）、`rust-toolchain.toml`（可选） | `cargo metadata` 通过 |
-| P0-3 | 核心 crate 空壳 | `crates/jser/{Cargo.toml,src/lib.rs}`，`#![forbid(unsafe_code)]`，模块占位 `wire/ desc/ value/ builtin/` | `cargo check` |
-| P0-4 | derive / serde 占位 crate | `crates/jser-derive`（`proc-macro = true`）、`crates/jser-serde`（默认不启用） | `cargo check --workspace` |
-| P0-5 | 错误模型 | `error.rs`：`BadMagic`、`Truncated`、`BadTag`、`BadHandle`、`MalformedString`、`UnsupportedClass(String)`、`FieldMismatch`、`LimitExceeded` | 单元测试构造每种错误 |
-| P0-6 | manifest 测试夹具 | `crates/jser/tests/common/mod.rs`：按 `CARGO_MANIFEST_DIR` + `../../docs/testdata/manifest.json` 定位，反序列化为 `Case { id, file, features, expect, size, sha256 }` | 用例数 = 32 的断言 |
-| P0-7 | CI 骨架 | `.github/workflows/ci.yml`：`fmt` / `clippy -D warnings` / `test`；`fixtures` job 装 JDK 17 跑 `docs/testdata/gen/gen.sh --check` | CI 两个 job 绿 |
-| P0-8 | 依赖白名单 | 运行时仅 `thiserror`；dev 仅 `serde`/`serde_json`（读 manifest）、`proptest`；后续按需增补 | `cargo tree` 复核 |
+| P0-2 | ✅ workspace 骨架 | `Cargo.toml`（`members = ["crates/*"]`、`resolver = "2"`、`rust-version = "1.75"`）、`rust-toolchain.toml`（可选） | `cargo metadata` 通过 |
+| P0-3 | ✅ 核心 crate 空壳 | `crates/jser/{Cargo.toml,src/lib.rs}`，`#![forbid(unsafe_code)]`，模块占位 `wire/ desc/ value/ builtin/` | `cargo check` |
+| P0-4 | ✅ derive / serde 占位 crate | `crates/jser-derive`（`proc-macro = true`）、`crates/jser-serde`（独立占位，P6 再接） | `cargo check --workspace` |
+| P0-5 | ✅ 错误模型 | `error.rs`：`BadMagic`、`Truncated`、`BadTag`、`BadHandle`、`MalformedString`、`UnsupportedClass(String)`、`FieldMismatch`、`LimitExceeded` | 测试构造每种错误 |
+| P0-6 | ✅ manifest 测试夹具 | `crates/jser/tests/common/mod.rs`：按 `CARGO_MANIFEST_DIR` + `../../docs/testdata/manifest.json` 定位，反序列化为 `Case { id, file, features, expect, size, sha256 }` | 用例数 = 32 的断言 |
+| P0-7 | ✅ CI 骨架（已添加，待远端首次运行） | `.github/workflows/ci.yml`：`fmt` / `clippy -D warnings` / `test`；`fixtures` job 装 JDK 17 跑 `docs/testdata/gen/gen.sh --check` | CI 三个 job 通过（待远端） |
+| P0-8 | ✅ 依赖白名单 | 运行时仅 `thiserror`；dev 为 `serde`/`serde_json`（读 manifest）；`proptest` 在 P4 引入 | `cargo tree` 复核 |
+
+**状态（2026-11-03）**：P0-2～P0-8 已完成。`cargo test --workspace` 通过 6 项集成测试，`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 均通过；CI 配置待远端首次运行验证。
 
 出口：`cargo test --workspace` 通过；CI 能跑 `gen.sh --check`；没有业务逻辑。
 
@@ -341,11 +343,11 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 ## 17. 开工清单（按顺序执行）
 
-1. 确认 §1 的 A-1～A-7 与 §3 的 G-1～G-11（尤其 G-1/G-6/G-7/G-11）。
-2. 确认 git 基线：P0-1 已完成（`ad46c43`），直接开始 P0-2。
-3. 搭 workspace + 空 crate + 错误模型（P0-2～P0-5）。
-4. 写 manifest 测试夹具，断言 32 例（P0-6）。
-5. 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
+1. ✅ 按 §1 的 A-1～A-7 默认值执行；§3 的 G-1～G-11 已定案。
+2. ✅ 确认 git 基线（P0-1，`ad46c43`）。
+3. ✅ 搭 workspace + 空 crate + 错误模型（P0-2～P0-5）。
+4. ✅ 写 manifest 测试夹具，断言 32 例（P0-6）。
+5. ✅ 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
 6. 实现有界 `StreamReader` + MUTF-8（P1-1/P1-2），先让字符串 6 例通过。
 7. 实现块缓冲 + 句柄表（P1-3/P1-4），让 codec 12 例全绿。
 8. 实现 `classDesc` 解析 + 单层对象（P2-1/P2-4），先过 `20`。
@@ -374,3 +376,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-03 | 按 §3 回写 `design.md`：句柄化 D1、D2 签名、多元素 API、java.time.Ser 特例、`Optional` 移出、代理项策略；同步 P1/P2/P6 任务与 §18/§19 | 补缺口 |
 | 2026-11-03 | 完善回放门禁：限定"未修改的 32 例"、例外登记、mutation/构造流防作弊；补 `Slot::Str.long`（G-11）；明确门禁不是 AC | 拍板 1 |
 | 2026-11-03 | P0-1 完成：git 初始化并提交文档/testdata（`ad46c43`） | 版本控制 |
+| 2026-11-03 | P0 完成：workspace/错误模型/manifest 夹具/CI；P0-2～P0-8 落地，6 项测试通过 | P0 |
