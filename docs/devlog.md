@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-11-04 00:58 · feat: 实现 P4 typed 转换与动态 POJO 收口（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `crates/jser/src/typed.rs`：`FromJValue`/`IntoJValue`、`decode_typed`/`encode_typed`；覆盖标量、`Option`、`Vec`、`HashMap`、`HashSet`、手写 POJO，集合元素自动装箱。
+  - `crates/jser/src/builtin/mod.rs`：`new_array_list`、`new_hash_set`、`new_hash_map_entries`；`box_primitive` 支持 `java.lang.*` 包装类（Integer/Long/Boolean/Character 等）。
+  - `crates/jser/src/value/mod.rs`：`require_field`、`add_reset`、构造描述符去重。
+  - `crates/jser/src/lib.rs`：crate rustdoc 示例（读 Map、typed Map、手写 POJO）与安全警告。
+  - 新测试：`tests/typed.rs`（7）、`tests/unknown.rs`（1，AC-05）、reset 插入回归（1）；`tests/interop.rs` 增加 typed `HashMap<String,i32>` 与 `ArrayList<Integer>` 的 Java 读回。
+  - `docs/testdata/gen/Verify.java` 支持 `List`；`examples/emit.rs` 增加 typed map/list 输出。
+- **验证**：`cargo test --workspace` **82 passed**；`cargo clippy -D warnings`、`cargo fmt --check`、`gen.sh --check`、`interop.sh` 全部通过。
+- **TDD**：Red：先写 `tests/typed.rs`，因缺少 `decode_typed`/`FromJValue` 编译失败；Green：实现 typed 层后逐项通过，再补 Java interop 的 typed Map/List 校验。
+- **AC 状态**：`AC-03`（33/34/35 读→写→读）与 `AC-05`（23/36/39 原样回写）通过；`AC-01`/`AC-02` 维持 P3 状态；allowlist 仍留 P6。
+
+---
+
 ## 2026-11-04 00:50 · docs: 更新 P3 完成状态
 
 - **提交**：本次（hash 见 `git log`）

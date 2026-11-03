@@ -44,6 +44,8 @@ public final class Verify {
             Object actual;
             if (object instanceof Map<?, ?> map) {
                 actual = map.get(name);
+            } else if (object instanceof java.util.List<?> list) {
+                actual = list.get(Integer.parseInt(name));
             } else {
                 Field field = object.getClass().getDeclaredField(name);
                 field.setAccessible(true);

@@ -264,8 +264,20 @@ impl Graph {
         self.push_item(value);
     }
 
-    /// Add a caller-built class descriptor.
+    /// Append a `TC_RESET` marker between top-level items.
+    pub fn add_reset(&mut self) {
+        self.add_item(JValue::Reset);
+    }
+
+    /// Add a caller-built class descriptor, reusing an identical one if present.
     pub fn add_class_desc(&mut self, desc: ClassDesc) -> Result<Handle> {
+        for (index, slot) in self.slots.iter().enumerate() {
+            if let Slot::Desc(existing) = slot {
+                if existing == &desc {
+                    return Ok(Handle(index as u32));
+                }
+            }
+        }
         if let Some(super_desc) = desc.super_desc {
             self.expect_desc(super_desc)?;
         }
@@ -544,6 +556,17 @@ impl Graph {
             }
         }
         Ok(None)
+    }
+
+    /// Find a required field, with the enclosing class name in the error.
+    pub fn require_field<'a>(&'a self, value: &JValue, name: &str) -> Result<&'a JValue> {
+        if let Some(field) = self.field(value, name)? {
+            return Ok(field);
+        }
+        let class = self.class_name(value).unwrap_or("<non-object>");
+        Err(Error::FieldMismatch {
+            message: format!("`{class}` has no field `{name}`"),
+        })
     }
 
     /// Flattened fields in classdata order (parent → child).

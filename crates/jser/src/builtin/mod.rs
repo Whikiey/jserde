@@ -174,6 +174,21 @@ pub fn set_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<Vec<&'
 /// `loadFactor`/`threshold`; the custom block carries `capacity`/`size` plus the
 /// entries, matching JDK 17 (`29`).
 pub fn new_hash_map(graph: &mut Graph, entries: &[(&str, &str)]) -> Result<Handle> {
+    let mut values = Vec::with_capacity(entries.len());
+    for (key, value) in entries {
+        values.push((
+            JValue::Str(graph.new_string(*key)),
+            JValue::Str(graph.new_string(*value)),
+        ));
+    }
+    new_hash_map_entries(graph, values)
+}
+
+/// Build a `java.util.HashMap` from already-built entry values.
+///
+/// Keys/values must be Java objects (or `null`), not inline primitives: the
+/// entries are written as object contents after the custom data header.
+pub fn new_hash_map_entries(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result<Handle> {
     let size = i32::try_from(entries.len())
         .map_err(|_| Error::InvalidSchema("HashMap has too many entries".to_owned()))?;
     let capacity = table_size_for(entries.len())?;
@@ -211,10 +226,12 @@ pub fn new_hash_map(graph: &mut Graph, entries: &[(&str, &str)]) -> Result<Handl
         long: false,
     }));
     for (key, value) in entries {
-        let key = graph.new_string(*key);
-        let value = graph.new_string(*value);
-        custom.push(JValue::Str(key));
-        custom.push(JValue::Str(value));
+        let key = box_primitive(graph, key)?;
+        let value = box_primitive(graph, value)?;
+        check_collection_value(&key, "HashMap key")?;
+        check_collection_value(&value, "HashMap value")?;
+        custom.push(key);
+        custom.push(value);
     }
 
     graph.new_object(vec![ClassData {
@@ -225,6 +242,232 @@ pub fn new_hash_map(graph: &mut Graph, entries: &[(&str, &str)]) -> Result<Handl
         ],
         custom: Some(custom),
     }])
+}
+
+/// Build a `java.util.ArrayList` from object elements.
+pub fn new_array_list(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "ArrayList element")?;
+    }
+
+    let desc = graph.add_class_desc(ClassDesc {
+        name: ARRAY_LIST.to_owned(),
+        suid: 8_683_452_581_122_892_189,
+        flags: 0x03,
+        fields: vec![FieldDesc {
+            name: "size".to_owned(),
+            typecode: FieldType::Int,
+            class_name1: None,
+            class_name_handle: None,
+        }],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("ArrayList has too many elements".to_owned()))?;
+    let mut custom = Vec::with_capacity(1 + elements.len());
+    custom.push(JValue::Block(BlockData {
+        bytes: size.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    custom.extend(elements);
+
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![("size".to_owned(), JValue::Int(size))],
+        custom: Some(custom),
+    }])
+}
+
+/// Build a `java.util.HashSet` from object elements.
+pub fn new_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "HashSet element")?;
+    }
+
+    let desc = graph.add_class_desc(ClassDesc {
+        name: HASH_SET.to_owned(),
+        suid: -5_024_744_406_713_321_676,
+        flags: 0x03,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("HashSet has too many elements".to_owned()))?;
+    let capacity = table_size_for(elements.len())?;
+    let mut header = Vec::with_capacity(12);
+    header.extend_from_slice(&capacity.to_be_bytes());
+    header.extend_from_slice(&0.75f32.to_bits().to_be_bytes());
+    header.extend_from_slice(&size.to_be_bytes());
+
+    let mut custom = Vec::with_capacity(1 + elements.len());
+    custom.push(JValue::Block(BlockData {
+        bytes: header,
+        long: false,
+    }));
+    custom.extend(elements);
+
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: Vec::new(),
+        custom: Some(custom),
+    }])
+}
+
+fn check_collection_value(value: &JValue, what: &str) -> Result<()> {
+    match value {
+        JValue::Null | JValue::Str(_) | JValue::Arr(_) | JValue::Obj(_) | JValue::Enum(_) => Ok(()),
+        _ => Err(Error::FieldMismatch {
+            message: format!("{what} must be a Java object or null, got {value:?}"),
+        }),
+    }
+}
+
+fn box_elements(graph: &mut Graph, elements: Vec<JValue>) -> Result<Vec<JValue>> {
+    let mut boxed = Vec::with_capacity(elements.len());
+    for element in elements {
+        boxed.push(box_primitive(graph, element)?);
+    }
+    Ok(boxed)
+}
+
+/// Box a primitive value into its `java.lang.*` wrapper object.
+///
+/// Collection elements are objects in Java, so `Vec<i32>`/`HashMap<String,i32>`
+/// must be encoded as `Integer`/... objects rather than bare classdata bytes.
+pub fn box_primitive(graph: &mut Graph, value: JValue) -> Result<JValue> {
+    let boxed = match value {
+        JValue::Bool(value) => box_wrapper(
+            graph,
+            "java.lang.Boolean",
+            -3_665_804_199_014_368_530,
+            FieldType::Boolean,
+            JValue::Bool(value),
+            false,
+        )?,
+        JValue::Byte(value) => box_wrapper(
+            graph,
+            "java.lang.Byte",
+            -7_183_698_231_559_129_828,
+            FieldType::Byte,
+            JValue::Byte(value),
+            true,
+        )?,
+        JValue::Char(value) => box_wrapper(
+            graph,
+            "java.lang.Character",
+            3_786_198_910_865_385_080,
+            FieldType::Char,
+            JValue::Char(value),
+            false,
+        )?,
+        JValue::Short(value) => box_wrapper(
+            graph,
+            "java.lang.Short",
+            7_515_723_908_773_894_738,
+            FieldType::Short,
+            JValue::Short(value),
+            true,
+        )?,
+        JValue::Int(value) => box_wrapper(
+            graph,
+            "java.lang.Integer",
+            1_360_826_667_806_852_920,
+            FieldType::Int,
+            JValue::Int(value),
+            true,
+        )?,
+        JValue::Long(value) => box_wrapper(
+            graph,
+            "java.lang.Long",
+            4_290_774_380_558_885_855,
+            FieldType::Long,
+            JValue::Long(value),
+            true,
+        )?,
+        JValue::Float(value) => box_wrapper(
+            graph,
+            "java.lang.Float",
+            -2_671_257_302_660_747_028,
+            FieldType::Float,
+            JValue::Float(value),
+            true,
+        )?,
+        JValue::Double(value) => box_wrapper(
+            graph,
+            "java.lang.Double",
+            -9_172_774_392_245_257_468,
+            FieldType::Double,
+            JValue::Double(value),
+            true,
+        )?,
+        JValue::Null | JValue::Str(_) | JValue::Arr(_) | JValue::Obj(_) | JValue::Enum(_) => {
+            return Ok(value)
+        }
+        JValue::Block(_) | JValue::Reset => {
+            return Err(Error::FieldMismatch {
+                message: "a block/reset cannot be a collection element".to_owned(),
+            })
+        }
+    };
+    Ok(boxed)
+}
+
+fn box_wrapper(
+    graph: &mut Graph,
+    class: &str,
+    suid: i64,
+    typecode: FieldType,
+    value: JValue,
+    has_number_super: bool,
+) -> Result<JValue> {
+    let number = if has_number_super {
+        Some(graph.add_class_desc(ClassDesc {
+            name: "java.lang.Number".to_owned(),
+            suid: -8_742_448_824_652_078_965,
+            flags: 0x02,
+            fields: Vec::new(),
+            super_desc: None,
+            annotations: Vec::new(),
+        })?)
+    } else {
+        None
+    };
+
+    let desc = graph.add_class_desc(ClassDesc {
+        name: class.to_owned(),
+        suid,
+        flags: 0x02,
+        fields: vec![FieldDesc {
+            name: "value".to_owned(),
+            typecode,
+            class_name1: None,
+            class_name_handle: None,
+        }],
+        super_desc: number,
+        annotations: Vec::new(),
+    })?;
+
+    let mut classes = Vec::new();
+    if let Some(number) = number {
+        classes.push(ClassData {
+            desc: number,
+            fields: Vec::new(),
+            custom: None,
+        });
+    }
+    classes.push(ClassData {
+        desc,
+        fields: vec![("value".to_owned(), value)],
+        custom: None,
+    });
+
+    Ok(JValue::Obj(graph.new_object(classes)?))
 }
 
 fn table_size_for(size: usize) -> Result<i32> {

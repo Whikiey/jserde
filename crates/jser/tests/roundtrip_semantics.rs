@@ -72,3 +72,22 @@ fn linked_hash_map_keeps_entry_order() {
         .collect();
     assert_eq!(keys, ["a", "b"]);
 }
+
+#[test]
+fn encoder_can_insert_a_reset() {
+    let mut graph = Graph::new();
+    let first = graph.new_string("a");
+    graph.add_item(JValue::Str(first));
+    graph.add_reset();
+    let second = graph.new_string("b");
+    graph.add_item(JValue::Str(second));
+
+    let encoded = encode_stream(&graph).unwrap();
+    let decoded = decode_stream(&encoded).unwrap();
+    let items = decoded.items();
+
+    assert_eq!(items.len(), 3);
+    assert_eq!(decoded.as_str(&items[0]).unwrap(), "a");
+    assert!(matches!(&items[1], JValue::Reset));
+    assert_eq!(decoded.as_str(&items[2]).unwrap(), "b");
+}

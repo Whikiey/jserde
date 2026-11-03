@@ -4,12 +4,14 @@
 //!   cargo run -p jser --example emit
 //! Output: `docs/testdata/build/rust/*.ser`.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
 use jser::builtin::new_hash_map;
 use jser::{
-    decode_stream, encode_stream, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
+    decode_stream, encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph,
+    JValue,
 };
 
 type BoxError = Box<dyn std::error::Error>;
@@ -73,6 +75,13 @@ fn main() -> Result<(), BoxError> {
         out.join("map-constructed.ser"),
         encode_stream(&constructed_map)?,
     )?;
+
+    let typed_map: HashMap<String, i32> = [("alpha".to_owned(), 1), ("beta".to_owned(), 2)]
+        .into_iter()
+        .collect();
+    fs::write(out.join("typed-map.ser"), encode_typed(typed_map)?)?;
+
+    fs::write(out.join("typed-list.ser"), encode_typed(vec![1i32, 2, 3])?)?;
 
     Ok(())
 }

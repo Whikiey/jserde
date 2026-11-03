@@ -4,6 +4,7 @@
 
 mod common;
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -11,7 +12,8 @@ use std::process::Command;
 use common::{read_fixture, testdata_dir};
 use jser::builtin::new_hash_map;
 use jser::{
-    decode_stream, encode_stream, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
+    decode_stream, encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph,
+    JValue,
 };
 
 fn has(command: &str) -> bool {
@@ -158,6 +160,19 @@ fn java_can_read_rust_written_streams() {
         encode_stream(&constructed_map).unwrap(),
     )
     .unwrap();
+    let typed_map: HashMap<String, i32> = [("alpha".to_owned(), 1), ("beta".to_owned(), 2)]
+        .into_iter()
+        .collect();
+    fs::write(
+        classes.join("typed-map.ser"),
+        encode_typed(typed_map).unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        classes.join("typed-list.ser"),
+        encode_typed(vec![1i32, 2, 3]).unwrap(),
+    )
+    .unwrap();
 
     run_java(
         &classes,
@@ -194,5 +209,17 @@ fn java_can_read_rust_written_streams() {
         &classes.join("map-constructed.ser"),
         "java.util.HashMap",
         &["alpha=one", "beta=two"],
+    );
+    run_java(
+        &classes,
+        &classes.join("typed-map.ser"),
+        "java.util.HashMap",
+        &["alpha=1", "beta=2"],
+    );
+    run_java(
+        &classes,
+        &classes.join("typed-list.ser"),
+        "java.util.ArrayList",
+        &["0=1", "1=2", "2=3"],
     );
 }
