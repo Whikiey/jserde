@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 02:15 · docs: 更新 P6 完成状态
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`AGENT.md` §1/§5/§6；`docs/implementation-plan.md` P6-1～P6-6、P6 状态与 §19；`docs/requirements.md` 变更记录；本条目。
+- **验证**：`cargo test --workspace` **110 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过（14 项 Java/SUID 校验）。
+- **TDD**：不适用（状态与文档收口）。
+
+---
+
 ## 2026-11-04 02:10 · feat: 实现 P6 内置类语义与 serde 桥（TDD）
 
 - **提交**：本次（hash 见 `git log`）

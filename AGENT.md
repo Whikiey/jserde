@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | 已有 `docs/requirements.md`（需求基线，Draft）、`docs/design.md`（设计，Draft） |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0–P5 已完成，P6 待做；计划假设按默认执行，设计缺口已定案） |
-| 基准数据 | **已完成**：32 个用例、74559 字节，JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P5 已完成**：编解码 + typed API + allowlist + `JavaSerializable`/derive + `computeDefaultSUID`/`suid` 工具；102 项测试全绿 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P5 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7；P0–P6 已完成，P7 待做；计划假设按默认执行，设计缺口已定案） |
+| 基准数据 | **已完成**：33 个用例、74750 字节（P6 新增 object/40），JDK 17.0.20.1 生成，见 `docs/testdata/` |
+| Rust 代码 | **P6 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义（Date/BigInteger/BigDecimal/java.time）+ schema 驱动 serde 桥；110 项测试全绿 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P6 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P5 已完成；下一步是 P6 的内置类语义（`36`）、`Registry`、serde 桥；allowlist 已在 P6-3 提前完成。
+所以：P0–P6 已完成；下一步是 P7 的 fuzz、bench、panic 审计与发布准备。
 
 ---
 
@@ -64,7 +64,7 @@ docs/
 ├── devlog.md                # 每次提交的开发日志（§10.2）
 └── testdata/
     ├── README.md            # 基准数据的用途、用法、覆盖表
-    ├── manifest.json        # 机读契约（32 例，含期望语义值 + sha256）
+    ├── manifest.json        # 机读契约（33 例，含期望语义值 + sha256）
     ├── fixtures/
     │   ├── codec/           # 01–12：无类描述符的流原语
     │   └── object/          # 20–39：类描述符/SUID/继承/enum/数组/集合/环/reset
@@ -101,10 +101,12 @@ cargo fmt --all -- --check
 cargo test -p jser --test codec        # 只跑 codec 12 例
 cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
-cargo test -p jser --test roundtrip_bytes # 32 例逐字节回放门禁
+cargo test -p jser --test roundtrip_bytes # 33 例逐字节回放门禁
 cargo test -p jser --test typed       # typed 转换
 cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --test derive      # derive 互通
+cargo test -p jser --test builtin     # Date/BigInteger/java.time 语义
+cargo test -p jser-serde              # serde 桥
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
@@ -189,7 +191,7 @@ jser/
 
 里程碑顺序：M1 读通 fixture → M2 写 + 双向对拍 → M3 动态 POJO/环/`TC_RESET` → M4 derive + SUID → M5 内置类/serde → M6 加固（fuzz、bench）。**不要跳过 M1 直接做 M5。**
 
-P3 的逐字节回放门禁（design §5.1）**只对未修改的 32 个 fixture 流**；修改/构造过的图必须用 Java 读回验证，别把回放门禁当成 `AC-02`。回放门禁的例外要登记"文件+原因+负责人+到期"。
+P3 的逐字节回放门禁（design §5.1）**只对未修改的 fixture 流（当前 33 例）**；修改/构造过的图必须用 Java 读回验证，别把回放门禁当成 `AC-02`。回放门禁的例外要登记"文件+原因+负责人+到期"。
 
 ### 8.1 TDD 循环（强制）
 

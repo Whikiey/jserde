@@ -100,7 +100,7 @@
 | AC-05 | 未知类的用例不整体失败，且能原样再编码 | FR-09 |
 | AC-06 | 100 MB 级输入在配置上限内成功解码，内存峰值 < 3× 输入 | NFR-02 |
 
-> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 32 例未修改流）是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
+> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 33 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
 
 ---
 
@@ -155,3 +155,4 @@
 | 2026-11-03 | 明确逐字节回放是内部回归门禁（design §5.1），不替代 AC-02；OUT-01 补充 `java.time.Ser` 已知特例 | 拍板 1 |
 | 2026-11-04 | NFR-04 定案：默认严格 allowlist（`java.lang.*`、`java.util.*`），支持精确名与 `prefix.*`/`Fixtures$*`；数组按元素类检查；默认 `decode_stream` 拒绝未放行类 | 用户拍板 |
 | 2026-11-04 | FR-14（derive）落地：`JavaSerializable`/`#[derive(JavaSerializable)]`、typed 互通；同时实现 `computeDefaultSUID` 与 `suid` 工具，`Fixtures$NoSuid` 与 JDK 一致 | P5 |
+| 2026-11-04 | FR-13/FR-15 部分落地：`Date`/`BigInteger`/`BigDecimal`/`java.time` 语义；新增 `object/40`（33 例）；`jser-serde` schema 驱动单根扁平桥，明确拒绝嵌套/环/reset/多根；`Optional` 非 Serializable 不纳入 | P6 |

@@ -3,7 +3,7 @@
 - 状态：Draft（第 1 节假设与第 3 节设计缺口待确认后转 Accepted）
 - 上游：[requirements.md](requirements.md)（`AC-*` 是验收依据）、[design.md](design.md)（`D1–D5` 是技术路线）
 - 工作规则：[AGENT.md](../AGENT.md)（事实来源优先级、命令、提交前检查）
-- 基准数据：[testdata/](testdata/)（32 例，JDK 17.0.20.1）
+- 基准数据：[testdata/](testdata/)（33 例，JDK 17.0.20.1）
 - 日期：2026-11-03
 - 范围：v0.1（设计 §2 的 MVP + M4/M5/M6 收尾），不含 `OUT-01`～`OUT-06`
 
@@ -13,7 +13,7 @@
 
 ## 0. 交付目标与总策略
 
-v0.1 的完成定义：**32 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
+v0.1 的完成定义：**33 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
 
 总策略四条：
 
@@ -46,8 +46,8 @@ v0.1 的完成定义：**32 个 fixture 全部解码正确；Rust 写出的流�
 |---|---|---|---|---|---|
 | P0 | M0 前 | 工程骨架、错误模型、manifest 测试夹具、CI | workspace、`cargo test` 可跑、CI 绿 | 骨架编译、空测试通过、fixture 校验接入 CI | 1 |
 | P1 | M0 收尾 | codec 层：大端原语、MUTF-8、块缓冲、句柄表、顶层分发 | `wire/` + codec 12 例全绿 | 12 个 codec fixture 语义通过（逐字节重放留到 P3） | 2–3 |
-| P2 | M1 | 解码：`classDesc`、对象、继承、数组、enum、集合、环 | `desc/`、`value/`、`builtin/`（只读） | 32 例全部可解码，语义断言通过（36 仅结构） | 5–7 |
-| P3 | M2 | 编码 + 回放门禁 + 双向对拍 | `wire/writer`、`desc` 生成、Java `Verify` | 未修改的 32 例 `encode_stream(decode_stream(x)) == x`（例外登记）；mutation/构造流 Java 读回 | 5–7 |
+| P2 | M1 | 解码：`classDesc`、对象、继承、数组、enum、集合、环 | `desc/`、`value/`、`builtin/`（只读） | fixture 全部可解码，语义断言通过 | 5–7 |
+| P3 | M2 | 编码 + 回放门禁 + 双向对拍 | `wire/writer`、`desc` 生成、Java `Verify` | 未修改的 fixture `encode_stream(decode_stream(x)) == x`（例外登记）；mutation/构造流 Java 读回 | 5–7 |
 | P4 | M3 | 动态 POJO 收口、typed API、未知类回写、环/reset | 对外 API、文档示例 | `AC-03`/`AC-05` 通过 | 2–3 |
 | P5 | M4 | `JavaSerializable` + derive + SUID | `jser-derive`、SUID 工具 | `NoSuid` 的 SUID 与 JDK 一致；derive 互通 | 4–5 |
 | P6 | M5 | 内置类 + `java.time` + serde 桥 | `builtin/` 完整、`jser-serde` | 每类双向对拍；serde 越界明确报错 | 4–6 |
@@ -83,7 +83,7 @@ P2 ─────────────────────────�
 | G-5 | `java.time.Ser` flags `0x0C`（Externalizable + block） | 作为**已知内置特例**；未知 Externalizable 带 block 时按不透明块保留，旧式无 block 的报 `UnsupportedClass`。`design.md` D4/§4.2 第 16 条 |
 | G-6 | `java.util.Optional` **不是** `Serializable` | 从 FR-13 与 M5 移除，并在文档说明 Java 端不会产出该流。`requirements.md` FR-13、`design.md` M5 |
 | G-7 | 未配对 UTF-16 代理项的表示 | 解码返回 `MalformedString`（不 panic、不做有损替换）；`char` 字段仍用 `JValue::Char(u16)`。`design.md` §4.2 第 3 条 |
-| G-8 | 逐字节重放是强门禁，可能有个别非规范输出 | **已定案**：作为 P3 回归门禁，不写入 AC；只适用于"未修改的 32 例回放"；例外登记"文件+原因+负责人+到期"；配 mutation/构造流测试防"原样回显"。`design.md` §5.1、本计划 P3-6/P3-7 |
+| G-8 | 逐字节重放是强门禁，可能有个别非规范输出 | **已定案**：作为 P3 回归门禁，不写入 AC；只适用于"未修改的 fixture 回放"；例外登记"文件+原因+负责人+到期"；配 mutation/构造流测试防"原样回显"。`design.md` §5.1、本计划 P3-6/P3-7 |
 | G-9 | `JavaSerializable::to_jvalue` 无 `Graph`，无法分配字符串/对象句柄 | 签名改为 `to_jvalue(&self, &mut Graph)` / `from_jvalue(&JValue, &Graph)`。`design.md` D2 |
 | G-10 | `classDesc` 的收尾标记位置未写明 | `classAnnotation` 的 `TC_ENDBLOCKDATA` 位于 `superClassDesc` **之前**（`20` 的 `78 70`）。`design.md` §4.2 第 5 条、§4.3 |
 | G-11 | `TC_LONGSTRING` 头部选择未保存，非规范流的短串用 long 时无法回放 | `Slot::Str { value, long }`，回放沿用 `long`；新建字符串按修改版 UTF-8 字节长度（非 Rust `len()`）选头。`design.md` D1/§4.2 第 3 条 |
@@ -132,7 +132,7 @@ P2 ─────────────────────────�
 
 ## 6. P2 · 解码：描述符、对象、数组、集合（5–7 人日，M1）
 
-目标：32 个 fixture **全部能解码**并给出正确语义。先不做写方向。
+目标：fixture **全部能解码**并给出正确语义。先不做写方向。
 
 | ID | 任务 | 要点 | fixture |
 |---|---|---|---|
@@ -144,7 +144,7 @@ P2 ─────────────────────────�
 | P2-6 ✅ | enum | `TC_ENUM`：描述符（flags `0x12`、SUID 0）→ 常量名 `TC_STRING`（占句柄，存为 `Slot::Str`，`Slot::Enum.constant` 指向它） | `24` |
 | P2-7 ✅ | 集合解码（注册表） | 见下方布局表；`Integer`/`Number` 等无自定义逻辑的走通用对象路径 | `28–32`、`38` |
 | P2-8 ✅ | 上限与健壮性 | `Limits { max_depth, max_elements, max_stream_size }`；`classDesc` 链用迭代；对象/数组嵌套用显式栈或受控深度；默认值写入文档 | fuzz 冒烟 |
-| P2-9 ✅ | 读 API 与语义断言 | `decode_stream -> Graph`、`decode`（单元素）、`Reader`、`Graph::items()`；`as_map/as_list/as_set/as_object/as_scalar`；按 `manifest.expect.kind` 写比较器 | 全部 32 例 |
+| P2-9 ✅ | 读 API 与语义断言 | `decode_stream -> Graph`、`decode`（单元素）、`Reader`、`Graph::items()`；`as_map/as_list/as_set/as_object/as_scalar`；按 `manifest.expect.kind` 写比较器 | 全部 fixture |
 
 集合/内置类的 wire 布局（**以 fixture 字节为准**，实现前用 `xxd` 复核）：
 
@@ -177,7 +177,7 @@ P2 ─────────────────────────�
 | P3-3 ✅ | `desc/write.rs` | 由 `ClassDesc` 原样写回；新描述符按字段排序规则生成（基本类型按名 → 对象按名）；同类去重；`suid` 来自 schema/解码值 | `20–24`、`39` |
 | P3-4 ✅ | `Graph` → 字节 | 按 `items` 顺序编码；同一 `Handle` 首次实体、后续 `TC_REFERENCE`；`Block` 保留头部类型；字符串按 `Str.long` 选 `TC_STRING`/`TC_LONGSTRING`（新建时按 MUTF-8 字节长度，非 Rust `len()`；含合成短串-long 用例）；`Reset` 清表；`SC_WRITE_METHOD` 先字段后自定义块再 `TC_ENDBLOCKDATA`；未知类按保留的元数据回写 | `20–39` |
 | P3-5 ✅ | 集合编码 | 按上表布局；`HashMap` 的 `capacity`/`threshold` 由 `size` 反推合理值（Java `readObject` 读但忽略 capacity；阈值为 `table_size * loadFactor` 的整数语义）；`LinkedHashMap` 保持条目顺序 | `28–32`、`38` |
-| P3-6 ✅ | **回放门禁（未修改流）** | `encode_stream(decode_stream(bytes)) == bytes` 覆盖 32 例；范围仅限 decode 后不改图；例外登记"文件+原因+负责人+到期"，默认不允许；**不写入 AC** | `tests/roundtrip_bytes.rs` |
+| P3-6 ✅ | **回放门禁（未修改流）** | `encode_stream(decode_stream(bytes)) == bytes` 覆盖全部 fixture；范围仅限 decode 后不改图；例外登记"文件+原因+负责人+到期"，默认不允许；**不写入 AC** | `tests/roundtrip_bytes.rs` |
 | P3-7 ✅ | **防作弊 / mutation 测试** | 解码 fixture → 改一个标量或字段 → 编码 → Java 读到新值；手工构造 `HashMap`/POJO → 编码 → Java 读回；确认 `encode` 不是原始字节回显 | `tests/mutation.rs` + Java `Verify` |
 | P3-8 ✅ | Java 校验程序 | `docs/testdata/gen/Verify.java`：读 Rust 产出的 `.ser`，断言类名/字段/集合内容；`interop.sh` 编排；不修改现有 fixture 与 manifest | 手工 + CI |
 | P3-9 ✅ | 双向对拍测试 | 解码语义 → 再编码 → 再解码，结构等价（环按句柄判等）；Java 读回作为最终裁决 | `AC-02` |
@@ -189,7 +189,7 @@ P2 ─────────────────────────�
 
 出口：`AC-01` 全量 + `AC-02` + `AC-03`（不含 typed API）+ mutation/构造流 Java 读回。
 
-> 说明：`AC-01` 的 `36` 语义仍按 P2 约定留到 P6；`AC-02` 的代表性用例已由 Java 校验，未修改流的全部 32 例由逐字节回放覆盖。
+> 说明：`AC-01` 的 `36` 语义仍按 P2 约定留到 P6；`AC-02` 的代表性用例已由 Java 校验，未修改流的全部 fixture 由逐字节回放覆盖。
 
 ---
 
@@ -230,14 +230,20 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P6-1 | `Date`/`BigInteger`/`BigDecimal` 语义 | 以 fixture 字段为准；`Date` 自定义块 `long`；`BigDecimal` 的 `scale`+`intVal`；`BigInteger` 的 6 字段 + `[B` | `36` |
-| P6-2 | `java.time.Ser` | 按类型字节实现 `LocalDate`（`36`），再扩 `Instant`/`LocalDateTime`/`Duration`/`ZonedDateTime`；新增 fixture 覆盖 | 新增用例 + 双向 |
-| P6-3 ◐ | 注册表与 allowlist | **allowlist 已完成**（精确名/`prefix.*`/`Fixtures$*`、数组按元素、默认严格、带类名错误）；`Registry` 按类名分派 codec 留 P6 | `tests/allowlist.rs` + 文档 |
-| P6-4 | `jser-serde` | feature 默认关闭；只支持单根、无环、无回指、已知 POJO；遇 `Reset`/多元素/回指/未知类明确报错 | serde 测试 + 负例 |
-| P6-5 | 扩充 fixture 流程 | 改 `gen/Fixtures.java` + `gen/build_manifest.py` 的 `CASES` → `./gen/gen.sh` → `--check`；同步 `testdata/README.md` 覆盖表 | `gen.sh --check` |
-| P6-6 | 文档收口 | 内置类支持矩阵、`Optional` 不支持说明（非 `Serializable`）、serde 限制 | 文档评审 |
+| P6-1 ✅ | `Date`/`BigInteger`/`BigDecimal` 语义 | 以 fixture 字段为准；`Date` 自定义块 `long`；`BigDecimal` 的 `scale`+`intVal`；`BigInteger` 的 6 字段 + `[B` | `36` |
+| P6-2 ✅ | `java.time.Ser` | 按类型字节实现 `LocalDate`（`36`），再扩 `Instant`/`LocalDateTime`/`Duration`/`ZonedDateTime`；新增 fixture 覆盖 | 新增用例 + 双向 |
+| P6-3 ✅ | 注册表与 allowlist | allowlist（精确名/`prefix.*`/`Fixtures$*`、数组按元素、默认严格、带类名错误）；`builtin::Registry` 按类名分派 Date/BigInteger/BigDecimal/java.time，未知类保持通用对象 | `tests/allowlist.rs`、`tests/builtin.rs` |
+| P6-4 ✅ | `jser-serde` | feature 默认关闭；只支持单根、无环、无回指、已知 POJO；遇 `Reset`/多元素/回指/未知类明确报错 | serde 测试 + 负例 |
+| P6-5 ✅ | 扩充 fixture 流程 | 改 `gen/Fixtures.java` + `gen/build_manifest.py` 的 `CASES` → `./gen/gen.sh` → `--check`；同步 `testdata/README.md` 覆盖表 | `gen.sh --check` |
+| P6-6 ✅ | 文档收口 | 内置类支持矩阵、`Optional` 不支持说明（非 `Serializable`）、serde 限制 | 文档评审 |
 
-**状态（2026-11-04，部分）**：P6-3 的 allowlist 部分已完成并作为默认安全策略接入 `Reader`/`decode_stream`/`decode_typed`；fixture 测试显式放行 `Fixtures$*`、`java.math.*`、`java.time.*`。`Registry` 与内置类语义仍待 P6。
+**状态（2026-11-04，TDD）**：P6 完成。
+- P6-1：`Registry`/`Graph::builtin` 语义解析 `Date`、`BigInteger`（十进制度转换）、`BigDecimal`（保留 scale）。
+- P6-2：`java.time.Ser` 支持 Duration/Instant/LocalDate/LocalTime/LocalDateTime/ZonedDateTime；新增 `object/40`（33 例、74750 字节）。
+- P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
+- P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`，仅支持单根扁平 POJO、标量/String/Option/数组；拒绝多根、`TC_RESET`、未知类/嵌套对象。
+- P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
+- 验证：全仓 **110 passed**；Java interop 14 项 + SUID 对拍、`gen.sh --check` 通过。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -247,12 +253,12 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P7-1 | fuzz | `fuzz/` + `libfuzzer-sys`；目标：任意字节解码、解码→编码→解码、`MUTF-8`；语料从 32 例 seed；CI 冒烟，夜间 30 分钟 | 30 分钟无 panic/OOM（`AC-04`） |
+| P7-1 | fuzz | `fuzz/` + `libfuzzer-sys`；目标：任意字节解码、解码→编码→解码、`MUTF-8`；语料从 fixture seed；CI 冒烟，夜间 30 分钟 | 30 分钟无 panic/OOM（`AC-04`） |
 | P7-2 | 性能 | `criterion` bench：字符串、POJO、大 Map、100 MB 级流；目标 ≥ 50 MB/s、内存峰值 < 3×；不达标先 profile 再优化 | `AC-06` + bench 报告 |
 | P7-3 | panic 审计 | `#![forbid(unsafe_code)]`；库内禁用 `unwrap`/`expect`（clippy `unwrap_used` 或评审）；所有切片用 `get`/游标 | `cargo clippy` |
 | P7-4 | 文档 | README（能力矩阵、快速开始、安全警告）、SECURITY.md（gadget 风险与 allowlist）、CHANGELOG、rustdoc 示例 | `cargo test --doc` |
 | P7-5 | 发布准备 | `cargo package --list`、版本号、`docs.rs`/feature 说明（若确认发布） | 打包通过 |
-| P7-6 | 全量回归 | 32 例 + 新增用例；`gen.sh --check`；interop；fuzz 冒烟；bench 基线归档 | 全绿 |
+| P7-6 | 全量回归 | 全部 fixture 用例；`gen.sh --check`；interop；fuzz 冒烟；bench 基线归档 | 全绿 |
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -263,8 +269,8 @@ P2 ─────────────────────────�
 | 测试层 | 覆盖 | 位置 | 何时 |
 |---|---|---|---|
 | 单元 | MUTF-8 表驱动、字符串头 long/short、大端读写、块边界、句柄表、字段排序、SUID | `crates/*/src/**` 内 `#[cfg(test)]` | P1 起持续 |
-| golden 语义 | 32 例 → `manifest.expect` 比较器 | `tests/golden.rs` | P2 起 |
-| 回放门禁（未修改流） | `encode_stream(decode_stream(x)) == x`，32 例，例外登记 | `tests/roundtrip_bytes.rs` | P3 起 |
+| golden 语义 | fixture → `manifest.expect` 比较器 | `tests/object*.rs` 等 | P2 起 |
+| 回放门禁（未修改流） | `encode_stream(decode_stream(x)) == x`，全部 fixture，例外登记 | `tests/roundtrip_bytes.rs` | P3 起 |
 | mutation / 防作弊 | 解码→改字段→编码→Java 读到新值；证明不是原样回显 | `tests/mutation.rs` + Java `Verify` | P3 起 |
 | 构造流 Java | 手工构造 Map/POJO → 编码 → Java 读回 | `tests/interop.rs` | P3 起 |
 | 双向对拍（Java） | Rust 写 → `Verify` 读，语义相等 | `tests/interop.rs`（`#[ignore]` 无 JDK） | P3 起 |
@@ -286,7 +292,7 @@ fixture → 阶段映射（用于排期与验收）：
 
 ac 对应：`AC-01` → P1/P2/P3；`AC-02` → P3；`AC-03` → P3/P4；`AC-04` → P7；`AC-05` → P2/P4；`AC-06` → P7。
 
-> "32 例回放"是 P3 回归门禁，**不是 AC**；验收仍以 `AC-02` 的 Java 读回为准（`design.md` §5.1）。
+> 逐字节回放是 P3 回归门禁，**不是 AC**；验收仍以 `AC-02` 的 Java 读回为准（`design.md` §5.1）。
 
 ---
 
@@ -349,9 +355,9 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 - [ ] `cargo test --workspace`、`cargo clippy -D warnings`、`cargo fmt --check` 通过
 - [ ] 改了 fixture/协议事实 → 同步 `design.md` §4.3、`testdata/README.md`、`requirements.md` 追踪矩阵
 - [ ] 报告写明满足的 `AC-*` 与遗留风险
-- [ ] P3 起：32 例未修改回放通过；mutation 与构造流 Java 读回通过；若有例外，已登记"文件+原因+负责人+到期"
+- [ ] P3 起：未修改 fixture 回放通过；mutation 与构造流 Java 读回通过；若有例外，已登记"文件+原因+负责人+到期"
 
-阶段专属出口见 §2 表格；**P2 未让 32 例可解码之前，不开 P3 的编码实现**（可先写 `ClassDesc` 写侧的数据结构）。
+阶段专属出口见 §2 表格；**P2 未让 fixture 可解码之前，不开 P3 的编码实现**（可先写 `ClassDesc` 写侧的数据结构）。
 
 ---
 
@@ -360,7 +366,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 1. ✅ 按 §1 的 A-1～A-7 默认值执行；§3 的 G-1～G-11 已定案。
 2. ✅ 确认 git 基线（P0-1，`ad46c43`）。
 3. ✅ 搭 workspace + 空 crate + 错误模型（P0-2～P0-5）。
-4. ✅ 写 manifest 测试夹具，断言 32 例（P0-6）。
+4. ✅ 写 manifest 测试夹具，断言 fixture 数量（P0-6；P6 后为 33）。
 5. ✅ 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
 6. ✅ 实现有界 `StreamReader` + MUTF-8（P1-1/P1-2）。
 7. ✅ 实现顶层块读取 + 句柄表（P1-3/P1-4），codec 12 例全绿。
@@ -388,7 +394,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 |---|---|---|
 | 2026-11-03 | 初版：P0–P7 阶段拆分、任务表、测试矩阵、CI 门禁、风险与开工清单；识别 8 项设计缺口（§3） | 本轮 |
 | 2026-11-03 | 按 §3 回写 `design.md`：句柄化 D1、D2 签名、多元素 API、java.time.Ser 特例、`Optional` 移出、代理项策略；同步 P1/P2/P6 任务与 §18/§19 | 补缺口 |
-| 2026-11-03 | 完善回放门禁：限定"未修改的 32 例"、例外登记、mutation/构造流防作弊；补 `Slot::Str.long`（G-11）；明确门禁不是 AC | 拍板 1 |
+| 2026-11-03 | 完善回放门禁：限定"未修改的 fixture"、例外登记、mutation/构造流防作弊；补 `Slot::Str.long`（G-11）；明确门禁不是 AC | 拍板 1 |
 | 2026-11-03 | P0-1 完成：git 初始化并提交文档/testdata（`ad46c43`） | 版本控制 |
 | 2026-11-03 | P0 完成：workspace/错误模型/manifest 夹具/CI；P0-2～P0-8 落地，6 项测试通过 | P0 |
 | 2026-11-03 | P1 主体完成（TDD）：StreamReader/MUTF-8/块/句柄/顶层分发，codec 12 例与 27 项测试全绿 | P1 |
@@ -400,3 +406,4 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P4 完成（TDD）：typed API/未知类回写/环共享/reset 双向往返/rustdoc 示例；全仓 82 项通过，Java interop 增加 typed Map/List | P4 |
 | 2026-11-04 | allowlist 完成（用户拍板严格默认）：`Allowlist` 精确/`prefix.*`/`Fixtures$*`、数组按元素、默认 `java.lang.*`+`java.util.*`、`UnsupportedClass` 带类名；fixture 测试显式放行；全仓 90 项通过 | NFR-04 |
 | 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |
+| 2026-11-04 | P6 完成（TDD）：内置类语义（Date/BigInteger/BigDecimal/java.time）、Registry、`object/40` fixture、schema 驱动 serde 桥；全仓 110 项通过，Java interop 14 项 + SUID | P6 |
