@@ -342,7 +342,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 ## 17. 开工清单（按顺序执行）
 
 1. 确认 §1 的 A-1～A-7 与 §3 的 G-1～G-11（尤其 G-1/G-6/G-7/G-11）。
-2. 建 git 基线（P0-1），提交现有 `docs/`。
+2. 确认 git 基线：P0-1 已完成（`ad46c43`），直接开始 P0-2。
 3. 搭 workspace + 空 crate + 错误模型（P0-2～P0-5）。
 4. 写 manifest 测试夹具，断言 32 例（P0-6）。
 5. 接 CI 的 `gen.sh --check`（P0-7），确认基线数据未漂移。
