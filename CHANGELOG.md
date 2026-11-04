@@ -38,6 +38,9 @@
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
+- Documentation closeout: compiled `jser-serde` example, resolved design §8
+  questions (Java 17 baseline, no crates.io release yet, performance targets),
+  `cargo doc -D warnings` in CI.
 - `Graph::set_map_entry` (replace/append with primitive boxing) and
   `set_array_element`; broader mutation tests (all scalars, maps, object
   arrays, Java Mixed read-back).

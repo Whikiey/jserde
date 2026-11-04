@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 16:05 · docs: 文档收口与 §8 定案（P9-32）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `jser-serde` crate 文档增加可编译示例（`Point` schema → `to_vec`/`from_slice`）。
+  - `design.md` §8、`implementation-plan.md` §18、`requirements.md` §6 全部转为“已定案”：Java 17 基线（JDK 25 重生成逐字节一致）、schema 驱动 serde、暂不发布 crates.io、性能 ≥1 GB/s 且 RSS <3×（nightly 35% 门禁）。
+  - `NFR-02` 数值更新为 ≥1 GB/s；修正“34 例回放”为 36 例。
+  - CI lint 增加 `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps`。
+- **验证**：`cargo doc` 无警告；`cargo test --workspace` **148 passed**（新增 1 doctest）；clippy/fmt 通过。
+
+---
+
 ## 2026-11-04 15:50 · test: mutation 扩展与图修改 API（P9-31）
 
 - **提交**：本次（hash 见 `git log`）

@@ -1,6 +1,6 @@
 # 0006 · Rust 实现 Java 序列化（与 ObjectOutputStream / ObjectInputStream 互通）
 
-- 状态：Draft（§3 模型与 §4 协议事实已按 fixture 定案；§8 问题待拍板后转 Accepted）
+- 状态：Accepted（2026-11-04；§8 问题已全部定案）
 - 关联想法：`ideas.md` #6「Rust Java 序列化」
 - 需求基线：[requirements.md](requirements.md)（验收以其中的 `AC-*` 为准，本文只回答"怎么做"）
 - 实现计划：[implementation-plan.md](implementation-plan.md)（任务拆分、阶段门禁、缺口定案）
@@ -390,14 +390,16 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 | 反序列化 gadget 风险 | 安全 | 默认 allowlist（默认只放行 `java.util.*`、`java.lang.*`、基本类型）；文档醒目警告 |
 | 本机无 JDK，测试环境依赖外部 | 开发体验 | fixture 提交进仓库；CI 负责重新生成与校验 |
 
-## 8. 待确认问题（需要你拍板）
+## 8. 已定案问题（2026-11-04 收口）
 
-1. **方向**：已按 `FR-02` 定为双向；如只想先交付"读"，可把 M2 之后的写方向延后（不改变模型）。
-2. **目标 Java 版本**：默认按 **17**（`testdata/` 的基准数据为 17.0.20.1）；8/21 只影响 `java.time` 等新类的支持面，wire 格式自 1.2 未变。
-3. **是否要 serde 集成**（`#[derive(Serialize)]` 直接产出 Java 流）？还是自定义 derive 就够？
-4. **是否要发布到 crates.io**（影响 crate 拆分粒度与文档/CI 投入）。
-5. **性能目标**：是否有最小吞吐（MB/s）或单流大小上限的要求？
-6. **安全默认值**：**已定案（2026-11-04）**：默认严格 allowlist（`java.lang.*`、`java.util.*`）；`Allowlist::all()` 为显式放宽，文档警告 gadget 风险。
+| # | 问题 | 决定 |
+|---|---|---|
+| 1 | 方向 | **双向**（FR-02 MUST）：读与写均已实现并通过 P3/P6/P7 回归。 |
+| 2 | 目标 Java 版本 | **Java 17** 为基线：fixture 由 17.0.20.1 生成；wire 协议自 1.2 未变，JDK 25 重新生成已提交用例逐字节一致。`java.time` 等 Java 8+ 类按需支持；对受支持类，JDK 8–25 的流预期可读，但不作为 CI 门禁。 |
+| 3 | serde 集成 | **已实现**为独立 `jser-serde`：schema 驱动、直连 `JValue`；自定义 derive 仍独立（`jser-derive`）。不做“无 schema 的 `Serialize` 直出”。 |
+| 4 | 发布到 crates.io | **暂不发布**：0.1.0 保持 unreleased，保留 `jser`/`jser-derive`/`jser-serde` 三 crate 拆分；API 冻结与 semver 在首次发布前再评审。 |
+| 5 | 性能目标 | 大块/primitive 数组解码 **≥1 GB/s**、内存 **<3×** 输入；实测 `int[]` 约 3.5–6 GB/s、100 MB 块约 4.8–6 GB/s、`int[]` RSS 约 2.03×；nightly bench 门禁按观测值 35% 兜底（见 `docs/bench.md`）。 |
+| 6 | 安全默认值 | **已定案（2026-11-04）**：默认严格 allowlist（`java.lang.*`、`java.util.*`）；`Allowlist::all()` 为显式放宽，文档警告 gadget 风险。 |
 
 > 回放门禁的边界（适用范围、例外、防作弊）已在 §5.1 定案；验收仍以 `AC-02` 为准。
 

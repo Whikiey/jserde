@@ -81,7 +81,7 @@
 | 编号 | 需求 | 优先级 | 来源 |
 |---|---|---|---|
 | NFR-01 | **健壮性**：任意输入不得 panic；解码路径不使用 `unsafe`；恶意/截断/随机字节只返回错误 | MUST | 推导 |
-| NFR-02 | **性能**：解码吞吐有明确下限（**建议 ≥ 50 MB/s**，单流 ≥ 100 MB 可用），内存峰值不超过输入规模的 3 倍 | SHOULD | 推导 |
+| NFR-02 | **性能**：大块/primitive 数组解码吞吐 ≥ **1 GB/s**（release 实测约 3.5–6 GB/s），单流 ≥ 100 MB 可用，内存峰值不超过输入规模的 3 倍 | SHOULD | 推导 |
 | NFR-03 | **零 JVM 依赖**：产出库在运行时不需要 JDK/JRE；JDK 仅用于生成测试基准与互通校验 | MUST | 原文（S-1） |
 | NFR-04 | **默认安全**：解码默认只放行白名单类；放宽需显式配置，并在文档中警告 gadget 风险 | SHOULD | 推导 |
 | NFR-05 | **可移植**：Linux/macOS/Windows 行为一致；核心库不引入平台相关依赖 | MUST | 推导 |
@@ -100,7 +100,7 @@
 | AC-05 | 未知类的用例不整体失败，且能原样再编码 | FR-09 |
 | AC-06 | 100 MB 级输入在配置上限内成功解码，内存峰值 < 3× 输入 | NFR-02 |
 
-> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 34 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
+> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 36 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
 
 ### 4.1 当前实现状态（2026-11-04）
 
@@ -130,13 +130,14 @@
 
 ---
 
-## 6. 待确认（影响基线判定）
+## 6. 已定案问题（2026-11-04 收口）
 
-1. **FR-02（写方向）**：已实现并通过 P3/P6/P7 回归。
-2. **目标 Java 版本**：按 **Java 17** 实现与生成 fixture（wire 自 1.2 未变）。
-3. **NFR-02 的数值**：合成 100 MB 块流约 4.8 GB/s、2.0× RSS；真实 primitive 大数组的内存目标仍待 P8 紧凑数组。
-4. **NFR-04 的默认策略**：**已定案（2026-11-04）**：严格默认——只放行 `java.lang.*`、`java.util.*`；其它类需显式加入 `Allowlist`。放宽用 `Allowlist::all()`，并须在文档中警告 gadget 风险。
-5. **FR-13/14/15**：已纳入当前开发线；内置类/derive 完成，serde 为 schema 驱动的受限桥（单根扁平 POJO）。
+1. **FR-02（写方向）**：双向已交付并通过 P3/P6/P7 回归。
+2. **目标 Java 版本**：**Java 17** 基线（fixture 17.0.20.1；wire 自 1.2 未变；JDK 25 重生成逐字节一致）。Java 8+ 类按需支持，旧 JDK 流对受支持类预期可读但非 CI 门禁。
+3. **NFR-02 的数值**：大块/primitive 数组解码 ≥1 GB/s、内存 <3×；实测约 3.5–6 GB/s、`int[]` RSS 约 2.03×；nightly bench 门禁按观测值 35% 兜底。
+4. **NFR-04 的默认策略**：严格默认，只放行 `java.lang.*`、`java.util.*`；放宽用 `Allowlist::all()` 并警告 gadget 风险。
+5. **FR-13/14/15**：typed API、derive、schema 驱动 serde 桥（直连 `JValue`）均已交付；无 schema 的 serde 直出不在范围。
+6. **发布**：0.1.0 保持 unreleased，暂不发布 crates.io；首次发布前再做 API 冻结与 semver 评审。
 
 ---
 
@@ -187,3 +188,4 @@
 | 2026-11-04 | P9-28/29：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77、i686 check；`rust-version` 校准为 1.77；新增 `deny.toml` 与 cargo-deny job | P9-28/29 |
 | 2026-11-04 | P9-30：新增 bench 基线 JSON 与 `docs/bench_gate.py`，nightly `bench-gate` 校验吞吐 ≥35% 基线、`int[]` RSS <3× | P9-30 |
 | 2026-11-04 | P9-31：新增 `set_map_entry`/`set_array_element`；mutation 覆盖全部标量、Map 替换/追加、对象数组；Java 读回 Mixed 三字段；全仓 147 passed | P9-31 |
+| 2026-11-04 | P9-32：serde crate 增加 doctest；§6/design §8/plan §18 定案（Java 17、不发布、性能门禁）；CI 增加 `cargo doc -D warnings`；全仓 148 passed | P9-32 |

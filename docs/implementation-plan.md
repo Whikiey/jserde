@@ -1,6 +1,6 @@
 # 0006 · 实现计划（Implementation Plan）
 
-- 状态：Draft（第 1 节假设与第 3 节设计缺口待确认后转 Accepted）
+- 状态：Accepted（2026-11-04；§18 问题已全部定案）
 - 上游：[requirements.md](requirements.md)（`AC-*` 是验收依据）、[design.md](design.md)（`D1–D5` 是技术路线）
 - 工作规则：[AGENT.md](../AGENT.md)（事实来源优先级、命令、提交前检查）
 - 基准数据：[testdata/](testdata/)（34 例，JDK 17.0.20.1）
@@ -387,13 +387,13 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 
 ---
 
-## 18. 待确认（影响本计划）
+## 18. 已定案问题（2026-11-04 收口）
 
-1. §1 的假设是否成立（Java 17、双向、严格 allowlist、edition/MSRV、暂不发布）。
-2. 新增 fixture（P5/P6 需要）由谁执行：本机有 JDK 则可直接跑 `gen.sh`；否则需你在有 JDK 的环境生成后提交。
-3. 是否需要在 v0.1 就产出 typed API 与 serde 桥，还是先交付 `JValue` 动态层（P4/P6 可后移）。
+1. §1 的假设成立：Java 17 基线、双向、严格 allowlist、edition 2021、MSRV 1.77、首版暂不发布。
+2. fixture 由本机 JDK 17/25 生成并提交；新增用例必须走 `gen.sh`，manifest 由脚本重算。
+3. typed API 与 serde 桥均已交付；serde 为 schema 驱动的受限桥（见 `design.md` §8）。
 
-> §3 的 11 项设计缺口已定案并回写 `design.md`；回放门禁的范围/例外/防作弊见 `design.md` §5.1，不再作为开放问题。若 review 后要改模型（尤其 D1 的句柄化），需在 P2 开工前提出。
+> §3 的 11 项设计缺口已定案并回写 `design.md`；回放门禁的范围/例外/防作弊见 `design.md` §5.1，不再作为开放问题。
 
 ---
 
@@ -435,11 +435,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-28/29 完成：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77 job、i686 `cargo check`；`rust-version` 校准为 1.77；新增 `deny.toml`（licenses/bans/sources/advisories）与 cargo-deny job | P9-28/29 |
 | 2026-11-04 | P9-30 完成：新增 `docs/bench-baseline.json` 与 `docs/bench_gate.py`，nightly 增加 `bench-gate`（35% 吞吐阈值、`int[]` RSS <3×）；本机门禁通过（Windows 无 `VmHWM` 时跳过 RSS） | P9-30 |
 | 2026-11-04 | P9-31 完成：新增 `Graph::set_map_entry`（替换/追加，primitive 自动装箱）与 `set_array_element`；mutation 测试覆盖全部标量、Map 替换/追加、对象数组；interop 增加 Mixed 三字段 Java 读回；全仓 147 passed | P9-31 |
+| 2026-11-04 | P9-32 完成：`jser-serde` 增加可编译 doctest；design §8/plan §18/requirements §6 全部定案（Java 17、不发布、性能门禁）；CI lint 增加 `cargo doc -D warnings`；全仓 148 passed（含 doctest） | P9-32 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **147 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30/P9-31 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **148 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -517,7 +518,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-29 | `cargo-deny`/依赖审计——✅ 已实现：`deny.toml`（licenses/bans/sources/advisories）+ CI `cargo-deny-action` | 中 / S |
 | P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组）——✅ 已实现：`docs/bench-baseline.json` + `docs/bench_gate.py` + nightly `bench-gate` job（35% 阈值、`int[]` RSS <3×） | 低 / S |
 | P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合——✅ 已实现：新增 `Graph::set_map_entry`/`set_array_element`（Map 值自动装箱）；覆盖全部标量、Map 替换/追加、对象数组；Java 读回 Mixed 三字段 | 中 / M |
-| P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题（目标 Java 版本/发布/性能数值） | 低 / S |
+| P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题——✅ 已实现：serde crate 增加可编译示例；§8/§18/requirements §6 全部定案（Java 17、不发布、性能门禁）；CI 增加 `RUSTDOCFLAGS=-D warnings cargo doc` | 低 / S |
 | P9-33 | 混合嵌套矩阵：Map × 数组 × 自定义类（含共享引用/环）的 fixture 与回归；先补 Rust 构造用例（`tests/nesting.rs`），JDK fixture 随 P8-3 生成 | 中 / S |
 
 ### 21.6 不可实现 / 明确不做（与 §5 OUT 一致）

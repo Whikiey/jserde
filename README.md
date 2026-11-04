@@ -6,7 +6,7 @@
 
 ## 当前进度
 
-- P0–P7 已实现：36 个 fixture / 75224 字节、147 项测试通过、36 例 Java 读回 + SUID 对拍；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
+- P0–P7 已实现：36 个 fixture / 75224 字节、148 项测试通过、36 例 Java 读回 + SUID 对拍；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
 - 已覆盖：动态编解码、集合、环/共享、typed、derive（含 enum）、SUID、内置类语义（含 Year/YearMonth/MonthDay/Period、ZoneId/ZoneOffset/OffsetTime/OffsetDateTime）、allowlist、serde 桥（直连 `JValue`，嵌套 POJO/Map/Set/枚举/多根）、三层嵌套对象。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地工作集约 2.03×（AC-06）。
 - 未收口：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪、等功能完成后再执行）；嵌套 derive/serde、`Year` 等内置类、跨平台 CI。

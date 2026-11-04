@@ -16,6 +16,51 @@
 //! references decode as duplicated subtrees and cycles are not representable
 //! (use [`jser::Graph`] for true identity/cycles). Arrays of objects and
 //! unknown classes are rejected.
+//!
+//! # Example
+//!
+//! ```
+//! use jser::FieldType;
+//! use jser::Allowlist;
+//! use jser_serde::{from_slice, to_vec, JavaSchema, SchemaField};
+//! use serde::{Deserialize, Serialize};
+//!
+//! #[derive(Debug, PartialEq, Serialize, Deserialize)]
+//! struct Point {
+//!     x: i32,
+//!     y: i32,
+//! }
+//!
+//! let schema = JavaSchema {
+//!     class: "com.example.Point",
+//!     suid: 1,
+//!     fields: vec![
+//!         SchemaField {
+//!             name: "x",
+//!             typecode: FieldType::Int,
+//!             class_name1: None,
+//!             nested: None,
+//!             map: None,
+//!             set: None,
+//!             enumeration: None,
+//!         },
+//!         SchemaField {
+//!             name: "y",
+//!             typecode: FieldType::Int,
+//!             class_name1: None,
+//!             nested: None,
+//!             map: None,
+//!             set: None,
+//!             enumeration: None,
+//!         },
+//!     ],
+//! };
+//!
+//! let bytes = to_vec(&Point { x: 1, y: 2 }, &schema)?;
+//! let decoded: Point = from_slice(&bytes, &schema, &Allowlist::all())?;
+//! assert_eq!(decoded, Point { x: 1, y: 2 });
+//! # Ok::<(), jser::Error>(())
+//! ```
 
 mod direct;
 
