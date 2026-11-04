@@ -3,6 +3,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -186,6 +189,19 @@ public class Fixtures {
         HashMap<String, Object> map = new HashMap<>();
         Hybrid self;
         Point shared;
+    }
+
+    interface Greeter extends Serializable {
+        String greet(String name);
+    }
+
+    static class GreeterHandler implements InvocationHandler, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) {
+            return "hi " + args[0];
+        }
     }
 
     // ================= 生成逻辑 =================
@@ -412,6 +428,14 @@ public class Fixtures {
         gen(dir, "47-class-objects.ser", out -> out.writeObject(new Object[] {
                 String.class, String.class, Color.class, Mixed.class,
         }));
+
+        gen(dir, "48-dynamic-proxy.ser", out -> {
+            Greeter greeter = (Greeter) Proxy.newProxyInstance(
+                    Fixtures.class.getClassLoader(),
+                    new Class<?>[] {Greeter.class},
+                    new GreeterHandler());
+            out.writeObject(greeter);
+        });
     }
 
     static void printSuids() {

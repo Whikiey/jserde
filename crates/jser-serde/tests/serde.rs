@@ -597,6 +597,7 @@ fn serde_expands_shared_references_as_values() {
             }],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
     let inner = graph
@@ -627,6 +628,7 @@ fn serde_expands_shared_references_as_values() {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
     let root = graph

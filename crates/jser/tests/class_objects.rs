@@ -75,6 +75,7 @@ fn constructs_and_replays_a_class_object() {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
     let class = graph.new_class(desc).unwrap();

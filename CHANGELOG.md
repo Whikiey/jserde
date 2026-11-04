@@ -48,6 +48,8 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
+- `TC_PROXYCLASSDESC` fidelity (interface list, super `Proxy`, `h` handler)
+  with byte-exact replay; invocation semantics stay out of scope.
 - `TC_CLASS` fidelity (`JValue::Class`, shared class-object references,
   `new_class`) with byte-exact replay.
 - Extended container views (`as_list`/`as_set`/`as_map`) for LinkedHashSet,

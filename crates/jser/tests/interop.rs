@@ -144,6 +144,7 @@ fn constructed_point() -> Graph {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
 

@@ -98,6 +98,7 @@ fn encodes_a_constructed_point() {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
 
@@ -193,6 +194,7 @@ fn mutates_every_scalar_field() {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
     let text = graph.new_string("start");

@@ -312,6 +312,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                     fields: desc_fields,
                     super_desc: #super_desc,
                     annotations: Vec::new(),
+                    proxy_interfaces: None,
                 };
                 let desc = graph.add_class_desc(desc)?;
 
@@ -426,6 +427,7 @@ fn expand_enum(
                     fields: Vec::new(),
                     super_desc: None,
                     annotations: Vec::new(),
+                    proxy_interfaces: None,
                 })?;
                 let desc = graph.add_class_desc(jser::ClassDesc {
                     name: Self::CLASS.to_owned(),
@@ -434,6 +436,7 @@ fn expand_enum(
                     fields: Vec::new(),
                     super_desc: Some(enum_desc),
                     annotations: Vec::new(),
+                    proxy_interfaces: None,
                 })?;
                 let constant = graph.new_string(constant);
                 let value = graph.new_enum(desc, constant)?;

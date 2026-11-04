@@ -267,6 +267,7 @@ impl<'a> DirectSerializer<'a> {
             fields: Vec::new(),
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         let desc = self.graph.add_class_desc(ClassDesc {
             name: schema.class.to_owned(),
@@ -275,6 +276,7 @@ impl<'a> DirectSerializer<'a> {
             fields: Vec::new(),
             super_desc: Some(enum_desc),
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         let constant = self.graph.new_string(java_name);
         Ok(JValue::Enum(self.graph.new_enum(desc, constant)?))
@@ -619,6 +621,7 @@ impl<'a> SerializeStruct for StructSerializer<'a> {
             fields: descriptors,
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         let object = self.graph.new_object(vec![ClassData {
             desc,

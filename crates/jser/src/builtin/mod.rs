@@ -366,6 +366,7 @@ pub fn new_hash_map_entries(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -
         ],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let mut header = Vec::with_capacity(8);
@@ -430,6 +431,7 @@ pub fn new_linked_hash_map_entries(
         ],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let linked = graph.add_class_desc(ClassDesc {
@@ -444,6 +446,7 @@ pub fn new_linked_hash_map_entries(
         }],
         super_desc: Some(hash_map),
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let mut header = Vec::with_capacity(8);
@@ -500,6 +503,7 @@ pub fn new_array_list(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle
         }],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let size = i32::try_from(elements.len())
@@ -532,6 +536,7 @@ pub fn new_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> 
         fields: Vec::new(),
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let size = i32::try_from(elements.len())
@@ -569,6 +574,7 @@ pub fn new_linked_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<H
         fields: Vec::new(),
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let linked = graph.add_class_desc(ClassDesc {
         name: LINKED_HASH_SET.to_owned(),
@@ -577,6 +583,7 @@ pub fn new_linked_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<H
         fields: Vec::new(),
         super_desc: Some(hash_set),
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let size = i32::try_from(elements.len())
         .map_err(|_| Error::InvalidSchema("LinkedHashSet has too many elements".to_owned()))?;
@@ -628,6 +635,7 @@ pub fn new_tree_map(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result
         }],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut custom = Vec::with_capacity(1 + entries.len() * 2);
     custom.push(JValue::Block(BlockData {
@@ -660,6 +668,7 @@ pub fn new_tree_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> 
         fields: Vec::new(),
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut custom = Vec::with_capacity(2 + elements.len());
     custom.push(JValue::Null);
@@ -690,6 +699,7 @@ pub fn new_array_deque(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handl
         fields: Vec::new(),
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut custom = Vec::with_capacity(1 + elements.len());
     custom.push(JValue::Block(BlockData {
@@ -733,6 +743,7 @@ pub fn new_priority_queue(graph: &mut Graph, elements: Vec<JValue>) -> Result<Ha
         ],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut custom = Vec::with_capacity(1 + elements.len());
     custom.push(JValue::Block(BlockData {
@@ -801,6 +812,7 @@ fn new_vector_like(graph: &mut Graph, elements: Vec<JValue>, stack: bool) -> Res
         ],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut classes = vec![ClassData {
         desc: vector,
@@ -819,6 +831,7 @@ fn new_vector_like(graph: &mut Graph, elements: Vec<JValue>, stack: bool) -> Res
             fields: Vec::new(),
             super_desc: Some(vector),
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         classes.push(ClassData {
             desc: stack_desc,
@@ -875,6 +888,7 @@ fn new_hashtable_like(
         ],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let mut header = Vec::with_capacity(8);
     header.extend_from_slice(&capacity.to_be_bytes());
@@ -909,6 +923,7 @@ fn new_hashtable_like(
             }],
             super_desc: Some(table),
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         classes.push(ClassData {
             desc: properties_desc,
@@ -938,6 +953,7 @@ pub fn new_arrays_array_list(graph: &mut Graph, elements: Vec<JValue>) -> Result
         }],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     graph.new_object(vec![ClassData {
         desc,
@@ -961,6 +977,7 @@ pub fn new_unmodifiable_list(graph: &mut Graph, elements: Vec<JValue>) -> Result
         }],
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     let list = graph.add_class_desc(ClassDesc {
         name: UNMODIFIABLE_LIST.to_owned(),
@@ -974,6 +991,7 @@ pub fn new_unmodifiable_list(graph: &mut Graph, elements: Vec<JValue>) -> Result
         }],
         super_desc: Some(collection),
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     graph.new_object(vec![
         ClassData {
@@ -1107,6 +1125,7 @@ fn box_wrapper(
             fields: Vec::new(),
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?)
     } else {
         None
@@ -1124,6 +1143,7 @@ fn box_wrapper(
         }],
         super_desc: number,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
 
     let mut classes = Vec::new();
@@ -1179,6 +1199,7 @@ pub fn new_java_array(
         fields: Vec::new(),
         super_desc: None,
         annotations: Vec::new(),
+        proxy_interfaces: None,
     })?;
     graph.new_array(desc, elements)
 }

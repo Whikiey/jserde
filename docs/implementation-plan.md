@@ -441,11 +441,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-22 完成：新增 `object/45`（UUID/Currency/Locale/BitSet/StringBuilder/StringBuffer/Pattern/java.sql 日期时间）与 10 种语义；manifest 38 例/76637 字节；全仓 158 passed | P9-22 |
 | 2026-11-04 | P9-23/24/25 完成：新增 `object/46`（12 种容器，EnumSet/EnumMap 因 TC_CLASS 排除）；`as_list`/`as_set`/`as_map` 扩展 + 11 个写侧构造器；`tests/containers.rs` 解码/构造往返；Java 读回构造的 Vector/TreeMap；manifest 39 例/78106 字节；全仓 160 passed | P9-23/24/25 |
 | 2026-11-04 | P9-1 完成：新增 `JValue::Class`/`Slot::Class`，Reader/Writer 支持 `TC_CLASS`（含共享类对象引用与 `new_class` 构造）；`object/47` + `tests/class_objects.rs`；manifest 40 例/78347 字节；全仓 162 passed | P9-1 |
+| 2026-11-04 | P9-2 完成：`ClassDesc.proxy_interfaces` + `TC_PROXYCLASSDESC` Reader/Writer（接口名 allowlist 校验、super `java.lang.reflect.Proxy`、`h` 字段）；`object/48` + `tests/proxy.rs`；manifest 41 例/78499 字节；全仓 163 passed | P9-2 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；40 个 fixture / 78347 字节；全仓 **162 passed**；40 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-1/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-22/P9-23/P9-24/P9-25/P9-26/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；41 个 fixture / 78499 字节；全仓 **163 passed**；41 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-1/P9-2/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-22/P9-23/P9-24/P9-25/P9-26/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -471,7 +472,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | ID | 目标 | 影响 | 依赖 | 优先级/复杂度 |
 |---|---|---|---|---|
 | P9-1 | `TC_CLASS` 保真回放：新增 `JValue::Class(Handle)` + `Slot::Class { desc }`，解码/重编码字节一致；不解类加载语义——✅ 已实现：`object/47`（含共享 `String.class`）与 `tests/class_objects.rs` | D1 模型、Reader/Writer、回放门禁 | 新 fixture（`Class` 对象）、design D1 | 中 / M |
-| P9-2 | `TC_PROXYCLASSDESC` 保真回放：新增 proxy 描述符槽（接口名 + annotation），对象 classdata 按 0 字段处理；代理语义仍 OUT-02 | D1 扩展、allowlist 检查接口名 | JDK 生成 proxy fixture | 低 / L |
+| P9-2 | `TC_PROXYCLASSDESC` 保真回放：新增 proxy 描述符槽（接口名 + annotation），对象 classdata 按 0 字段处理；代理语义仍 OUT-02——✅ 已实现：`ClassDesc.proxy_interfaces` + Reader/Writer + `object/48` | D1 扩展、allowlist 检查接口名 | JDK 生成 proxy fixture | 低 / L |
 | P9-3 | `TC_EXCEPTION` 语义化：解析异常对象并保留类名/message/字段，错误类型携带结构化信息（当前只返回 `UnsupportedClass`） | Error 模型、fixture | 新 fixture | 中 / S |
 | P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`（当前仅 `&[u8]`/`Vec<u8>`） | wire 层缓冲、错误偏移、文档 | — | 中 / M |
 | P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |

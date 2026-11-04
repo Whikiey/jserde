@@ -13,7 +13,8 @@ use crate::wire::mutf8;
 use crate::wire::writer::StreamWriter;
 use crate::wire::{
     STREAM_MAGIC, STREAM_VERSION, TC_ARRAY, TC_BLOCKDATA, TC_BLOCKDATALONG, TC_CLASS, TC_CLASSDESC,
-    TC_ENDBLOCKDATA, TC_ENUM, TC_LONGSTRING, TC_NULL, TC_OBJECT, TC_REFERENCE, TC_RESET, TC_STRING,
+    TC_ENDBLOCKDATA, TC_ENUM, TC_LONGSTRING, TC_NULL, TC_OBJECT, TC_PROXYCLASSDESC, TC_REFERENCE,
+    TC_RESET, TC_STRING,
 };
 
 /// Encode all top-level items of a graph with the Java stream header.
@@ -174,6 +175,26 @@ impl<'a> Encoder<'a> {
         }
 
         let desc = self.graph.descriptor(handle)?.clone();
+        if let Some(interfaces) = &desc.proxy_interfaces {
+            self.out.write_u8(TC_PROXYCLASSDESC);
+            self.assign(handle);
+            let count = i32::try_from(interfaces.len())
+                .map_err(|_| Error::InvalidSchema("proxy interface count overflows".to_owned()))?;
+            self.out.write_i32(count);
+            for interface in interfaces {
+                self.out.write_utf(interface)?;
+            }
+            for annotation in &desc.annotations {
+                self.write_value(annotation)?;
+            }
+            self.out.write_u8(TC_ENDBLOCKDATA);
+            match desc.super_desc {
+                Some(super_desc) => self.write_class_desc(super_desc)?,
+                None => self.out.write_u8(TC_NULL),
+            }
+            return Ok(());
+        }
+
         self.out.write_u8(TC_CLASSDESC);
 
         // The JDK assigns the descriptor handle before writing its fields, so

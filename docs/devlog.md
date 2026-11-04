@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 23:10 · feat: TC_PROXYCLASSDESC 保真回放（P9-2）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `ClassDesc` 增加 `proxy_interfaces: Option<Vec<String>>`；Reader 解析 `TC_PROXYCLASSDESC`（接口数/接口名/annotation/super），接口名走 allowlist 检查；Writer 输出 proxy 描述符并保持句柄顺序。
+  - 代理对象 classdata 的 proxy 层按 0 字段、无 custom data 处理；super `java.lang.reflect.Proxy` 的 `h` 字段正常递归。
+  - 新 fixture `object/48-dynamic-proxy.ser`（152 B，`Greeter` 接口 + `GreeterHandler`）；`tests/proxy.rs` 校验接口列表、super、`h` 与逐字节回放。
+- **验证**：proxy 测试通过；全仓 **163 passed**；41 例 Java 读回（含代理）通过；manifest 41 例/78499 字节；clippy/fmt 通过。
+- **范围**：仅字节保真，不实现 InvocationHandler 调用语义（OUT-02）。
+
+---
+
 ## 2026-11-04 20:20 · feat: TC_CLASS 保真回放（P9-1）
 
 - **提交**：本次（hash 见 `git log`）

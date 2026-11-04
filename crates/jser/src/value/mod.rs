@@ -121,6 +121,9 @@ pub struct ClassDesc {
     pub super_desc: Option<Handle>,
     /// `classAnnotation` contents (normally empty; kept for byte replay).
     pub annotations: Vec<JValue>,
+    /// Interface names for a dynamic-proxy descriptor (`TC_PROXYCLASSDESC`);
+    /// `None` for normal classes.
+    pub proxy_interfaces: Option<Vec<String>>,
 }
 
 impl ClassDesc {

@@ -252,12 +252,62 @@ impl<'a> Reader<'a> {
         let tag = self.input.read_u8()?;
         match tag {
             TC_CLASSDESC => self.read_class_desc_chain(depth),
+            TC_PROXYCLASSDESC => self.read_proxy_class_desc(depth),
             TC_REFERENCE => self.read_desc_reference(),
             TC_NULL => Err(Error::FieldMismatch {
                 message: "object/array/enum has a null class descriptor".to_owned(),
             }),
             _ => Err(Error::BadTag(tag)),
         }
+    }
+
+    /// Parse a `TC_PROXYCLASSDESC` node and its superclass chain.
+    ///
+    /// Wire layout: interface count, interface names, classAnnotation, then
+    /// the superclass descriptor. Proxy classes have no fields or SUID.
+    fn read_proxy_class_desc(&mut self, depth: usize) -> Result<Handle> {
+        let count = self.input.read_i32()?;
+        let count = usize::try_from(count).map_err(|_| Error::InvalidLength {
+            kind: "proxy interface count",
+            value: u64::try_from(count).unwrap_or(0),
+        })?;
+        self.charge(count)?;
+
+        let mut interfaces = Vec::with_capacity(count);
+        for _ in 0..count {
+            let name = self.read_utf()?;
+            self.allowlist.check(&name)?;
+            interfaces.push(name);
+        }
+
+        let handle = self.graph.insert_desc(ClassDesc {
+            name: "$Proxy".to_owned(),
+            suid: 0,
+            flags: 0,
+            fields: Vec::new(),
+            super_desc: None,
+            annotations: Vec::new(),
+            proxy_interfaces: Some(interfaces),
+        });
+        self.handles.assign(handle);
+
+        let annotations = self.read_class_annotation(depth)?;
+        self.graph.set_desc_annotations(handle, annotations)?;
+
+        let tag = self.input.read_u8()?;
+        match tag {
+            TC_NULL => {}
+            TC_REFERENCE => {
+                let super_desc = self.read_desc_reference()?;
+                self.graph.set_desc_super(handle, Some(super_desc))?;
+            }
+            TC_CLASSDESC => {
+                let super_desc = self.read_class_desc_chain(depth)?;
+                self.graph.set_desc_super(handle, Some(super_desc))?;
+            }
+            other => return Err(Error::BadTag(other)),
+        }
+        Ok(handle)
     }
 
     /// Parse a descriptor node and its superclass chain.
@@ -293,7 +343,10 @@ impl<'a> Reader<'a> {
                     }
                 }
                 TC_PROXYCLASSDESC => {
-                    return Err(Error::UnsupportedClass("dynamic proxy".to_owned()))
+                    let super_desc = self.read_proxy_class_desc(depth)?;
+                    self.graph.set_desc_super(current, Some(super_desc))?;
+                    current = super_desc;
+                    chain_len += 1;
                 }
                 _ => return Err(Error::BadTag(tag)),
             }
@@ -322,6 +375,7 @@ impl<'a> Reader<'a> {
             fields: Vec::new(),
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         });
         self.handles.assign(handle);
 
@@ -428,6 +482,10 @@ impl<'a> Reader<'a> {
 
             let custom = if desc.has_custom_data() {
                 Some(self.read_custom_data(depth + 1)?)
+            } else if desc.proxy_interfaces.is_some() {
+                // Proxy layers have no fields and no custom data; their
+                // superclass (`java.lang.reflect.Proxy`) carries `h`.
+                None
             } else if desc.is_externalizable() || (!desc.is_serializable() && !desc.is_enum()) {
                 // An old-style Externalizable has no block boundary we can
                 // safely skip; a non-serializable descriptor is equally opaque.

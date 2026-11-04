@@ -102,6 +102,7 @@ fn new_primitive_array_accepts_raw_wire_bytes() {
             fields: Vec::new(),
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })
         .unwrap();
     let array = graph

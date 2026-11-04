@@ -363,6 +363,13 @@ CASES = [
             {"type": "java.lang.Class", "class": "Fixtures$Mixed"},
         ]},
     ),
+    dict(
+        id="object/48", file="fixtures/object/48-dynamic-proxy.ser",
+        case="动态代理：Greeter 接口 + GreeterHandler",
+        features=["TC_PROXYCLASSDESC", "代理接口列表", "InvocationHandler 字段"],
+        expect={"kind": "proxy", "interfaces": ["Fixtures$Greeter"],
+                "handler": "Fixtures$GreeterHandler"},
+    ),
 ]
 
 

@@ -53,6 +53,7 @@ impl IntoJValue for Point {
             ],
             super_desc: None,
             annotations: Vec::new(),
+            proxy_interfaces: None,
         })?;
         let object = graph.new_object(vec![ClassData {
             desc,
