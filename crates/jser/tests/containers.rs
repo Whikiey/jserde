@@ -4,10 +4,11 @@ mod common;
 
 use common::{decode_fixture, read_fixture};
 use jser::builtin::{
-    new_array_deque, new_arrays_array_list, new_hashtable, new_linked_hash_set, new_priority_queue,
-    new_properties, new_stack, new_tree_map, new_tree_set, new_unmodifiable_list, new_vector,
+    new_array_deque, new_arrays_array_list, new_enum_map, new_enum_set, new_hashtable,
+    new_linked_hash_set, new_priority_queue, new_properties, new_stack, new_tree_map, new_tree_set,
+    new_unmodifiable_list, new_vector,
 };
-use jser::{encode_stream, Graph, JValue};
+use jser::{encode_stream, ClassDesc, Graph, JValue};
 
 fn graph() -> Graph {
     decode_fixture(&read_fixture("object/46")).unwrap()
@@ -242,4 +243,61 @@ fn constructs_extended_containers() {
         strings(&graph, &graph.as_list(&graph.items()[0]).unwrap().unwrap()),
         ["u1", "u2"]
     );
+}
+
+fn enum_class_and_value(graph: &mut Graph) -> (JValue, JValue) {
+    let desc = graph
+        .add_class_desc(ClassDesc {
+            name: "Fixtures$Color".to_owned(),
+            suid: 0,
+            flags: 0x12,
+            fields: Vec::new(),
+            super_desc: None,
+            annotations: Vec::new(),
+            proxy_interfaces: None,
+        })
+        .unwrap();
+    let class = graph.new_class(desc).unwrap();
+    let constant = graph.new_string("RED");
+    let value = graph.new_enum(desc, constant).unwrap();
+    (JValue::Class(class), JValue::Enum(value))
+}
+
+#[test]
+fn decodes_and_constructs_enum_containers() {
+    let graph = decode_fixture(&read_fixture("object/49")).unwrap();
+    let set = graph.as_set(item(&graph, 0)).unwrap().unwrap();
+    assert_eq!(set.len(), 1);
+    assert_eq!(graph.as_enum_constant(set[0]).unwrap(), Some("RED"));
+
+    let map = graph.as_map(item(&graph, 1)).unwrap().unwrap();
+    assert_eq!(map.entries.len(), 1);
+    assert_eq!(
+        graph.as_enum_constant(map.entries[0].0).unwrap(),
+        Some("RED")
+    );
+    assert_eq!(graph.as_str(map.entries[0].1).unwrap(), "red");
+
+    let mut graph = Graph::new();
+    let (class, value) = enum_class_and_value(&mut graph);
+    let set = new_enum_set(&mut graph, class, vec![value]).unwrap();
+    graph.add_item(JValue::Obj(set));
+    let decoded = decode_fixture(&encode_stream(&graph).unwrap()).unwrap();
+    let set = decoded.as_set(&decoded.items()[0]).unwrap().unwrap();
+    assert_eq!(set.len(), 1);
+    assert_eq!(decoded.as_enum_constant(set[0]).unwrap(), Some("RED"));
+
+    let mut graph = Graph::new();
+    let (class, value) = enum_class_and_value(&mut graph);
+    let text = graph.new_string("red");
+    let map = new_enum_map(&mut graph, class, vec![(value, JValue::Str(text))]).unwrap();
+    graph.add_item(JValue::Obj(map));
+    let decoded = decode_fixture(&encode_stream(&graph).unwrap()).unwrap();
+    let map = decoded.as_map(&decoded.items()[0]).unwrap().unwrap();
+    assert_eq!(map.entries.len(), 1);
+    assert_eq!(
+        decoded.as_enum_constant(map.entries[0].0).unwrap(),
+        Some("RED")
+    );
+    assert_eq!(decoded.as_str(map.entries[0].1).unwrap(), "red");
 }

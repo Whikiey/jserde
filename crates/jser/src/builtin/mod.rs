@@ -39,6 +39,8 @@ pub const PROPERTIES: &str = "java.util.Properties";
 pub const ARRAYS_ARRAY_LIST: &str = "java.util.Arrays$ArrayList";
 pub const UNMODIFIABLE_LIST: &str = "java.util.Collections$UnmodifiableList";
 pub const SYNCHRONIZED_LIST: &str = "java.util.Collections$SynchronizedList";
+pub const ENUM_SET_PROXY: &str = "java.util.EnumSet$SerializationProxy";
+pub const ENUM_MAP: &str = "java.util.EnumMap";
 
 fn layer<'a>(graph: &Graph, object: &'a JObject, name: &str) -> Result<Option<&'a ClassData>> {
     for class in &object.classes {
@@ -171,6 +173,22 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
             load_factor,
             capacity,
             ordered: false,
+        }));
+    }
+    if let Some(enum_map) = layer(graph, object, ENUM_MAP)? {
+        let contents = custom_contents(enum_map, ENUM_MAP)?;
+        let header = header_block(contents, ENUM_MAP, 4)?;
+        let mut reader = StreamReader::new(header);
+        let size = collection_size(reader.read_i32()?, ENUM_MAP)?;
+        let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
+            message: "`java.util.EnumMap` entry count overflows".to_owned(),
+        })?;
+        check_length(contents, entry_count, 1, ENUM_MAP)?;
+        return Ok(Some(MapView {
+            entries: pair_entries(&contents[1..], size, ENUM_MAP)?,
+            load_factor: 0.0,
+            capacity: i32::try_from(size).unwrap_or(i32::MAX),
+            ordered: true,
         }));
     }
 
@@ -314,6 +332,17 @@ pub fn set_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<Vec<&'
         let size = collection_size(reader.read_i32()?, TREE_SET)?;
         check_length(contents, size, 2, TREE_SET)?;
         return Ok(Some(contents[2..].iter().collect()));
+    }
+    if let Some(proxy) = layer(graph, object, ENUM_SET_PROXY)? {
+        let elements = layer_field(proxy, "elements").ok_or_else(|| Error::FieldMismatch {
+            message: "EnumSet proxy has no elements field".to_owned(),
+        })?;
+        let elements = graph
+            .as_array(elements)?
+            .ok_or_else(|| Error::FieldMismatch {
+                message: "EnumSet proxy elements are not an object array".to_owned(),
+            })?;
+        return Ok(Some(elements.iter().collect()));
     }
 
     Ok(None)
@@ -1005,6 +1034,113 @@ pub fn new_unmodifiable_list(graph: &mut Graph, elements: Vec<JValue>) -> Result
             custom: None,
         },
     ])
+}
+
+/// Build a `java.util.EnumSet` through its `SerializationProxy`.
+///
+/// `element_type` must be a `JValue::Class` for the enum class; `elements` are
+/// `JValue::Enum` constants of that class.
+pub fn new_enum_set(
+    graph: &mut Graph,
+    element_type: JValue,
+    elements: Vec<JValue>,
+) -> Result<Handle> {
+    if !matches!(element_type, JValue::Class(_)) {
+        return Err(Error::InvalidSchema(
+            "EnumSet element type must be a Class value".to_owned(),
+        ));
+    }
+    for element in &elements {
+        if !matches!(element, JValue::Enum(_)) {
+            return Err(Error::FieldMismatch {
+                message: "EnumSet elements must be enum constants".to_owned(),
+            });
+        }
+    }
+    let array = new_java_array(graph, "[Ljava.lang.Enum;", elements)?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: ENUM_SET_PROXY.to_owned(),
+        suid: 362_491_234_563_181_265,
+        flags: 0x02,
+        fields: vec![
+            FieldDesc {
+                name: "elementType".to_owned(),
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/lang/Class;".to_owned()),
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "elements".to_owned(),
+                typecode: FieldType::Object,
+                class_name1: Some("[Ljava.lang.Enum;".to_owned()),
+                class_name_handle: None,
+            },
+        ],
+        super_desc: None,
+        annotations: Vec::new(),
+        proxy_interfaces: None,
+    })?;
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![
+            ("elementType".to_owned(), element_type),
+            ("elements".to_owned(), JValue::Arr(array)),
+        ],
+        custom: None,
+    }])
+}
+
+/// Build a `java.util.EnumMap` with natural enum ordering.
+pub fn new_enum_map(
+    graph: &mut Graph,
+    key_type: JValue,
+    entries: Vec<(JValue, JValue)>,
+) -> Result<Handle> {
+    if !matches!(key_type, JValue::Class(_)) {
+        return Err(Error::InvalidSchema(
+            "EnumMap key type must be a Class value".to_owned(),
+        ));
+    }
+    let mut entries = entries;
+    for (key, value) in &mut entries {
+        if !matches!(key, JValue::Enum(_)) {
+            return Err(Error::FieldMismatch {
+                message: "EnumMap keys must be enum constants".to_owned(),
+            });
+        }
+        *value = box_primitive(graph, value.clone())?;
+        check_collection_value(value, "EnumMap value")?;
+    }
+    let size = i32::try_from(entries.len())
+        .map_err(|_| Error::InvalidSchema("EnumMap has too many entries".to_owned()))?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: ENUM_MAP.to_owned(),
+        suid: 458_661_240_069_192_865,
+        flags: 0x03,
+        fields: vec![FieldDesc {
+            name: "keyType".to_owned(),
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/lang/Class;".to_owned()),
+            class_name_handle: None,
+        }],
+        super_desc: None,
+        annotations: Vec::new(),
+        proxy_interfaces: None,
+    })?;
+    let mut custom = Vec::with_capacity(1 + entries.len() * 2);
+    custom.push(JValue::Block(BlockData {
+        bytes: size.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    for (key, value) in entries {
+        custom.push(key);
+        custom.push(value);
+    }
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![("keyType".to_owned(), key_type)],
+        custom: Some(custom),
+    }])
 }
 
 fn check_collection_value(value: &JValue, what: &str) -> Result<()> {

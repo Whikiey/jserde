@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-05 00:05 · feat: EnumSet/EnumMap 纳入 P9-23
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新 fixture `object/49-enum-containers.ser`（344 B）：`EnumSet.of(RED)` + `EnumMap(RED -> "red")`。
+  - `as_set` 支持 `java.util.EnumSet$SerializationProxy`（读 `elements` Enum[]）；`as_map` 支持 `java.util.EnumMap`（`keyType` + custom size/entries）。
+  - 新增构造器 `new_enum_set(element_type Class, enum 元素)` 与 `new_enum_map(key_type Class, entries)`。
+  - `tests/containers.rs` 增加解码视图与构造往返。
+- **验证**：containers 3 passed；全仓 **164 passed**；42 例 Java 读回（含 EnumSet/EnumMap）通过；manifest 42 例/78843 字节；clippy/fmt 通过。
+
+---
+
 ## 2026-11-04 23:10 · feat: TC_PROXYCLASSDESC 保真回放（P9-2）
 
 - **提交**：本次（hash 见 `git log`）

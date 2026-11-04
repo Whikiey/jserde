@@ -370,6 +370,15 @@ CASES = [
         expect={"kind": "proxy", "interfaces": ["Fixtures$Greeter"],
                 "handler": "Fixtures$GreeterHandler"},
     ),
+    dict(
+        id="object/49", file="fixtures/object/49-enum-containers.ser",
+        case="Object[]{EnumSet.of(RED), EnumMap(RED -> red)}",
+        features=["EnumSet$SerializationProxy", "EnumMap keyType + custom entries"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.util.EnumSet", "values": ["RED"]},
+            {"type": "java.util.EnumMap", "entries": {"RED": "red"}},
+        ]},
+    ),
 ]
 
 

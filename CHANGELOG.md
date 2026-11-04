@@ -48,6 +48,8 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
+- EnumSet/EnumMap support: SerializationProxy/keyType decoding views and
+  `new_enum_set`/`new_enum_map` constructors.
 - `TC_PROXYCLASSDESC` fidelity (interface list, super `Proxy`, `h` handler)
   with byte-exact replay; invocation semantics stay out of scope.
 - `TC_CLASS` fidelity (`JValue::Class`, shared class-object references,

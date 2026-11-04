@@ -436,6 +436,13 @@ public class Fixtures {
                     new GreeterHandler());
             out.writeObject(greeter);
         });
+
+        gen(dir, "49-enum-containers.ser", out -> {
+            EnumSet<Color> set = EnumSet.of(Color.RED);
+            EnumMap<Color, String> map = new EnumMap<>(Color.class);
+            map.put(Color.RED, "red");
+            out.writeObject(new Object[] {set, map});
+        });
     }
 
     static void printSuids() {
