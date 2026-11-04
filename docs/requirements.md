@@ -107,7 +107,7 @@
 | AC | 状态 | 证据/缺口 |
 |---|---|---|
 | AC-01 | ✅ | 36 个 fixture 全部解码；`36`/`40`/`42`/`43` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
-| AC-02 | ✅（代表性） | `tests/interop.rs` + `Verify.java` 覆盖 Point/Mixed/Map/环/enum/derive/serde；未逐类覆盖全部 Java 类型 |
+| AC-02 | ✅（全 fixture） | `tests/interop.rs` + `Verify.java`：36 个 fixture 全部由 Rust 重编码后经 Java `ObjectInputStream` 读回（`--read`/`--sequence`/`--primitives`/`--blocks`/`--array`）；构造/typed/derive/serde 代表用例断言字段值；范围外类型（`Externalizable` 语义、代理等）仍不覆盖 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
 | AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |

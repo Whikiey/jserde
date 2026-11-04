@@ -36,8 +36,9 @@
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
-- 34 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
-  SUID comparison, deterministic fuzz smoke and a benchmark example.
+- 36 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every
+  fixture re-encoded by Rust and read back), SUID comparison, deterministic
+  fuzz smoke and a benchmark example.
 - Three-level nested POJO fixture (`object/41`) and regression tests.
 - P7 hardening: panic audit, compact bulk decoding of large top-level blocks,
   libFuzzer targets, nightly-ready CI smoke, README/SECURITY/CHANGELOG.

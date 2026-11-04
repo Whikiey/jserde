@@ -430,6 +430,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-9 完成（TDD）：serde 支持 `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射）与 `to_vec_enum`/`from_slice_enum` 根入口；新增枚举字段/根测试；全仓 141 项通过 | P9-9 |
 | 2026-11-04 | P9-10/11 完成（TDD）：`MultiRootWriter`（`push`/`reset`/`finish`）+ `from_slice_roots`/`from_slice_multi`，支持多根与 `TC_RESET`；P9-12 语义定界（共享引用按值展开，环用动态 Graph）；新增多根/共享引用测试；全仓 143 项通过 | P9-10/11 |
 | 2026-11-04 | P9-21 完成（TDD）：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime），`BuiltinValue` 补齐四种语义；manifest 36 例/75224 字节；全仓 144 项通过 | P9-21 |
+| 2026-11-04 | P9-27 完成：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；`emit.rs` 重编码全部 fixture（`build/rust/all/`，可用 `JSER_EMIT_DIR` 覆盖）；`interop.sh` 与 `tests/interop.rs` 逐例 Java 读回（36 例 + 构造/typed/derive/serde） | P9-27 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
@@ -507,7 +508,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | ID | 目标 | 优先级/复杂度 |
 |---|---|---|
 | P9-26 | property-based 测试（`tests/property.rs`，§12 已列但未实现；离线 dev-dependency 需说明） | 高 / M |
-| P9-27 | `AC-02` 逐类覆盖：`Verify.java`/`emit.rs` 覆盖全部 fixture 类型与新增内置类 | 高 / M |
+| P9-27 | `AC-02` 逐类覆盖：`Verify.java` 增加 `--read`/`--sequence`/`--primitives`/`--blocks`/`--array`，`emit.rs` 重编码全部 fixture；`interop.sh` 与 `tests/interop.rs` 逐例读回——✅ 已实现（36 例） | 高 / M |
 | P9-28 | CI：MSRV 1.75 job、32-bit job、macOS/Windows matrix（细化 P8-6） | 中 / M |
 | P9-29 | `cargo-deny`/依赖审计（M6 出口提到但未落地） | 中 / S |
 | P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组） | 低 / S |

@@ -51,4 +51,15 @@ verify build/rust/point-serde.ser 'Fixtures$Point' x=11 y=12
 verify build/rust/node-cycle.ser 'Fixtures$Node' name=a
 verify build/rust/enum.ser 'Fixtures$Color'
 
+# AC-02 coverage: every object-like fixture re-encoded by Rust is read back by
+# ObjectInputStream. Primitive/block streams use their own reader modes.
+for f in build/rust/all/*.ser; do
+    case "$(basename "$f")" in
+        09-* | 11-*) continue ;;
+    esac
+    verify --read "$f"
+done
+verify --primitives build/rust/all/09-primitives-block.ser i=1 z=true d=1.5
+verify --blocks build/rust/all/11-blockdata-long.ser 2000
+
 echo "interop OK"

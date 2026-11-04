@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 14:30 · test: AC-02 全 fixture Java 读回（P9-27）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Verify.java` 新增 `--read`（读到 EOF，支持多元素/`TC_RESET`）、`--sequence`、`--primitives`、`--blocks`、`--array` 模式。
+  - `emit.rs` 将全部 fixture 解码→重编码到 `build/rust/all/`（可用 `JSER_EMIT_DIR` 覆盖；本机沙箱下用 `target/rust-emit` 验证），并给关键 I/O 加路径上下文。
+  - `interop.sh` 对全部 object-like 文件执行 `--read`，09/11 用 `--primitives`/`--blocks`。
+  - `tests/interop.rs` 同样逐例重编码并 `--read`、补 primitives/blocks 与 36/40/42/43 的 `--array` 元素类断言。
+- **验证**：`cargo test -p jser --test interop` 通过（36 例 + 各模式）；本机 `JSER_EMIT_DIR=target/rust-emit` 生成 36 个文件，Java 读回 `point`/`09`/`11`/`35`/`43` 全部 OK；`cargo test --workspace` **144 passed**；clippy/fmt 通过。
+- **说明**：`interop.sh` 需要 bash + `python3`，本机无法直接运行；其逻辑与 `tests/interop.rs` 一致，CI 执行。
+
+---
+
 ## 2026-11-04 14:15 · feat: java.time zone 类型（P9-21，TDD）
 
 - **提交**：本次（hash 见 `git log`）

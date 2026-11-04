@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use common::{decode_fixture, read_fixture, testdata_dir};
+use common::{decode_fixture, load_manifest, read_fixture, testdata_dir};
 use jser::builtin::new_hash_map;
 use jser::{
     encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
@@ -39,6 +39,82 @@ fn run_java(classes: &Path, file: &Path, class: &str, fields: &[&str]) {
     assert!(
         output.status.success(),
         "java Verify failed for {}:\nstdout: {}\nstderr: {}",
+        file.display(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn run_java_read(classes: &Path, file: &Path) {
+    let output = Command::new("java")
+        .arg("-cp")
+        .arg(classes)
+        .arg("Verify")
+        .arg("--read")
+        .arg(file)
+        .output()
+        .expect("run java Verify --read");
+    assert!(
+        output.status.success(),
+        "java Verify --read failed for {}:\nstdout: {}\nstderr: {}",
+        file.display(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn run_java_primitives(classes: &Path, file: &Path, specs: &[&str]) {
+    let mut command = Command::new("java");
+    command
+        .arg("-cp")
+        .arg(classes)
+        .arg("Verify")
+        .arg("--primitives")
+        .arg(file);
+    command.args(specs);
+    let output = command.output().expect("run java Verify --primitives");
+    assert!(
+        output.status.success(),
+        "java Verify --primitives failed for {}:\nstdout: {}\nstderr: {}",
+        file.display(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn run_java_blocks(classes: &Path, file: &Path, length: usize) {
+    let output = Command::new("java")
+        .arg("-cp")
+        .arg(classes)
+        .arg("Verify")
+        .arg("--blocks")
+        .arg(file)
+        .arg(length.to_string())
+        .output()
+        .expect("run java Verify --blocks");
+    assert!(
+        output.status.success(),
+        "java Verify --blocks failed for {}:\nstdout: {}\nstderr: {}",
+        file.display(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn run_java_array(classes: &Path, file: &Path, array_class: &str, elements: &[&str]) {
+    let mut command = Command::new("java");
+    command
+        .arg("-cp")
+        .arg(classes)
+        .arg("Verify")
+        .arg("--array")
+        .arg(file)
+        .arg(array_class);
+    command.args(elements);
+    let output = command.output().expect("run java Verify --array");
+    assert!(
+        output.status.success(),
+        "java Verify --array failed for {}:\nstdout: {}\nstderr: {}",
         file.display(),
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
@@ -221,4 +297,80 @@ fn java_can_read_rust_written_streams() {
         "java.util.ArrayList",
         &["0=1", "1=2", "2=3"],
     );
+
+    // AC-02 coverage: Java reads back one Rust-re-encoded stream per object-like
+    // fixture (primitive/block streams are covered below and by interop.sh).
+    for case in load_manifest().cases {
+        let kind = case
+            .expect
+            .get("kind")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        if matches!(kind, "primitive_stream" | "blockdata") {
+            continue;
+        }
+        let bytes = read_fixture(&case.id);
+        let encoded = encode_stream(&decode_fixture(&bytes).unwrap()).unwrap();
+        let file = classes.join(format!("all-{}.ser", case.id.replace('/', "-")));
+        fs::write(&file, encoded).unwrap();
+        run_java_read(&classes, &file);
+    }
+
+    // Primitive and block-data streams use dedicated ObjectInputStream reads.
+    let primitives = encode_stream(&decode_fixture(&read_fixture("codec/09")).unwrap()).unwrap();
+    let file = classes.join("all-codec-09.ser");
+    fs::write(&file, primitives).unwrap();
+    run_java_primitives(&classes, &file, &["i=1", "z=true", "d=1.5"]);
+
+    let blocks = encode_stream(&decode_fixture(&read_fixture("codec/11")).unwrap()).unwrap();
+    let file = classes.join("all-codec-11.ser");
+    fs::write(&file, blocks).unwrap();
+    run_java_blocks(&classes, &file, 2000);
+
+    // Built-in classes deserialize to their Java types; check array elements.
+    for (id, elements) in [
+        (
+            "object/36",
+            &[
+                "java.util.Date",
+                "java.math.BigInteger",
+                "java.math.BigDecimal",
+                "java.time.LocalDate",
+            ][..],
+        ),
+        (
+            "object/40",
+            &[
+                "java.time.Duration",
+                "java.time.Instant",
+                "java.time.LocalDate",
+                "java.time.LocalDateTime",
+                "java.time.ZonedDateTime",
+            ][..],
+        ),
+        (
+            "object/42",
+            &[
+                "java.time.Year",
+                "java.time.YearMonth",
+                "java.time.MonthDay",
+                "java.time.Period",
+            ][..],
+        ),
+        (
+            "object/43",
+            &[
+                "java.time.ZoneRegion",
+                "java.time.ZoneOffset",
+                "java.time.OffsetTime",
+                "java.time.OffsetDateTime",
+            ][..],
+        ),
+    ] {
+        let bytes = read_fixture(id);
+        let encoded = encode_stream(&decode_fixture(&bytes).unwrap()).unwrap();
+        let file = classes.join(format!("all-{}.ser", id.replace('/', "-")));
+        fs::write(&file, encoded).unwrap();
+        run_java_array(&classes, &file, "[Ljava.lang.Object;", elements);
+    }
 }

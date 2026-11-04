@@ -2,7 +2,7 @@
 //!
 //! Run from the repository root:
 //!   cargo run -p jser --example emit
-//! Output: `docs/testdata/build/rust/*.ser`.
+//! Output: `docs/testdata/build/rust/*.ser` (override with `JSER_EMIT_DIR`).
 
 use std::collections::HashMap;
 use std::fs;
@@ -42,11 +42,16 @@ fn decode(bytes: &[u8]) -> Result<Graph, BoxError> {
 
 fn main() -> Result<(), BoxError> {
     let testdata = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/testdata");
-    let out = testdata.join("build/rust");
-    fs::create_dir_all(&out)?;
+    let out = std::env::var_os("JSER_EMIT_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| testdata.join("build/rust"));
+    fs::create_dir_all(&out)
+        .map_err(|error| format!("create_dir_all {}: {error}", out.display()))?;
 
-    let point = fs::read(testdata.join("fixtures/object/20-object-point.ser"))?;
-    fs::write(out.join("point.ser"), encode_stream(&decode(&point)?)?)?;
+    let point = fs::read(testdata.join("fixtures/object/20-object-point.ser"))
+        .map_err(|error| format!("read point fixture: {error}"))?;
+    fs::write(out.join("point.ser"), encode_stream(&decode(&point)?)?)
+        .map_err(|error| format!("write point.ser: {error}"))?;
 
     let mut mutated = decode(&point)?;
     let value = mutated.items()[0].clone();
@@ -98,6 +103,28 @@ fn main() -> Result<(), BoxError> {
         out.join("point-derived.ser"),
         encode_typed(DerivedPoint { x: 9, y: 10 })?,
     )?;
+
+    // AC-02 coverage: re-encode every committed fixture so Java can read back
+    // one Rust-written stream per fixture type.
+    let all = out.join("all");
+    fs::create_dir_all(&all)?;
+    for tier in ["codec", "object"] {
+        let dir = testdata.join("fixtures").join(tier);
+        let mut files = Vec::new();
+        for entry in fs::read_dir(&dir)? {
+            let entry = entry?;
+            if entry.path().extension().and_then(|ext| ext.to_str()) == Some("ser") {
+                files.push(entry.path());
+            }
+        }
+        files.sort();
+        for file in files {
+            let bytes = fs::read(&file)?;
+            let graph = decode(&bytes)?;
+            let name = file.file_name().ok_or("fixture without a file name")?;
+            fs::write(all.join(name), encode_stream(&graph)?)?;
+        }
+    }
 
     Ok(())
 }
