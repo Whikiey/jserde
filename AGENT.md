@@ -116,6 +116,7 @@ cargo test -p jser --test fuzz_smoke  # 离线 fuzz 冒烟
 cargo +nightly fuzz run decode -- -max_total_time=1800  # 30 分钟 fuzz（需 cargo-fuzz；nightly CI 自动执行）
 cargo run --release -p jser --example bench -- 100 # 100MB 级 bench
 cargo run --release -p jser --example bench -- array 25000000  # 25M int[] 内存/吞吐（AC-06）
+python3 docs/bench_gate.py             # bench 回归门禁（CI nightly 同款）
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser

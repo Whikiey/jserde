@@ -13,6 +13,20 @@ env:
   AUX_FUZZ_SECONDS: 300
 
 jobs:
+  bench-gate:
+    name: bench gate (P9-30)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Compare decode throughput and int[] RSS with docs/bench-baseline.json
+        run: python3 docs/bench_gate.py
+
   fuzz:
     name: fuzz (AC-04)
     runs-on: ubuntu-latest

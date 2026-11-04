@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 15:35 · perf: nightly bench 门禁（P9-30）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `docs/bench-baseline.json`（观测吞吐、35% 阈值、`int[]` RSS <3×）与 `docs/bench_gate.py`（运行 `bench`、解析 MB/s 与 `VmHWM`、失败退出非零）。
+  - nightly workflow 增加 `bench-gate` job（stable Rust，`python3 docs/bench_gate.py`）。
+  - `docs/bench.md` 增加门禁说明与本地命令。
+- **验证**：本机 `python3 docs/bench_gate.py` 通过（block 6033 MB/s、int[] 3803 MB/s；Windows 无 `VmHWM` 时跳过 RSS）；全仓 144 passed、clippy/fmt 通过。
+
+---
+
 ## 2026-11-04 15:20 · ci: matrix/MSRV/i686 与 cargo-deny（P9-28/29）
 
 - **提交**：本次（hash 见 `git log`）

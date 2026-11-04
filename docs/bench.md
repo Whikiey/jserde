@@ -39,3 +39,16 @@ int-array-25000000  100000027 B     3598.53 MB/s  repeats=300 items=1 len=250000
 - Linux 上 bench 末尾会打印 `/proc/self/status` 的 `VmHWM`，以该值为最终复核；采样方法不同会有小幅差异。
 - 单次吞吐约 3.5–5.9 GB/s（随重复次数与页缓存波动）；小对象吞吐受固定开销影响，不代表大对象吞吐。
 - 该 bench 不依赖 criterion，可离线运行。
+
+## 回归门禁（P9-30）
+
+nightly workflow 的 `bench-gate` job 执行：
+
+```bash
+python3 docs/bench_gate.py
+```
+
+- 基线在 `docs/bench-baseline.json`：`threshold = 0.35`，即必需指标（`block-100MB`、`int-array-25000000`）不得低于观测值的 **35%**（约 2.8× 回归才失败）；阈值故意放宽，只拦严重退化，不拦机器噪声。
+- `int[]` 峰值 RSS（Linux `VmHWM`）必须 **< 3×** 输入大小；其他平台无 `VmHWM` 时跳过并提示。
+- 脚本会打印小对象指标供参考，但只对合成块流与真实 `int[]` 做门禁；本地也可直接运行。
+- 若需临时放宽/收紧，使用 `python3 docs/bench_gate.py --threshold 0.5`。

@@ -1,0 +1,17 @@
+{
+  "schema": "jser-bench/1",
+  "note": "Observed decode throughput from docs/bench.md; nightly CI requires >= threshold * observed for the required metrics.",
+  "threshold": 0.35,
+  "max_rss_ratio": 3.0,
+  "observed_mbps": {
+    "string-70k": 2235.80,
+    "point": 116.59,
+    "hashmap": 139.79,
+    "block-100MB": 4787.37,
+    "int-array-25000000": 3598.53
+  },
+  "required": [
+    "block-100MB",
+    "int-array-25000000"
+  ]
+}

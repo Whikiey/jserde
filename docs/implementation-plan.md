@@ -433,11 +433,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-27 完成：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；`emit.rs` 重编码全部 fixture（`build/rust/all/`，可用 `JSER_EMIT_DIR` 覆盖）；`interop.sh` 与 `tests/interop.rs` 逐例 Java 读回（36 例 + 构造/typed/derive/serde） | P9-27 |
 | 2026-11-04 | P9-13 完成：新增 `direct.rs`（`Serializer`/`Deserializer` 直连 `JValue`），`to_vec`/`from_slice` 及 map/set/enum/multi-root 均去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图；13 个 serde 测试全绿 | P9-13 |
 | 2026-11-04 | P9-28/29 完成：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77 job、i686 `cargo check`；`rust-version` 校准为 1.77；新增 `deny.toml`（licenses/bans/sources/advisories）与 cargo-deny job | P9-28/29 |
+| 2026-11-04 | P9-30 完成：新增 `docs/bench-baseline.json` 与 `docs/bench_gate.py`，nightly 增加 `bench-gate`（35% 吞吐阈值、`int[]` RSS <3×）；本机门禁通过（Windows 无 `VmHWM` 时跳过 RSS） | P9-30 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **144 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **144 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -513,7 +514,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-27 | `AC-02` 逐类覆盖：`Verify.java` 增加 `--read`/`--sequence`/`--primitives`/`--blocks`/`--array`，`emit.rs` 重编码全部 fixture；`interop.sh` 与 `tests/interop.rs` 逐例读回——✅ 已实现（36 例） | 高 / M |
 | P9-28 | CI：MSRV 1.77 job、i686 `cargo check` job、Linux/macOS/Windows test matrix——✅ 已实现（`.github/workflows/ci.yml`） | 中 / M |
 | P9-29 | `cargo-deny`/依赖审计——✅ 已实现：`deny.toml`（licenses/bans/sources/advisories）+ CI `cargo-deny-action` | 中 / S |
-| P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组） | 低 / S |
+| P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组）——✅ 已实现：`docs/bench-baseline.json` + `docs/bench_gate.py` + nightly `bench-gate` job（35% 阈值、`int[]` RSS <3×） | 低 / S |
 | P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合 | 中 / M |
 | P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题（目标 Java 版本/发布/性能数值） | 低 / S |
 | P9-33 | 混合嵌套矩阵：Map × 数组 × 自定义类（含共享引用/环）的 fixture 与回归；先补 Rust 构造用例（`tests/nesting.rs`），JDK fixture 随 P8-3 生成 | 中 / S |
