@@ -29,6 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "y",
@@ -37,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
         ],
     };

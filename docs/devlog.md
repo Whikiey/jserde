@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 13:45 · feat: serde 枚举字段与根（P9-9，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `jser-serde` 新增 `EnumConstant`/`EnumSchema`（serde 名 ↔ Java 常量名映射），`SchemaField` 增加 `enumeration`；编码生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），解码校验类名并按映射回 serde 字符串。
+  - 新增根入口 `to_vec_enum`/`from_slice_enum`；`validate_schema` 校验枚举非空、常量唯一、与 `class_name1` 描述符一致。
+  - 测试：`Palette{name, color}` 枚举字段往返与图断言（类名/常量/flags/SUID/super）、`Color` 枚举根往返。
+- **验证**：`cargo test --workspace` **141 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加枚举字段/根用例（`SchemaField` 无 `enumeration`、`to_vec_enum` 不存在）；Green：实现 schema 与编解码后全绿。
+
+---
+
 ## 2026-11-04 13:30 · feat: java.time 余项 Year/YearMonth/MonthDay/Period（P8-5，TDD）
 
 - **提交**：本次（hash 见 `git log`）

@@ -179,3 +179,4 @@
 | 2026-11-04 | P9-7/8：serde 支持 Map/Set 字段（HashMap/LinkedHashMap/HashSet）与 Map/Set 根；新增 LinkedHashMap 写侧构造器；仍不支持对象数组/环/TC_RESET/多根 | P9-7/8 |
 | 2026-11-04 | P9-16：unit-only enum derive（`TC_ENUM`、flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 互通 | P9-16 |
 | 2026-11-04 | P8-5：新增 `object/42`（Year/YearMonth/MonthDay/Period）与对应 `BuiltinValue` 语义；manifest 35 例/75078 字节；`build_manifest.py` 支持 Windows 路径 | P8-5 |
+| 2026-11-04 | P9-9：serde 支持枚举字段（serde↔Java 常量映射）与枚举根（`to_vec_enum`/`from_slice_enum`） | P9-9 |

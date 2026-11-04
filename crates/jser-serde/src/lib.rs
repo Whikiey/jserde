@@ -4,9 +4,11 @@
 //! this crate requires an explicit [`JavaSchema`]. It supports a **single root
 //! POJO** whose fields may be scalars, `String`, `Option<T>`, arrays, nested
 //! POJOs ([`SchemaField::nested`]), `HashMap`/`LinkedHashMap` fields
-//! ([`SchemaField::map`]) and `HashSet` fields ([`SchemaField::set`]).
+//! ([`SchemaField::map`]), `HashSet` fields ([`SchemaField::set`]) and Java
+//! enums ([`SchemaField::enumeration`]).
 //! Map/set roots are available through [`to_vec_map`]/[`from_slice_map`] and
-//! [`to_vec_set`]/[`from_slice_set`]. Cycles, shared references, `TC_RESET`,
+//! [`to_vec_set`]/[`from_slice_set`]; enum roots through
+//! [`to_vec_enum`]/[`from_slice_enum`]. Cycles, shared references, `TC_RESET`,
 //! multiple roots and arrays of objects are rejected.
 
 use jser::builtin::{
@@ -41,6 +43,44 @@ pub struct MapSchema {
     pub value: SchemaValue,
 }
 
+/// One serde-name ↔ Java-constant mapping for [`EnumSchema`].
+#[derive(Debug, Clone)]
+pub struct EnumConstant {
+    /// Name serde uses in JSON (usually the Rust variant name).
+    pub serde: &'static str,
+    /// Java enum constant name (usually UPPER_SNAKE).
+    pub java: &'static str,
+}
+
+/// Schema of a Java enum (`TC_ENUM`, SUID 0, flags `0x12`).
+#[derive(Debug, Clone)]
+pub struct EnumSchema {
+    pub class: &'static str,
+    pub constants: Vec<EnumConstant>,
+}
+
+impl EnumSchema {
+    fn java_name(&self, serde: &str) -> Result<&'static str> {
+        self.constants
+            .iter()
+            .find(|constant| constant.serde == serde)
+            .map(|constant| constant.java)
+            .ok_or_else(|| Error::FieldMismatch {
+                message: format!("unknown enum constant `{serde}` for `{}`", self.class),
+            })
+    }
+
+    fn serde_name(&self, java: &str) -> Result<&'static str> {
+        self.constants
+            .iter()
+            .find(|constant| constant.java == java)
+            .map(|constant| constant.serde)
+            .ok_or_else(|| Error::FieldMismatch {
+                message: format!("unknown Java enum constant `{java}` for `{}`", self.class),
+            })
+    }
+}
+
 /// One field of a Java class exposed to serde.
 #[derive(Debug, Clone)]
 pub struct SchemaField {
@@ -51,10 +91,12 @@ pub struct SchemaField {
     pub class_name1: Option<&'static str>,
     /// Schema of a nested POJO field; `None` for scalars, String and arrays.
     pub nested: Option<Box<JavaSchema>>,
-    /// Map field (`HashMap`/`LinkedHashMap`); mutually exclusive with nested/set.
+    /// Map field (`HashMap`/`LinkedHashMap`); mutually exclusive with nested/set/enum.
     pub map: Option<Box<MapSchema>>,
-    /// Set field (`HashSet`); mutually exclusive with nested/map.
+    /// Set field (`HashSet`); mutually exclusive with nested/map/enum.
     pub set: Option<Box<SchemaValue>>,
+    /// Enum field (`TC_ENUM`); mutually exclusive with nested/map/set.
+    pub enumeration: Option<Box<EnumSchema>>,
 }
 
 /// Explicit Java class metadata for the serde bridge.
@@ -80,16 +122,17 @@ fn validate_schema(schema: &JavaSchema) -> Result<()> {
     for field in &schema.fields {
         let layouts = u8::from(field.nested.is_some())
             + u8::from(field.map.is_some())
-            + u8::from(field.set.is_some());
+            + u8::from(field.set.is_some())
+            + u8::from(field.enumeration.is_some());
         if layouts > 1 {
             return Err(Error::InvalidSchema(format!(
-                "field `{}` has conflicting nested/map/set layouts",
+                "field `{}` has conflicting nested/map/set/enum layouts",
                 field.name
             )));
         }
         if layouts > 0 && field.typecode != FieldType::Object {
             return Err(Error::InvalidSchema(format!(
-                "field `{}` with nested/map/set must have typecode Object",
+                "field `{}` with nested/map/set/enum must have typecode Object",
                 field.name
             )));
         }
@@ -114,6 +157,38 @@ fn validate_schema(schema: &JavaSchema) -> Result<()> {
                 )));
             }
             validate_value(element, false)?;
+        }
+        if let Some(enumeration) = &field.enumeration {
+            validate_enum(enumeration)?;
+            if let Some(descriptor) = field.class_name1 {
+                let expected = format!("L{};", enumeration.class.replace('.', "/"));
+                if descriptor != expected {
+                    return Err(Error::InvalidSchema(format!(
+                        "enum field `{}` descriptor `{descriptor}` does not match `{expected}`",
+                        field.name
+                    )));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_enum(schema: &EnumSchema) -> Result<()> {
+    if schema.constants.is_empty() {
+        return Err(Error::InvalidSchema(format!(
+            "enum `{}` needs at least one constant",
+            schema.class
+        )));
+    }
+    let mut serde_names = std::collections::HashSet::new();
+    let mut java_names = std::collections::HashSet::new();
+    for constant in &schema.constants {
+        if !serde_names.insert(constant.serde) || !java_names.insert(constant.java) {
+            return Err(Error::InvalidSchema(format!(
+                "enum `{}` has duplicate constants",
+                schema.class
+            )));
         }
     }
     Ok(())
@@ -151,7 +226,9 @@ fn encode_object(value: &Value, schema: &JavaSchema, graph: &mut Graph) -> Resul
         let raw = object.get(field.name).ok_or_else(|| Error::FieldMismatch {
             message: format!("serde value has no field `{}`", field.name),
         })?;
-        let value = if let Some(map) = &field.map {
+        let value = if let Some(enumeration) = &field.enumeration {
+            encode_enum(raw, enumeration, graph)?
+        } else if let Some(map) = &field.map {
             encode_map(raw, map, field.class_name1, graph)?
         } else if let Some(element) = &field.set {
             encode_set(raw, element, graph)?
@@ -162,10 +239,16 @@ fn encode_object(value: &Value, schema: &JavaSchema, graph: &mut Graph) -> Resul
                 None => json_to_jvalue(raw, field.typecode, field.class_name1, graph)?,
             }
         };
+        let class_name1 = field.class_name1.map(str::to_owned).or_else(|| {
+            field
+                .enumeration
+                .as_ref()
+                .map(|enumeration| format!("L{};", enumeration.class.replace('.', "/")))
+        });
         field_descs.push(FieldDesc {
             name: field.name.to_owned(),
             typecode: field.typecode,
-            class_name1: field.class_name1.map(str::to_owned),
+            class_name1,
             class_name_handle: None,
         });
         fields.push((field.name.to_owned(), value));
@@ -223,7 +306,9 @@ fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<V
     let mut object = Map::with_capacity(schema.fields.len());
     for field in &schema.fields {
         let field_value = graph.require_field(value, field.name)?;
-        let json = if let Some(map) = &field.map {
+        let json = if let Some(enumeration) = &field.enumeration {
+            decode_enum(graph, field_value, enumeration)?
+        } else if let Some(map) = &field.map {
             decode_map(graph, field_value, map)?
         } else if let Some(element) = &field.set {
             decode_set(graph, field_value, element)?
@@ -444,6 +529,82 @@ pub fn from_slice_set<T: DeserializeOwned>(
     validate_value(element, false)?;
     let graph = decode_with_allowlist(bytes, allowlist)?;
     let json = decode_set(&graph, &graph.items()[0], element)?;
+    serde_json::from_value(json).map_err(serde_error)
+}
+
+fn encode_enum(value: &Value, schema: &EnumSchema, graph: &mut Graph) -> Result<JValue> {
+    if value.is_null() {
+        return Ok(JValue::Null);
+    }
+    let serde_name = value
+        .as_str()
+        .ok_or_else(|| type_error("a string for an enum field"))?;
+    let java_name = schema.java_name(serde_name)?;
+
+    let enum_desc = graph.add_class_desc(ClassDesc {
+        name: "java.lang.Enum".to_owned(),
+        suid: 0,
+        flags: 0x12,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: schema.class.to_owned(),
+        suid: 0,
+        flags: 0x12,
+        fields: Vec::new(),
+        super_desc: Some(enum_desc),
+        annotations: Vec::new(),
+    })?;
+    let constant = graph.new_string(java_name);
+    let handle = graph.new_enum(desc, constant)?;
+    Ok(JValue::Enum(handle))
+}
+
+fn decode_enum(graph: &Graph, value: &JValue, schema: &EnumSchema) -> Result<Value> {
+    if matches!(value, JValue::Null) {
+        return Ok(Value::Null);
+    }
+    let class = graph.class_name(value)?;
+    if class != schema.class {
+        return Err(Error::FieldMismatch {
+            message: format!(
+                "schema expects enum `{}`, stream contains `{class}`",
+                schema.class
+            ),
+        });
+    }
+    let java_name = graph
+        .as_enum_constant(value)?
+        .ok_or_else(|| type_error("a Java enum"))?;
+    Ok(Value::String(schema.serde_name(java_name)?.to_owned()))
+}
+
+/// Serialize a unit-variant value into a Java enum root object.
+pub fn to_vec_enum<T: Serialize>(value: &T, schema: &EnumSchema) -> Result<Vec<u8>> {
+    validate_enum(schema)?;
+    let json = serde_json::to_value(value).map_err(serde_error)?;
+    if !json.is_string() {
+        return Err(Error::FieldMismatch {
+            message: "enum root must serialize to a string (unit variant)".to_owned(),
+        });
+    }
+    let mut graph = Graph::new();
+    let value = encode_enum(&json, schema, &mut graph)?;
+    graph.add_item(value);
+    encode_stream(&graph)
+}
+
+/// Read a Java enum root and deserialize it into `T`.
+pub fn from_slice_enum<T: DeserializeOwned>(
+    bytes: &[u8],
+    schema: &EnumSchema,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_enum(schema)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    let json = decode_enum(&graph, &graph.items()[0], schema)?;
     serde_json::from_value(json).map_err(serde_error)
 }
 

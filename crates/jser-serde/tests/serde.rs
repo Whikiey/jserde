@@ -11,8 +11,8 @@ use std::collections::{HashMap, HashSet};
 use jser::Allowlist;
 use jser::FieldType;
 use jser_serde::{
-    from_slice, from_slice_map, from_slice_set, to_vec, to_vec_map, to_vec_set, JavaSchema,
-    MapSchema, SchemaField, SchemaValue,
+    from_slice, from_slice_enum, from_slice_map, from_slice_set, to_vec, to_vec_enum, to_vec_map,
+    to_vec_set, EnumConstant, EnumSchema, JavaSchema, MapSchema, SchemaField, SchemaValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +34,7 @@ fn point_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "y",
@@ -42,6 +43,7 @@ fn point_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
         ],
     }
@@ -104,6 +106,7 @@ fn serde_supports_array_fields() {
             nested: None,
             map: None,
             set: None,
+            enumeration: None,
         }],
     };
     let value = Numbers { a: vec![1, 2, 3] };
@@ -136,6 +139,7 @@ fn inner_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "label",
@@ -144,6 +148,7 @@ fn inner_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
         ],
     }
@@ -161,6 +166,7 @@ fn outer_schema() -> JavaSchema {
                 nested: Some(Box::new(inner_schema())),
                 map: None,
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "note",
@@ -169,6 +175,7 @@ fn outer_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: None,
+                enumeration: None,
             },
         ],
     }
@@ -238,6 +245,7 @@ fn collections_schema() -> JavaSchema {
                     value: int_value(),
                 })),
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "linked",
@@ -249,6 +257,7 @@ fn collections_schema() -> JavaSchema {
                     value: string_value(),
                 })),
                 set: None,
+                enumeration: None,
             },
             SchemaField {
                 name: "set",
@@ -257,6 +266,7 @@ fn collections_schema() -> JavaSchema {
                 nested: None,
                 map: None,
                 set: Some(Box::new(string_value())),
+                enumeration: None,
             },
         ],
     }
@@ -332,6 +342,7 @@ fn serde_supports_nested_pojo_values_in_maps() {
                 },
             })),
             set: None,
+            enumeration: None,
         }],
     };
 
@@ -386,4 +397,94 @@ fn serde_supports_map_and_set_roots() {
     let decoded: HashMap<i32, String> =
         from_slice_map(&bytes, &int_value(), &string_value(), &Allowlist::strict()).unwrap();
     assert_eq!(decoded, int_keys);
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+enum Color {
+    Red,
+    Green,
+    Blue,
+}
+
+fn color_schema() -> EnumSchema {
+    EnumSchema {
+        class: "example.Color",
+        constants: vec![
+            EnumConstant {
+                serde: "Red",
+                java: "RED",
+            },
+            EnumConstant {
+                serde: "Green",
+                java: "GREEN",
+            },
+            EnumConstant {
+                serde: "Blue",
+                java: "BLUE",
+            },
+        ],
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Palette {
+    name: String,
+    color: Color,
+}
+
+#[test]
+fn serde_supports_enum_fields() {
+    let schema = JavaSchema {
+        class: "example.Palette",
+        suid: 1,
+        fields: vec![
+            SchemaField {
+                name: "name",
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/lang/String;"),
+                nested: None,
+                map: None,
+                set: None,
+                enumeration: None,
+            },
+            SchemaField {
+                name: "color",
+                typecode: FieldType::Object,
+                class_name1: Some("Lexample/Color;"),
+                nested: None,
+                map: None,
+                set: None,
+                enumeration: Some(Box::new(color_schema())),
+            },
+        ],
+    };
+
+    let value = Palette {
+        name: "main".to_owned(),
+        color: Color::Green,
+    };
+    let bytes = to_vec(&value, &schema).unwrap();
+    let decoded: Palette = from_slice(&bytes, &schema, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = jser::decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let color = graph.require_field(&graph.items()[0], "color").unwrap();
+    assert_eq!(graph.class_name(color).unwrap(), "example.Color");
+    assert_eq!(graph.as_enum_constant(color).unwrap(), Some("GREEN"));
+    let desc = graph.descriptor_of(color).unwrap();
+    assert_eq!(desc.suid, 0);
+    assert_eq!(desc.flags, 0x12);
+    assert_eq!(
+        graph.descriptor(desc.super_desc.unwrap()).unwrap().name,
+        "java.lang.Enum"
+    );
+}
+
+#[test]
+fn serde_supports_enum_roots() {
+    let schema = color_schema();
+
+    let bytes = to_vec_enum(&Color::Blue, &schema).unwrap();
+    let decoded: Color = from_slice_enum(&bytes, &schema, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, Color::Blue);
 }
