@@ -38,6 +38,9 @@
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
+- `Graph::set_map_entry` (replace/append with primitive boxing) and
+  `set_array_element`; broader mutation tests (all scalars, maps, object
+  arrays, Java Mixed read-back).
 - Nightly bench regression gate (`docs/bench_gate.py`, baseline JSON,
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and

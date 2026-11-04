@@ -198,6 +198,25 @@ fn java_can_read_rust_written_streams() {
     )
     .unwrap();
 
+    let mixed = read_fixture("object/21");
+    let mut mutated_mixed = decode_fixture(&mixed).unwrap();
+    let value = mutated_mixed.items()[0].clone();
+    mutated_mixed
+        .set_field(&value, "i", JValue::Int(42))
+        .unwrap();
+    let text = mutated_mixed.new_string("changed");
+    mutated_mixed
+        .set_field(&value, "s", JValue::Str(text))
+        .unwrap();
+    mutated_mixed
+        .set_field(&value, "b", JValue::Bool(false))
+        .unwrap();
+    fs::write(
+        classes.join("mixed-mutated.ser"),
+        encode_stream(&mutated_mixed).unwrap(),
+    )
+    .unwrap();
+
     fs::write(
         classes.join("point-constructed.ser"),
         encode_stream(&constructed_point()).unwrap(),
@@ -260,6 +279,12 @@ fn java_can_read_rust_written_streams() {
         &classes.join("point-mutated.ser"),
         "Fixtures$Point",
         &["x=99", "y=2"],
+    );
+    run_java(
+        &classes,
+        &classes.join("mixed-mutated.ser"),
+        "Fixtures$Mixed",
+        &["i=42", "s=changed", "b=false"],
     );
     run_java(
         &classes,

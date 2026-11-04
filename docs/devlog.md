@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 15:50 · test: mutation 扩展与图修改 API（P9-31）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Graph::set_map_entry`：按值比较 key，替换已有条目或追加；primitive key/value 自动经 `box_primitive` 装箱；`insert_map_entry` 同样装箱。
+  - `Graph::set_array_element`：对象数组按下标替换；primitive 数组提示重建。
+  - `tests/mutation.rs` 新增：全部标量字段（byte/short/int/long/float/double/char/bool/String）修改、Map 替换与追加（含装箱校验）、`[Ljava.lang.String;` 元素替换；嵌套叶子修改已在 `tests/nested.rs` 覆盖。
+  - `tests/interop.rs` 增加 Mixed 的 `i/s/b` 修改后 Java `Verify` 读回（i=42、s=changed、b=false）。
+- **验证**：`cargo test -p jser --test mutation` 7 passed；interop 通过；全仓 **147 passed**；clippy/fmt 通过。
+- **TDD**：先加 Map 替换/数组元素用例（API 缺失、primitive 值编码损坏），再实现 API 与装箱后全绿。
+
+---
+
 ## 2026-11-04 15:35 · perf: nightly bench 门禁（P9-30）
 
 - **提交**：本次（hash 见 `git log`）

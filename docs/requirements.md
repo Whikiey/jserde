@@ -186,3 +186,4 @@
 | 2026-11-04 | P9-13：serde typed 路径改为直连 `JValue`（`direct.rs`），去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图 | P9-13 |
 | 2026-11-04 | P9-28/29：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77、i686 check；`rust-version` 校准为 1.77；新增 `deny.toml` 与 cargo-deny job | P9-28/29 |
 | 2026-11-04 | P9-30：新增 bench 基线 JSON 与 `docs/bench_gate.py`，nightly `bench-gate` 校验吞吐 ≥35% 基线、`int[]` RSS <3× | P9-30 |
+| 2026-11-04 | P9-31：新增 `set_map_entry`/`set_array_element`；mutation 覆盖全部标量、Map 替换/追加、对象数组；Java 读回 Mixed 三字段；全仓 147 passed | P9-31 |

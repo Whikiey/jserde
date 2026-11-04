@@ -314,7 +314,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 - **适用**：`testdata/fixtures/**` 的 34 个已提交用例；decode 后不改动 `Graph`。
 - **不适用**：新建的图、修改过字段/集合/引用的图；这些只要求"Java 读回语义相等"。
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
-- **防作弊**：mutation test（解码 → 改一个字段 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
+- **防作弊**：mutation test（解码 → 改字段/Map 条目/数组元素 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO/数组 → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
 - **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部 fixture 回放 + Java 读回（P9-27 后为 36 例）。
 
 ### 5.2 Allowlist（2026-11-04 定案）

@@ -314,6 +314,15 @@ pub(crate) enum ArrayData {
     Primitive { typecode: FieldType, bytes: Vec<u8> },
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum MapKey {
+    Str(String),
+    Int(i64),
+    Char(u16),
+    Bool(bool),
+    Null,
+}
+
 #[derive(Debug)]
 enum Slot {
     Desc(ClassDesc),
@@ -460,12 +469,182 @@ impl Graph {
         Ok(handle)
     }
 
+    /// Replace the value of an existing `HashMap`/`LinkedHashMap` entry.
+    ///
+    /// Returns `true` when an entry was replaced, `false` when a new entry was
+    /// appended (the header size is updated). Keys must be scalar or String;
+    /// they are compared by value.
+    pub fn set_map_entry(&mut self, map: &JValue, key: JValue, value: JValue) -> Result<bool> {
+        let target = self.map_key(&key)?;
+        let key = crate::builtin::box_primitive(self, key)?;
+        let value = crate::builtin::box_primitive(self, value)?;
+        let layer = self.hash_map_layer(map)?;
+        let JValue::Obj(handle) = map else {
+            unreachable!("hash_map_layer verified the object");
+        };
+
+        let position = {
+            let object = match self.slots.get(handle.0 as usize) {
+                Some(Slot::Obj(object)) => object,
+                _ => return Err(Error::BadHandle(handle.0)),
+            };
+            let class = &object.classes[layer];
+            let custom = class.custom.as_ref().ok_or_else(|| Error::FieldMismatch {
+                message: "java.util.HashMap has no custom data".to_owned(),
+            })?;
+            let mut position = None;
+            let mut index = 1;
+            while index + 1 < custom.len() {
+                if self.map_key(&custom[index])? == target {
+                    position = Some(index);
+                    break;
+                }
+                index += 2;
+            }
+            position
+        };
+
+        let object = match self.slots.get_mut(handle.0 as usize) {
+            Some(Slot::Obj(object)) => object,
+            _ => return Err(Error::BadHandle(handle.0)),
+        };
+        let class = &mut object.classes[layer];
+        let custom = class.custom.as_mut().ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap has no custom data".to_owned(),
+        })?;
+
+        if let Some(index) = position {
+            custom[index + 1] = value;
+            return Ok(true);
+        }
+
+        let Some(JValue::Block(block)) = custom.first_mut() else {
+            return Err(Error::FieldMismatch {
+                message: "java.util.HashMap custom data has no header block".to_owned(),
+            });
+        };
+        if block.long || block.bytes.len() != 8 {
+            return Err(Error::FieldMismatch {
+                message: "java.util.HashMap header block must be 8 short-header bytes".to_owned(),
+            });
+        }
+        let size =
+            i32::from_be_bytes(
+                block.bytes[4..8]
+                    .try_into()
+                    .map_err(|_| Error::FieldMismatch {
+                        message: "java.util.HashMap header block is truncated".to_owned(),
+                    })?,
+            );
+        let size = size.checked_add(1).ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.HashMap entry count overflows".to_owned(),
+        })?;
+        block.bytes[4..8].copy_from_slice(&size.to_be_bytes());
+        custom.push(key);
+        custom.push(value);
+        Ok(false)
+    }
+
+    /// Replace one element of an object array.
+    ///
+    /// Primitive arrays are stored as raw wire bytes; rebuild those instead of
+    /// mutating an individual element.
+    pub fn set_array_element(&mut self, array: &JValue, index: usize, value: JValue) -> Result<()> {
+        let JValue::Arr(handle) = array else {
+            return Err(Error::FieldMismatch {
+                message: "set_array_element expects an array".to_owned(),
+            });
+        };
+
+        match self.slots.get_mut(handle.0 as usize) {
+            Some(Slot::Arr {
+                data: ArrayData::Values(values),
+                ..
+            }) => {
+                let slot = values.get_mut(index).ok_or_else(|| Error::FieldMismatch {
+                    message: format!("array index {index} is out of range"),
+                })?;
+                *slot = value;
+                Ok(())
+            }
+            Some(Slot::Arr {
+                data: ArrayData::Primitive { typecode, .. },
+                ..
+            }) => Err(Error::UnsupportedClass(format!(
+                "cannot mutate a {typecode:?} primitive array element; rebuild the array"
+            ))),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    fn hash_map_layer(&self, map: &JValue) -> Result<usize> {
+        let JValue::Obj(handle) = map else {
+            return Err(Error::FieldMismatch {
+                message: "map mutation expects a map object".to_owned(),
+            });
+        };
+        let object = match self.slots.get(handle.0 as usize) {
+            Some(Slot::Obj(object)) => object,
+            _ => return Err(Error::BadHandle(handle.0)),
+        };
+        object
+            .classes
+            .iter()
+            .position(|class| {
+                self.descriptor(class.desc)
+                    .map(|desc| desc.name == crate::builtin::HASH_MAP)
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| Error::FieldMismatch {
+                message: "object is not a java.util.HashMap".to_owned(),
+            })
+    }
+
+    fn map_key(&self, value: &JValue) -> Result<MapKey> {
+        Ok(match value {
+            JValue::Str(handle) => MapKey::Str(self.str(*handle)?.to_owned()),
+            JValue::Byte(_) | JValue::Short(_) | JValue::Int(_) | JValue::Long(_) => {
+                MapKey::Int(self.as_i64(value)?)
+            }
+            JValue::Char(value) => MapKey::Char(*value),
+            JValue::Bool(value) => MapKey::Bool(*value),
+            JValue::Null => MapKey::Null,
+            JValue::Obj(_) => {
+                let class = self.class_name(value)?.to_owned();
+                match class.as_str() {
+                    "java.lang.Boolean" => {
+                        MapKey::Bool(self.as_bool(self.require_field(value, "value")?)?)
+                    }
+                    "java.lang.Byte" | "java.lang.Short" | "java.lang.Integer"
+                    | "java.lang.Long" => {
+                        MapKey::Int(self.as_i64(self.require_field(value, "value")?)?)
+                    }
+                    "java.lang.Character" => {
+                        MapKey::Char(self.as_char(self.require_field(value, "value")?)?)
+                    }
+                    other => {
+                        return Err(Error::UnsupportedClass(format!(
+                            "map keys of class `{other}` are not supported for mutation"
+                        )))
+                    }
+                }
+            }
+            _ => {
+                return Err(Error::UnsupportedClass(
+                    "map keys must be scalar or String".to_owned(),
+                ))
+            }
+        })
+    }
+
     /// Append one entry to a decoded `HashMap`/`LinkedHashMap`.
     ///
     /// The custom-data header is updated in place; Java's `readObject` reads
     /// `capacity`/`size` and reconstructs the table, so the caller does not have
     /// to rebuild the whole map.
     pub fn insert_map_entry(&mut self, map: &JValue, key: JValue, value: JValue) -> Result<()> {
+        let key = crate::builtin::box_primitive(self, key)?;
+        let value = crate::builtin::box_primitive(self, value)?;
         let JValue::Obj(handle) = map else {
             return Err(Error::FieldMismatch {
                 message: "insert_map_entry expects a map object".to_owned(),
