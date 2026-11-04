@@ -257,6 +257,91 @@ pub fn new_hash_map_entries(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -
     }])
 }
 
+/// Build a `java.util.LinkedHashMap` from already-built entry values.
+///
+/// `LinkedHashMap` adds an `accessOrder` field on top of `HashMap`; the entries
+/// live in the parent `HashMap` layer's custom block.
+pub fn new_linked_hash_map_entries(
+    graph: &mut Graph,
+    entries: Vec<(JValue, JValue)>,
+    access_order: bool,
+) -> Result<Handle> {
+    let size = i32::try_from(entries.len())
+        .map_err(|_| Error::InvalidSchema("LinkedHashMap has too many entries".to_owned()))?;
+    let capacity = table_size_for(entries.len())?;
+    let threshold = (capacity as f32 * 0.75) as i32;
+
+    let hash_map = graph.add_class_desc(ClassDesc {
+        name: HASH_MAP.to_owned(),
+        suid: 362_498_820_763_181_265,
+        flags: 0x03,
+        fields: vec![
+            FieldDesc {
+                name: "loadFactor".to_owned(),
+                typecode: FieldType::Float,
+                class_name1: None,
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "threshold".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            },
+        ],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+
+    let linked = graph.add_class_desc(ClassDesc {
+        name: LINKED_HASH_MAP.to_owned(),
+        suid: 3_801_124_242_820_219_131,
+        flags: 0x02,
+        fields: vec![FieldDesc {
+            name: "accessOrder".to_owned(),
+            typecode: FieldType::Boolean,
+            class_name1: None,
+            class_name_handle: None,
+        }],
+        super_desc: Some(hash_map),
+        annotations: Vec::new(),
+    })?;
+
+    let mut header = Vec::with_capacity(8);
+    header.extend_from_slice(&capacity.to_be_bytes());
+    header.extend_from_slice(&size.to_be_bytes());
+
+    let mut custom = Vec::with_capacity(1 + entries.len() * 2);
+    custom.push(JValue::Block(BlockData {
+        bytes: header,
+        long: false,
+    }));
+    for (key, value) in entries {
+        let key = box_primitive(graph, key)?;
+        let value = box_primitive(graph, value)?;
+        check_collection_value(&key, "LinkedHashMap key")?;
+        check_collection_value(&value, "LinkedHashMap value")?;
+        custom.push(key);
+        custom.push(value);
+    }
+
+    graph.new_object(vec![
+        ClassData {
+            desc: hash_map,
+            fields: vec![
+                ("loadFactor".to_owned(), JValue::Float(0.75)),
+                ("threshold".to_owned(), JValue::Int(threshold)),
+            ],
+            custom: Some(custom),
+        },
+        ClassData {
+            desc: linked,
+            fields: vec![("accessOrder".to_owned(), JValue::Bool(access_order))],
+            custom: None,
+        },
+    ])
+}
+
 /// Build a `java.util.ArrayList` from object elements.
 pub fn new_array_list(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
     let elements = box_elements(graph, elements)?;

@@ -15,6 +15,9 @@
 - Semantic views for `Date`, `BigInteger`, `BigDecimal` and `java.time`
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
+- serde bridge: Map/Set fields (`SchemaField::map`/`set`, HashMap/
+  LinkedHashMap/HashSet) plus map/set root helpers; nested POJO values in
+  maps; `LinkedHashMap` writer.
 - Derive inheritance via a `#[java(flatten)]` superclass field: the parent
   layer is written before the child layer with a shared `super_desc`.
 - Custom object arrays in derive (`Vec<Custom>` via `ARRAY_DESCRIPTOR`); array
@@ -33,8 +36,8 @@
 ### Known limitations
 
 - Generic `Externalizable`, dynamic proxies, `TC_CLASS`, RMI/JNDI are out of scope.
-- serde bridge: no Map/Set fields, object arrays, cycles/shared refs,
-  `TC_RESET` or multi-root streams.
+- serde bridge: no object arrays, cycles/shared refs, `TC_RESET` or
+  multi-root streams.
 - `Year`/`YearMonth`/`MonthDay`/`Period` semantic views are not implemented.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.

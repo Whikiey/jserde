@@ -144,7 +144,7 @@ pub trait JavaSerializable: Sized {
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组，或通过 `SchemaField::nested` 指向子 `JavaSchema`（可多层）。仍拒绝多元素流、`TC_RESET`、回指/环、未知类、Map/Set 字段与对象数组。
+`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）与 `HashSet`（`SchemaField::set`）；Map/Set 根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set` 提供。仍拒绝多元素流、`TC_RESET`、回指/环、未知类与对象数组。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
@@ -349,7 +349,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ❌ 未实现（fixture 未覆盖） | — |
 | `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
 
-serde 桥额外限制：单根 POJO；字段限标量/String/`Option`/数组/递归嵌套 POJO（`SchemaField::nested`）；不支持 Map/Set 字段、对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
+serde 桥额外限制：单根 POJO；字段可为标量/String/`Option`/数组、递归嵌套 POJO（`SchemaField::nested`）、Map（`SchemaField::map`，HashMap/LinkedHashMap）与 Set（`SchemaField::set`，HashSet）；Map/Set 根有独立入口；不支持对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
 
 嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>` 与继承（`#[java(flatten)]`）；serde 通过递归 `SchemaField::nested` 支持多层 POJO。
 

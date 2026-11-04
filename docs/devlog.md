@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 12:55 · feat: serde Map/Set 字段与根（P9-7/8，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `jser-serde`：新增 `SchemaValue`/`MapSchema`，`SchemaField` 增加 `map`/`set`；递归编码/解码 Map（HashMap/LinkedHashMap）与 Set（HashSet），Map 值可嵌套 POJO；Map 键限标量/String（JSON object 键）。
+  - 新增根入口 `to_vec_map`/`from_slice_map`（`linked` 参数）与 `to_vec_set`/`from_slice_set`。
+  - `builtin::new_linked_hash_map_entries`：HashMap 父层 + LinkedHashMap `accessOrder` 子层。
+  - 测试：Map/LinkedHashMap/HashSet 字段往返与 graph 断言、Map 值嵌套 POJO、Map/Set 根（含 `HashMap<i32, String>` 键）。
+- **验证**：`cargo test --workspace` **134 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 3 个 serde 用例（`SchemaField` 无 `map`/`set`、`to_vec_map` 不存在）；Green：实现 schema 扩展与递归编解码后全绿。
+
+---
+
 ## 2026-11-04 12:45 · test: interop 临时目录改用 CARGO_TARGET_TMPDIR
 
 - **提交**：本次（hash 见 `git log`）

@@ -6,9 +6,14 @@ mod common {
     }
 }
 
+use std::collections::{HashMap, HashSet};
+
 use jser::Allowlist;
 use jser::FieldType;
-use jser_serde::{from_slice, to_vec, JavaSchema, SchemaField};
+use jser_serde::{
+    from_slice, from_slice_map, from_slice_set, to_vec, to_vec_map, to_vec_set, JavaSchema,
+    MapSchema, SchemaField, SchemaValue,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,12 +32,16 @@ fn point_schema() -> JavaSchema {
                 typecode: FieldType::Int,
                 class_name1: None,
                 nested: None,
+                map: None,
+                set: None,
             },
             SchemaField {
                 name: "y",
                 typecode: FieldType::Int,
                 class_name1: None,
                 nested: None,
+                map: None,
+                set: None,
             },
         ],
     }
@@ -93,6 +102,8 @@ fn serde_supports_array_fields() {
             typecode: FieldType::Array,
             class_name1: Some("[I"),
             nested: None,
+            map: None,
+            set: None,
         }],
     };
     let value = Numbers { a: vec![1, 2, 3] };
@@ -113,6 +124,31 @@ struct Outer {
     note: String,
 }
 
+fn inner_schema() -> JavaSchema {
+    JavaSchema {
+        class: "example.Inner",
+        suid: 1,
+        fields: vec![
+            SchemaField {
+                name: "id",
+                typecode: FieldType::Int,
+                class_name1: None,
+                nested: None,
+                map: None,
+                set: None,
+            },
+            SchemaField {
+                name: "label",
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/lang/String;"),
+                nested: None,
+                map: None,
+                set: None,
+            },
+        ],
+    }
+}
+
 fn outer_schema() -> JavaSchema {
     JavaSchema {
         class: "example.Outer",
@@ -122,30 +158,17 @@ fn outer_schema() -> JavaSchema {
                 name: "inner",
                 typecode: FieldType::Object,
                 class_name1: Some("Lexample/Inner;"),
-                nested: Some(Box::new(JavaSchema {
-                    class: "example.Inner",
-                    suid: 1,
-                    fields: vec![
-                        SchemaField {
-                            name: "id",
-                            typecode: FieldType::Int,
-                            class_name1: None,
-                            nested: None,
-                        },
-                        SchemaField {
-                            name: "label",
-                            typecode: FieldType::Object,
-                            class_name1: Some("Ljava/lang/String;"),
-                            nested: None,
-                        },
-                    ],
-                })),
+                nested: Some(Box::new(inner_schema())),
+                map: None,
+                set: None,
             },
             SchemaField {
                 name: "note",
                 typecode: FieldType::Object,
                 class_name1: Some("Ljava/lang/String;"),
                 nested: None,
+                map: None,
+                set: None,
             },
         ],
     }
@@ -175,4 +198,192 @@ fn serde_supports_nested_objects() {
             .unwrap(),
         5
     );
+}
+
+fn string_value() -> SchemaValue {
+    SchemaValue {
+        typecode: FieldType::Object,
+        class_name1: Some("Ljava/lang/String;"),
+        nested: None,
+    }
+}
+
+fn int_value() -> SchemaValue {
+    SchemaValue {
+        typecode: FieldType::Int,
+        class_name1: None,
+        nested: None,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Collections {
+    map: HashMap<String, i32>,
+    linked: HashMap<String, String>,
+    set: HashSet<String>,
+}
+
+fn collections_schema() -> JavaSchema {
+    JavaSchema {
+        class: "example.Collections",
+        suid: 1,
+        fields: vec![
+            SchemaField {
+                name: "map",
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/util/HashMap;"),
+                nested: None,
+                map: Some(Box::new(MapSchema {
+                    key: string_value(),
+                    value: int_value(),
+                })),
+                set: None,
+            },
+            SchemaField {
+                name: "linked",
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/util/LinkedHashMap;"),
+                nested: None,
+                map: Some(Box::new(MapSchema {
+                    key: string_value(),
+                    value: string_value(),
+                })),
+                set: None,
+            },
+            SchemaField {
+                name: "set",
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/util/HashSet;"),
+                nested: None,
+                map: None,
+                set: Some(Box::new(string_value())),
+            },
+        ],
+    }
+}
+
+#[test]
+fn serde_supports_map_and_set_fields() {
+    let mut allowlist = Allowlist::strict();
+    allowlist.add("example.*").unwrap();
+
+    let value = Collections {
+        map: [("b".to_owned(), 2), ("a".to_owned(), 1)]
+            .into_iter()
+            .collect(),
+        linked: [
+            ("x".to_owned(), "1".to_owned()),
+            ("y".to_owned(), "2".to_owned()),
+        ]
+        .into_iter()
+        .collect(),
+        set: ["u".to_owned(), "v".to_owned()].into_iter().collect(),
+    };
+
+    let bytes = to_vec(&value, &collections_schema()).unwrap();
+    let decoded: Collections = from_slice(&bytes, &collections_schema(), &allowlist).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = jser::decode_stream_with_allowlist(&bytes, &allowlist).unwrap();
+    let item = &graph.items()[0];
+
+    let map = graph
+        .as_map(graph.require_field(item, "map").unwrap())
+        .unwrap()
+        .unwrap();
+    assert!(!map.ordered);
+    assert_eq!(map.entries.len(), 2);
+
+    let linked = graph
+        .as_map(graph.require_field(item, "linked").unwrap())
+        .unwrap()
+        .unwrap();
+    assert!(linked.ordered);
+    assert_eq!(linked.entries.len(), 2);
+
+    let set = graph
+        .as_set(graph.require_field(item, "set").unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(set.len(), 2);
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct WithInnerMap {
+    by_name: HashMap<String, Inner>,
+}
+
+#[test]
+fn serde_supports_nested_pojo_values_in_maps() {
+    let schema = JavaSchema {
+        class: "example.WithInnerMap",
+        suid: 1,
+        fields: vec![SchemaField {
+            name: "by_name",
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/util/HashMap;"),
+            nested: None,
+            map: Some(Box::new(MapSchema {
+                key: string_value(),
+                value: SchemaValue {
+                    typecode: FieldType::Object,
+                    class_name1: Some("Lexample/Inner;"),
+                    nested: Some(Box::new(inner_schema())),
+                },
+            })),
+            set: None,
+        }],
+    };
+
+    let value = WithInnerMap {
+        by_name: [(
+            "a".to_owned(),
+            Inner {
+                id: 1,
+                label: "x".to_owned(),
+            },
+        )]
+        .into_iter()
+        .collect(),
+    };
+    let bytes = to_vec(&value, &schema).unwrap();
+    let decoded: WithInnerMap = from_slice(&bytes, &schema, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = jser::decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let item = &graph.items()[0];
+    let by_name = graph.require_field(item, "by_name").unwrap();
+    let view = graph.as_map(by_name).unwrap().unwrap();
+    let (_, inner) = view.entries[0];
+    assert_eq!(graph.class_name(inner).unwrap(), "example.Inner");
+}
+
+#[test]
+fn serde_supports_map_and_set_roots() {
+    let map: HashMap<String, i32> = [("a".to_owned(), 1), ("b".to_owned(), 2)]
+        .into_iter()
+        .collect();
+    let bytes = to_vec_map(&map, &string_value(), &int_value(), false).unwrap();
+    let decoded: HashMap<String, i32> =
+        from_slice_map(&bytes, &string_value(), &int_value(), &Allowlist::strict()).unwrap();
+    assert_eq!(decoded, map);
+
+    let linked: HashMap<String, i32> = [("a".to_owned(), 1)].into_iter().collect();
+    let bytes = to_vec_map(&linked, &string_value(), &int_value(), true).unwrap();
+    let graph = jser::decode_stream(&bytes).unwrap();
+    assert!(graph.as_map(&graph.items()[0]).unwrap().unwrap().ordered);
+
+    let set: HashSet<String> = ["u".to_owned(), "v".to_owned()].into_iter().collect();
+    let bytes = to_vec_set(&set, &string_value()).unwrap();
+    let decoded: HashSet<String> =
+        from_slice_set(&bytes, &string_value(), &Allowlist::strict()).unwrap();
+    assert_eq!(decoded, set);
+
+    let int_keys: HashMap<i32, String> = [(1, "one".to_owned()), (2, "two".to_owned())]
+        .into_iter()
+        .collect();
+    let bytes = to_vec_map(&int_keys, &int_value(), &string_value(), false).unwrap();
+    let decoded: HashMap<i32, String> =
+        from_slice_map(&bytes, &int_value(), &string_value(), &Allowlist::strict()).unwrap();
+    assert_eq!(decoded, int_keys);
 }

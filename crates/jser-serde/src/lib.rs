@@ -2,11 +2,16 @@
 //!
 //! serde cannot carry Java class names, type codes or `serialVersionUID`, so
 //! this crate requires an explicit [`JavaSchema`]. It supports a **single root
-//! POJO** whose fields may be scalars, `String`, `Option<T>`, arrays, or nested
-//! POJOs via [`SchemaField::nested`]. Cycles, shared references, `TC_RESET`,
-//! multiple roots, Map/Set fields and arrays of objects are rejected.
+//! POJO** whose fields may be scalars, `String`, `Option<T>`, arrays, nested
+//! POJOs ([`SchemaField::nested`]), `HashMap`/`LinkedHashMap` fields
+//! ([`SchemaField::map`]) and `HashSet` fields ([`SchemaField::set`]).
+//! Map/set roots are available through [`to_vec_map`]/[`from_slice_map`] and
+//! [`to_vec_set`]/[`from_slice_set`]. Cycles, shared references, `TC_RESET`,
+//! multiple roots and arrays of objects are rejected.
 
-use jser::builtin::new_java_array;
+use jser::builtin::{
+    new_hash_map_entries, new_hash_set, new_java_array, new_linked_hash_map_entries,
+};
 use jser::{
     decode_with_allowlist, encode_stream, Allowlist, ClassData, ClassDesc, Error, FieldDesc,
     FieldType, Graph, JValue, Result,
@@ -14,6 +19,27 @@ use jser::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{Map, Value};
+
+const HASH_MAP: &str = "Ljava/util/HashMap;";
+const LINKED_HASH_MAP: &str = "Ljava/util/LinkedHashMap;";
+const HASH_SET: &str = "Ljava/util/HashSet;";
+
+/// Schema of one value inside a map or set.
+#[derive(Debug, Clone)]
+pub struct SchemaValue {
+    pub typecode: FieldType,
+    /// JVM descriptor for object/array values.
+    pub class_name1: Option<&'static str>,
+    /// Nested POJO schema for object values.
+    pub nested: Option<Box<JavaSchema>>,
+}
+
+/// Map field layout; `HashMap` unless the field descriptor is `LinkedHashMap`.
+#[derive(Debug, Clone)]
+pub struct MapSchema {
+    pub key: SchemaValue,
+    pub value: SchemaValue,
+}
 
 /// One field of a Java class exposed to serde.
 #[derive(Debug, Clone)]
@@ -25,6 +51,10 @@ pub struct SchemaField {
     pub class_name1: Option<&'static str>,
     /// Schema of a nested POJO field; `None` for scalars, String and arrays.
     pub nested: Option<Box<JavaSchema>>,
+    /// Map field (`HashMap`/`LinkedHashMap`); mutually exclusive with nested/set.
+    pub map: Option<Box<MapSchema>>,
+    /// Set field (`HashSet`); mutually exclusive with nested/map.
+    pub set: Option<Box<SchemaValue>>,
 }
 
 /// Explicit Java class metadata for the serde bridge.
@@ -48,15 +78,60 @@ pub fn to_vec<T: Serialize>(value: &T, schema: &JavaSchema) -> Result<Vec<u8>> {
 
 fn validate_schema(schema: &JavaSchema) -> Result<()> {
     for field in &schema.fields {
-        if field.nested.is_some() && field.typecode != FieldType::Object {
+        let layouts = u8::from(field.nested.is_some())
+            + u8::from(field.map.is_some())
+            + u8::from(field.set.is_some());
+        if layouts > 1 {
             return Err(Error::InvalidSchema(format!(
-                "nested field `{}` must have typecode Object",
+                "field `{}` has conflicting nested/map/set layouts",
+                field.name
+            )));
+        }
+        if layouts > 0 && field.typecode != FieldType::Object {
+            return Err(Error::InvalidSchema(format!(
+                "field `{}` with nested/map/set must have typecode Object",
                 field.name
             )));
         }
         if let Some(nested) = &field.nested {
             validate_schema(nested)?;
         }
+        if let Some(map) = &field.map {
+            if !matches!(field.class_name1, Some(HASH_MAP) | Some(LINKED_HASH_MAP)) {
+                return Err(Error::InvalidSchema(format!(
+                    "map field `{}` needs a HashMap/LinkedHashMap descriptor",
+                    field.name
+                )));
+            }
+            validate_value(&map.key, true)?;
+            validate_value(&map.value, false)?;
+        }
+        if let Some(element) = &field.set {
+            if field.class_name1 != Some(HASH_SET) {
+                return Err(Error::InvalidSchema(format!(
+                    "set field `{}` needs a HashSet descriptor",
+                    field.name
+                )));
+            }
+            validate_value(element, false)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_value(value: &SchemaValue, is_key: bool) -> Result<()> {
+    if value.nested.is_some() && value.typecode != FieldType::Object {
+        return Err(Error::InvalidSchema(
+            "nested value must have typecode Object".to_owned(),
+        ));
+    }
+    if is_key && (value.nested.is_some() || value.typecode == FieldType::Array) {
+        return Err(Error::InvalidSchema(
+            "map keys must be scalar or String".to_owned(),
+        ));
+    }
+    if let Some(nested) = &value.nested {
+        validate_schema(nested)?;
     }
     Ok(())
 }
@@ -76,10 +151,16 @@ fn encode_object(value: &Value, schema: &JavaSchema, graph: &mut Graph) -> Resul
         let raw = object.get(field.name).ok_or_else(|| Error::FieldMismatch {
             message: format!("serde value has no field `{}`", field.name),
         })?;
-        let value = match &field.nested {
-            Some(nested) if !raw.is_null() => encode_object(raw, nested, graph)?,
-            Some(_) => JValue::Null,
-            None => json_to_jvalue(raw, field.typecode, field.class_name1, graph)?,
+        let value = if let Some(map) = &field.map {
+            encode_map(raw, map, field.class_name1, graph)?
+        } else if let Some(element) = &field.set {
+            encode_set(raw, element, graph)?
+        } else {
+            match &field.nested {
+                Some(nested) if !raw.is_null() => encode_object(raw, nested, graph)?,
+                Some(_) => JValue::Null,
+                None => json_to_jvalue(raw, field.typecode, field.class_name1, graph)?,
+            }
         };
         field_descs.push(FieldDesc {
             name: field.name.to_owned(),
@@ -142,17 +223,228 @@ fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<V
     let mut object = Map::with_capacity(schema.fields.len());
     for field in &schema.fields {
         let field_value = graph.require_field(value, field.name)?;
-        let json = match &field.nested {
-            Some(nested) if !matches!(field_value, JValue::Null) => {
-                decode_object(graph, field_value, nested)?
+        let json = if let Some(map) = &field.map {
+            decode_map(graph, field_value, map)?
+        } else if let Some(element) = &field.set {
+            decode_set(graph, field_value, element)?
+        } else {
+            match &field.nested {
+                Some(nested) if !matches!(field_value, JValue::Null) => {
+                    decode_object(graph, field_value, nested)?
+                }
+                Some(_) => Value::Null,
+                None => jvalue_to_json(graph, field_value, field.typecode, field.class_name1)?,
             }
-            Some(_) => Value::Null,
-            None => jvalue_to_json(graph, field_value, field.typecode, field.class_name1)?,
         };
         object.insert(field.name.to_owned(), json);
     }
 
     Ok(Value::Object(object))
+}
+
+fn encode_map(
+    raw: &Value,
+    map: &MapSchema,
+    class_name1: Option<&'static str>,
+    graph: &mut Graph,
+) -> Result<JValue> {
+    if raw.is_null() {
+        return Ok(JValue::Null);
+    }
+    let object = raw
+        .as_object()
+        .ok_or_else(|| type_error("a JSON object for a Map field"))?;
+    let mut entries = Vec::with_capacity(object.len());
+    for (key, value) in object {
+        let key = json_key_to_jvalue(key, &map.key, graph)?;
+        let value = json_to_value(value, &map.value, graph)?;
+        entries.push((key, value));
+    }
+    let handle = if class_name1 == Some(LINKED_HASH_MAP) {
+        new_linked_hash_map_entries(graph, entries, false)?
+    } else {
+        new_hash_map_entries(graph, entries)?
+    };
+    Ok(JValue::Obj(handle))
+}
+
+fn encode_set(raw: &Value, element: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
+    if raw.is_null() {
+        return Ok(JValue::Null);
+    }
+    let array = raw
+        .as_array()
+        .ok_or_else(|| type_error("a JSON array for a Set field"))?;
+    let mut values = Vec::with_capacity(array.len());
+    for item in array {
+        values.push(json_to_value(item, element, graph)?);
+    }
+    Ok(JValue::Obj(new_hash_set(graph, values)?))
+}
+
+fn json_to_value(value: &Value, schema: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
+    if value.is_null() {
+        return Ok(JValue::Null);
+    }
+    match &schema.nested {
+        Some(nested) => encode_object(value, nested, graph),
+        None => json_to_jvalue(value, schema.typecode, schema.class_name1, graph),
+    }
+}
+
+fn json_key_to_jvalue(key: &str, schema: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
+    if schema.nested.is_some() || schema.typecode == FieldType::Array {
+        return Err(Error::InvalidSchema(
+            "map keys must be scalar or String".to_owned(),
+        ));
+    }
+
+    let invalid = || Error::FieldMismatch {
+        message: format!("map key `{key}` does not match {:?}", schema.typecode),
+    };
+
+    Ok(match schema.typecode {
+        FieldType::Object => json_to_jvalue(
+            &Value::String(key.to_owned()),
+            schema.typecode,
+            schema.class_name1,
+            graph,
+        )?,
+        FieldType::Byte => JValue::Byte(key.parse().map_err(|_| invalid())?),
+        FieldType::Short => JValue::Short(key.parse().map_err(|_| invalid())?),
+        FieldType::Int => JValue::Int(key.parse().map_err(|_| invalid())?),
+        FieldType::Long => JValue::Long(key.parse().map_err(|_| invalid())?),
+        FieldType::Boolean => JValue::Bool(key.parse().map_err(|_| invalid())?),
+        FieldType::Float => JValue::Float(key.parse().map_err(|_| invalid())?),
+        FieldType::Double => JValue::Double(key.parse().map_err(|_| invalid())?),
+        FieldType::Char => {
+            let mut chars = key.chars();
+            let value = chars.next().ok_or_else(invalid)?;
+            if chars.next().is_some() {
+                return Err(invalid());
+            }
+            JValue::Char(value as u16)
+        }
+        FieldType::Array => unreachable!("array keys are rejected above"),
+    })
+}
+
+fn decode_map(graph: &Graph, value: &JValue, map: &MapSchema) -> Result<Value> {
+    if matches!(value, JValue::Null) {
+        return Ok(Value::Null);
+    }
+    let view = graph.as_map(value)?.ok_or_else(|| type_error("a Map"))?;
+    let mut object = Map::with_capacity(view.entries.len());
+    for (key, value) in view.entries {
+        let key = value_to_json(graph, key, &map.key)?;
+        let key = json_key_to_string(key)?;
+        object.insert(key, value_to_json(graph, value, &map.value)?);
+    }
+    Ok(Value::Object(object))
+}
+
+fn decode_set(graph: &Graph, value: &JValue, element: &SchemaValue) -> Result<Value> {
+    if matches!(value, JValue::Null) {
+        return Ok(Value::Null);
+    }
+    let values = graph.as_set(value)?.ok_or_else(|| type_error("a Set"))?;
+    let mut json = Vec::with_capacity(values.len());
+    for value in values {
+        json.push(value_to_json(graph, value, element)?);
+    }
+    Ok(Value::Array(json))
+}
+
+fn value_to_json(graph: &Graph, value: &JValue, schema: &SchemaValue) -> Result<Value> {
+    if matches!(value, JValue::Null) {
+        return Ok(Value::Null);
+    }
+    match &schema.nested {
+        Some(nested) => decode_object(graph, value, nested),
+        None => jvalue_to_json(graph, value, schema.typecode, schema.class_name1),
+    }
+}
+
+fn json_key_to_string(value: Value) -> Result<String> {
+    match value {
+        Value::String(value) => Ok(value),
+        Value::Number(value) => Ok(value.to_string()),
+        Value::Bool(value) => Ok(value.to_string()),
+        _ => Err(Error::FieldMismatch {
+            message: "map key must be scalar or String".to_owned(),
+        }),
+    }
+}
+
+/// Serialize a map value into a Java `HashMap`/`LinkedHashMap` root object.
+pub fn to_vec_map<T: Serialize>(
+    value: &T,
+    key: &SchemaValue,
+    map_value: &SchemaValue,
+    linked: bool,
+) -> Result<Vec<u8>> {
+    validate_value(key, true)?;
+    validate_value(map_value, false)?;
+    let json = serde_json::to_value(value).map_err(serde_error)?;
+    if !json.is_object() {
+        return Err(Error::FieldMismatch {
+            message: "map root must serialize to a JSON object".to_owned(),
+        });
+    }
+    let mut graph = Graph::new();
+    let map = MapSchema {
+        key: key.clone(),
+        value: map_value.clone(),
+    };
+    let class_name1 = Some(if linked { LINKED_HASH_MAP } else { HASH_MAP });
+    let value = encode_map(&json, &map, class_name1, &mut graph)?;
+    graph.add_item(value);
+    encode_stream(&graph)
+}
+
+/// Read a Java map root and deserialize it into `T`.
+pub fn from_slice_map<T: DeserializeOwned>(
+    bytes: &[u8],
+    key: &SchemaValue,
+    map_value: &SchemaValue,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_value(key, true)?;
+    validate_value(map_value, false)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    let map = MapSchema {
+        key: key.clone(),
+        value: map_value.clone(),
+    };
+    let json = decode_map(&graph, &graph.items()[0], &map)?;
+    serde_json::from_value(json).map_err(serde_error)
+}
+
+/// Serialize a set value (JSON array) into a Java `HashSet` root object.
+pub fn to_vec_set<T: Serialize>(value: &T, element: &SchemaValue) -> Result<Vec<u8>> {
+    validate_value(element, false)?;
+    let json = serde_json::to_value(value).map_err(serde_error)?;
+    if !json.is_array() {
+        return Err(Error::FieldMismatch {
+            message: "set root must serialize to a JSON array".to_owned(),
+        });
+    }
+    let mut graph = Graph::new();
+    let value = encode_set(&json, element, &mut graph)?;
+    graph.add_item(value);
+    encode_stream(&graph)
+}
+
+/// Read a Java set root and deserialize it into `T`.
+pub fn from_slice_set<T: DeserializeOwned>(
+    bytes: &[u8],
+    element: &SchemaValue,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_value(element, false)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    let json = decode_set(&graph, &graph.items()[0], element)?;
+    serde_json::from_value(json).map_err(serde_error)
 }
 
 fn json_to_jvalue(
