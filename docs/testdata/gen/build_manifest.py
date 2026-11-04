@@ -352,6 +352,17 @@ CASES = [
             {"type": "java.util.Arrays$ArrayList", "size": 2},
         ]},
     ),
+    dict(
+        id="object/47", file="fixtures/object/47-class-objects.ser",
+        case="Object[]{String.class, String.class, Color.class, Mixed.class}",
+        features=["TC_CLASS", "类对象共享（第二个 String.class 为 TC_REFERENCE）", "自定义类 Class"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.lang.Class", "class": "java.lang.String"},
+            {"type": "java.lang.Class", "class": "java.lang.String"},
+            {"type": "java.lang.Class", "class": "Fixtures$Color"},
+            {"type": "java.lang.Class", "class": "Fixtures$Mixed"},
+        ]},
+    ),
 ]
 
 

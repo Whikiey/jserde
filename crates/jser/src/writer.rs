@@ -12,7 +12,7 @@ use crate::wire::handle::BASE_WIRE_HANDLE;
 use crate::wire::mutf8;
 use crate::wire::writer::StreamWriter;
 use crate::wire::{
-    STREAM_MAGIC, STREAM_VERSION, TC_ARRAY, TC_BLOCKDATA, TC_BLOCKDATALONG, TC_CLASSDESC,
+    STREAM_MAGIC, STREAM_VERSION, TC_ARRAY, TC_BLOCKDATA, TC_BLOCKDATALONG, TC_CLASS, TC_CLASSDESC,
     TC_ENDBLOCKDATA, TC_ENUM, TC_LONGSTRING, TC_NULL, TC_OBJECT, TC_REFERENCE, TC_RESET, TC_STRING,
 };
 
@@ -90,6 +90,7 @@ impl<'a> Encoder<'a> {
             JValue::Arr(handle) => self.write_array(*handle)?,
             JValue::Obj(handle) => self.write_object(*handle)?,
             JValue::Enum(handle) => self.write_enum(*handle)?,
+            JValue::Class(handle) => self.write_class(*handle)?,
             JValue::Block(block) => self.write_block(block)?,
             JValue::Reset => {
                 self.out.write_u8(TC_RESET);
@@ -215,6 +216,20 @@ impl<'a> Encoder<'a> {
             Some(super_desc) => self.write_class_desc(super_desc)?,
             None => self.out.write_u8(TC_NULL),
         }
+        Ok(())
+    }
+
+    fn write_class(&mut self, handle: Handle) -> Result<()> {
+        if let Some(wire) = self.handles.get(&handle).copied() {
+            self.out.write_u8(TC_REFERENCE);
+            self.out.write_u32(wire);
+            return Ok(());
+        }
+
+        let desc = self.graph.class_desc(handle)?;
+        self.out.write_u8(TC_CLASS);
+        self.write_class_desc(desc)?;
+        self.assign(handle);
         Ok(())
     }
 

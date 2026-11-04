@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 20:20 · feat: TC_CLASS 保真回放（P9-1）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `JValue::Class(Handle)` + `Slot::Class(Handle)`；Reader 解析 `TC_CLASS`（先读 classDesc，再为类对象分配独立 wire handle），Writer 反向输出 `TC_CLASS` 并保持句柄顺序；`Graph::new_class`/`class_desc`。
+  - 新 fixture `object/47-class-objects.ser`（241 B）：`String.class` 两次（第二次为 `TC_REFERENCE`）、`Color.class`、`Mixed.class`。
+  - `tests/class_objects.rs`：类名、共享类对象句柄、构造 `Fixtures$Point.class`、逐字节回放。
+- **验证**：class_objects 2 passed；全仓 **162 passed**；40 例 Java 读回通过；manifest 40 例/78347 字节；clippy/fmt 通过。
+- **范围**：只做保真回放，不实现类加载语义（与 OUT-04 一致）。
+
+---
+
 ## 2026-11-04 18:00 · feat: 扩展容器视图与构造器（P9-23/24/25）
 
 - **提交**：本次（hash 见 `git log`）

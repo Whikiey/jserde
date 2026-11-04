@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 39,
-  "total_bytes": 78106,
+  "case_count": 40,
+  "total_bytes": 78347,
   "cases": [
     {
       "id": "codec/01",
@@ -1013,6 +1013,40 @@
       },
       "size": 1469,
       "sha256": "b8286f1f3210fe89ff47d4193489e6ca7f70a24cb7e984428d82d048ad015f83"
+    },
+    {
+      "id": "object/47",
+      "file": "fixtures/object/47-class-objects.ser",
+      "case": "Object[]{String.class, String.class, Color.class, Mixed.class}",
+      "features": [
+        "TC_CLASS",
+        "类对象共享（第二个 String.class 为 TC_REFERENCE）",
+        "自定义类 Class"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.lang.Class",
+            "class": "java.lang.String"
+          },
+          {
+            "type": "java.lang.Class",
+            "class": "java.lang.String"
+          },
+          {
+            "type": "java.lang.Class",
+            "class": "Fixtures$Color"
+          },
+          {
+            "type": "java.lang.Class",
+            "class": "Fixtures$Mixed"
+          }
+        ]
+      },
+      "size": 241,
+      "sha256": "782ad549ab3d084dde4b759e674f473f2b1ac7459806ae98247cedd3b003af93"
     }
   ]
 }

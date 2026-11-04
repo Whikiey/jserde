@@ -188,6 +188,9 @@ pub enum JValue {
     Obj(Handle),
     /// An enum constant; the descriptor and constant name live in a slot.
     Enum(Handle),
+    /// A `java.lang.Class` value; the represented class descriptor lives in a
+    /// slot (`TC_CLASS`).
+    Class(Handle),
     /// Top-level or custom block data, preserving the original block boundary.
     Block(BlockData),
     /// `TC_RESET`: valid only as a stream item or inside custom data.
@@ -210,6 +213,8 @@ pub enum Ref<'a> {
     },
     Obj(&'a JObject),
     Enum(&'a str),
+    /// A `java.lang.Class` value; the value is the represented class descriptor.
+    Class(&'a Handle),
 }
 
 /// Scalar view of a decoded value, including boxed `java.lang.*` wrappers.
@@ -339,6 +344,7 @@ enum Slot {
         desc: Handle,
         constant: Option<Handle>,
     },
+    Class(Handle),
 }
 
 /// Arena of reference-bearing values plus the top-level item sequence.
@@ -783,6 +789,7 @@ impl Graph {
             Slot::Enum { constant: None, .. } => Err(Error::FieldMismatch {
                 message: "enum constant was not read".to_owned(),
             }),
+            Slot::Class(desc) => Ok(Ref::Class(desc)),
         }
     }
 
@@ -1103,7 +1110,11 @@ impl Graph {
                 "java.lang.Character" => Scalar::Char(self.as_char(value)?),
                 _ => return Ok(None),
             },
-            JValue::Arr(_) | JValue::Enum(_) | JValue::Block(_) | JValue::Reset => return Ok(None),
+            JValue::Arr(_)
+            | JValue::Enum(_)
+            | JValue::Class(_)
+            | JValue::Block(_)
+            | JValue::Reset => return Ok(None),
         };
         Ok(Some(scalar))
     }
@@ -1221,6 +1232,25 @@ impl Graph {
         }
     }
 
+    /// Build a `java.lang.Class` value that references `desc`.
+    pub fn new_class(&mut self, desc: Handle) -> Result<Handle> {
+        self.insert_class(desc)
+    }
+
+    /// Insert a `java.lang.Class` value pointing at `desc`.
+    pub(crate) fn insert_class(&mut self, desc: Handle) -> Result<Handle> {
+        self.expect_desc(desc)?;
+        Ok(self.push_slot(Slot::Class(desc)))
+    }
+
+    /// The represented class descriptor of a `java.lang.Class` value.
+    pub fn class_desc(&self, handle: Handle) -> Result<Handle> {
+        match self.slot(handle)? {
+            Slot::Class(desc) => Ok(*desc),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
     pub(crate) fn expect_desc(&self, handle: Handle) -> Result<&ClassDesc> {
         self.descriptor(handle)
     }
@@ -1231,6 +1261,7 @@ impl Graph {
             Slot::Arr { .. } => Ok(JValue::Arr(handle)),
             Slot::Obj(_) => Ok(JValue::Obj(handle)),
             Slot::Enum { .. } => Ok(JValue::Enum(handle)),
+            Slot::Class(_) => Ok(JValue::Class(handle)),
             Slot::Desc(_) => Err(Error::FieldMismatch {
                 message: "a class descriptor cannot be used as a value".to_owned(),
             }),

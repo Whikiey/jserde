@@ -408,6 +408,10 @@ public class Fixtures {
                     table, properties, unmodifiable, synchronizedList, arraysList,
             });
         });
+
+        gen(dir, "47-class-objects.ser", out -> out.writeObject(new Object[] {
+                String.class, String.class, Color.class, Mixed.class,
+        }));
     }
 
     static void printSuids() {

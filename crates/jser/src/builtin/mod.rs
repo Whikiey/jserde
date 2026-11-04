@@ -1076,9 +1076,12 @@ pub fn box_primitive(graph: &mut Graph, value: JValue) -> Result<JValue> {
             JValue::Double(value),
             true,
         )?,
-        JValue::Null | JValue::Str(_) | JValue::Arr(_) | JValue::Obj(_) | JValue::Enum(_) => {
-            return Ok(value)
-        }
+        JValue::Null
+        | JValue::Str(_)
+        | JValue::Arr(_)
+        | JValue::Obj(_)
+        | JValue::Enum(_)
+        | JValue::Class(_) => return Ok(value),
         JValue::Block(_) | JValue::Reset => {
             return Err(Error::FieldMismatch {
                 message: "a block/reset cannot be a collection element".to_owned(),

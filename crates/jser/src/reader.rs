@@ -171,7 +171,7 @@ impl<'a> Reader<'a> {
                 Ok(JValue::Reset)
             }
             TC_EXCEPTION => Err(self.read_exception(depth)?),
-            TC_CLASS => Err(Error::UnsupportedClass("java.lang.Class".to_owned())),
+            TC_CLASS => self.read_class_value(depth),
             TC_PROXYCLASSDESC => Err(Error::UnsupportedClass("dynamic proxy".to_owned())),
             TC_CLASSDESC => Err(Error::FieldMismatch {
                 message: "a class descriptor is not a stream value".to_owned(),
@@ -179,6 +179,14 @@ impl<'a> Reader<'a> {
             TC_ENDBLOCKDATA => Err(Error::BadTag(tag)),
             _ => Err(Error::BadTag(tag)),
         }
+    }
+
+    /// Read `TC_CLASS`: a class object referencing a class descriptor.
+    fn read_class_value(&mut self, depth: usize) -> Result<JValue> {
+        let desc = self.read_class_desc_required(depth)?;
+        let handle = self.graph.insert_class(desc)?;
+        self.handles.assign(handle);
+        Ok(JValue::Class(handle))
     }
 
     fn read_exception(&mut self, depth: usize) -> Result<Error> {
