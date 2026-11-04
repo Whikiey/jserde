@@ -180,3 +180,4 @@
 | 2026-11-04 | P9-16：unit-only enum derive（`TC_ENUM`、flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 互通 | P9-16 |
 | 2026-11-04 | P8-5：新增 `object/42`（Year/YearMonth/MonthDay/Period）与对应 `BuiltinValue` 语义；manifest 35 例/75078 字节；`build_manifest.py` 支持 Windows 路径 | P8-5 |
 | 2026-11-04 | P9-9：serde 支持枚举字段（serde↔Java 常量映射）与枚举根（`to_vec_enum`/`from_slice_enum`） | P9-9 |
+| 2026-11-04 | P9-10/11：serde 支持多根流与 `TC_RESET`（`MultiRootWriter`/`from_slice_multi`）；P9-12 定界：共享引用按值展开，环用动态 Graph | P9-10/11 |

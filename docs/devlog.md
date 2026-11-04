@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 14:00 · feat: serde 多根流/TC_RESET/共享引用（P9-10/11/12，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `MultiRootWriter`（`push`/`reset`/`finish`）：逐根序列化，`reset()` 插入 `TC_RESET`；`from_slice_roots`/`from_slice_multi` 按 schema 列表解码并跳过 Reset 标记。
+  - P9-12 语义定界：serde 是树模型，共享引用解码为重复子树；环无法用有限 schema 表达，真实身份/环继续用动态 `Graph`（未做指针级 serde 支持）。
+  - 测试：多根（含 `TC_RESET`，断言 stream items = 3）与无 reset 多根往返；构造 `SharedRoot{a,b}` 指向同一对象（`TC_REFERENCE`）验证按值展开。
+- **验证**：`cargo test --workspace` **143 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 `MultiRootWriter`/`from_slice_multi` 与共享引用用例（API 不存在）；Green：实现后全绿。
+
+---
+
 ## 2026-11-04 13:45 · feat: serde 枚举字段与根（P9-9，TDD）
 
 - **提交**：本次（hash 见 `git log`）

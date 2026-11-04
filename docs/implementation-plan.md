@@ -428,11 +428,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-16 完成（TDD）：unit-only enum derive 生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 解码与各 variant 往返；全仓 138 项通过 | P9-16 |
 | 2026-11-04 | P8-5 完成（TDD）：新增 `object/42`（Year/YearMonth/MonthDay/Period），manifest 35 例/75078 字节；`BuiltinValue` 新增四种语义；`build_manifest.py` 路径比较改 `as_posix()` 以支持 Windows；全仓 139 项通过 | P8-5 |
 | 2026-11-04 | P9-9 完成（TDD）：serde 支持 `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射）与 `to_vec_enum`/`from_slice_enum` 根入口；新增枚举字段/根测试；全仓 141 项通过 | P9-9 |
+| 2026-11-04 | P9-10/11 完成（TDD）：`MultiRootWriter`（`push`/`reset`/`finish`）+ `from_slice_roots`/`from_slice_multi`，支持多根与 `TC_RESET`；P9-12 语义定界（共享引用按值展开，环用动态 Graph）；新增多根/共享引用测试；全仓 143 项通过 | P9-10/11 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；35 个 fixture / 75078 字节；全仓 **141 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-14/P9-15/P9-16 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；35 个 fixture / 75078 字节；全仓 **143 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-14/P9-15/P9-16 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -473,9 +474,9 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | P9-7 | Map 字段（`HashMap`/`LinkedHashMap`）与 Map 根——✅ 已实现：`SchemaField::map`/`MapSchema`，`to_vec_map`/`from_slice_map` | 高 / M |
 | P9-8 | Set 字段（`HashSet`）与 Set 根——✅ 已实现：`SchemaField::set`，`to_vec_set`/`from_slice_set` | 中 / M |
 | P9-9 | 枚举字段/根 | `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射），`to_vec_enum`/`from_slice_enum`——✅ 已实现 | 中 / M |
-| P9-10 | 多根流 | `to_vec_multi`/`from_slice_multi`，每元素独立 schema；跨根共享仍拒绝 | 中 / M |
-| P9-11 | `TC_RESET` 流 | 按段重置 wire 句柄；与 P9-10 配套 | 中 / S |
-| P9-12 | 共享引用/环 | serde 模型需指针/句柄化（`Rc`/`Arc` + schema 标注）；高复杂度 | 低 / XL |
+| P9-10 | 多根流 | ✅ 已实现：`MultiRootWriter` + `from_slice_roots`/`from_slice_multi`（逐根 schema） | 中 / M |
+| P9-11 | `TC_RESET` 流 | ✅ 已实现：`MultiRootWriter::reset()` 插入 `TC_RESET`；解码跳过 Reset 并按段读取 | 中 / S |
+| P9-12 | 共享引用/环 | ◐ 语义定界：解码时共享引用按值展开；环无法用有限 schema 表达，真实身份/环仍用动态 `Graph`；未做指针级 serde 支持 | 低 / XL |
 | P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层） | 性能与错误定位；外部 API 不变 | 中 / L |
 
 ### 21.3 derive / typed

@@ -18,6 +18,9 @@
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
 - Derive unit-only Rust enums as Java enums (`TC_ENUM`, flags `0x12`, SUID 0,
   `java.lang.Enum` superclass); variant names default to UPPER_SNAKE_CASE.
+- serde bridge: multi-root streams with optional `TC_RESET` markers
+  (`MultiRootWriter`, `from_slice_multi`/`from_slice_roots`); shared references
+  decode as duplicated values (cycles stay in the dynamic `Graph` API).
 - serde bridge: enum fields (`SchemaField::enumeration` with a serde↔Java
   constant map) and enum roots (`to_vec_enum`/`from_slice_enum`).
 - serde bridge: Map/Set fields (`SchemaField::map`/`set`, HashMap/

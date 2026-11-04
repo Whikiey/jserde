@@ -8,15 +8,18 @@
 //! enums ([`SchemaField::enumeration`]).
 //! Map/set roots are available through [`to_vec_map`]/[`from_slice_map`] and
 //! [`to_vec_set`]/[`from_slice_set`]; enum roots through
-//! [`to_vec_enum`]/[`from_slice_enum`]. Cycles, shared references, `TC_RESET`,
-//! multiple roots and arrays of objects are rejected.
+//! [`to_vec_enum`]/[`from_slice_enum`]. Multi-root streams (with optional
+//! `TC_RESET` markers) use [`MultiRootWriter`] and [`from_slice_multi`].
+//! Values are serde trees: shared references decode as duplicated subtrees and
+//! cycles are not representable (use [`jser::Graph`] for true identity/cycles).
+//! Arrays of objects and unknown classes are rejected.
 
 use jser::builtin::{
     new_hash_map_entries, new_hash_set, new_java_array, new_linked_hash_map_entries,
 };
 use jser::{
-    decode_with_allowlist, encode_stream, Allowlist, ClassData, ClassDesc, Error, FieldDesc,
-    FieldType, Graph, JValue, Result,
+    decode_stream_with_allowlist, decode_with_allowlist, encode_stream, Allowlist, ClassData,
+    ClassDesc, Error, FieldDesc, FieldType, Graph, JValue, Result,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -281,6 +284,92 @@ pub fn from_slice<T: DeserializeOwned>(
     let value = &graph.items()[0];
     let json = decode_object(&graph, value, schema)?;
     serde_json::from_value(json).map_err(serde_error)
+}
+
+/// Builds a multi-root stream, optionally interleaving `TC_RESET`.
+///
+/// Each [`push`](MultiRootWriter::push) serializes one root; [`reset`](MultiRootWriter::reset)
+/// appends a `TC_RESET` marker so the following roots start a fresh wire
+/// handle table. Root values are serde trees: shared Rust references are
+/// written as duplicated subtrees (the dynamic [`jser::Graph`] API is the way
+/// to write true identity/cycles).
+#[derive(Debug, Default)]
+pub struct MultiRootWriter {
+    graph: Graph,
+}
+
+impl MultiRootWriter {
+    /// Create an empty writer.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Serialize `value` with `schema` and append it as the next root.
+    pub fn push<T: Serialize + ?Sized>(&mut self, schema: &JavaSchema, value: &T) -> Result<()> {
+        validate_schema(schema)?;
+        let json = serde_json::to_value(value).map_err(serde_error)?;
+        let object = encode_object(&json, schema, &mut self.graph)?;
+        self.graph.add_item(object);
+        Ok(())
+    }
+
+    /// Append a `TC_RESET` marker between roots.
+    pub fn reset(&mut self) {
+        self.graph.add_reset();
+    }
+
+    /// Encode the accumulated roots into one stream.
+    pub fn finish(self) -> Result<Vec<u8>> {
+        encode_stream(&self.graph)
+    }
+}
+
+/// Decode every non-`TC_RESET` root and return its JSON value.
+///
+/// `schemas` must provide one [`JavaSchema`] per root, in order. `TC_RESET`
+/// markers are skipped; they only reset wire handles.
+pub fn from_slice_roots(
+    bytes: &[u8],
+    schemas: &[&JavaSchema],
+    allowlist: &Allowlist,
+) -> Result<Vec<Value>> {
+    for schema in schemas {
+        validate_schema(schema)?;
+    }
+    let graph = decode_stream_with_allowlist(bytes, allowlist)?;
+    let mut roots = Vec::new();
+    let mut index = 0;
+
+    for item in graph.items() {
+        if matches!(item, JValue::Reset) {
+            continue;
+        }
+        let schema = schemas.get(index).ok_or_else(|| Error::FieldMismatch {
+            message: format!(
+                "stream has more roots than the {} schema(s) provided",
+                schemas.len()
+            ),
+        })?;
+        roots.push(decode_object(&graph, item, schema)?);
+        index += 1;
+    }
+
+    if index != schemas.len() {
+        return Err(Error::FieldMismatch {
+            message: format!("stream has {index} root(s), expected {}", schemas.len()),
+        });
+    }
+    Ok(roots)
+}
+
+/// Deserialize a multi-root stream into `T` (for example a tuple or `Vec`).
+pub fn from_slice_multi<T: DeserializeOwned>(
+    bytes: &[u8],
+    schemas: &[&JavaSchema],
+    allowlist: &Allowlist,
+) -> Result<T> {
+    let roots = from_slice_roots(bytes, schemas, allowlist)?;
+    serde_json::from_value(Value::Array(roots)).map_err(serde_error)
 }
 
 fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<Value> {

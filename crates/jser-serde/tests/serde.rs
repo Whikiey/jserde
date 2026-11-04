@@ -11,8 +11,9 @@ use std::collections::{HashMap, HashSet};
 use jser::Allowlist;
 use jser::FieldType;
 use jser_serde::{
-    from_slice, from_slice_enum, from_slice_map, from_slice_set, to_vec, to_vec_enum, to_vec_map,
-    to_vec_set, EnumConstant, EnumSchema, JavaSchema, MapSchema, SchemaField, SchemaValue,
+    from_slice, from_slice_enum, from_slice_map, from_slice_multi, from_slice_set, to_vec,
+    to_vec_enum, to_vec_map, to_vec_set, EnumConstant, EnumSchema, JavaSchema, MapSchema,
+    MultiRootWriter, SchemaField, SchemaValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -487,4 +488,204 @@ fn serde_supports_enum_roots() {
     let bytes = to_vec_enum(&Color::Blue, &schema).unwrap();
     let decoded: Color = from_slice_enum(&bytes, &schema, &Allowlist::all()).unwrap();
     assert_eq!(decoded, Color::Blue);
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Label {
+    text: String,
+}
+
+fn label_schema() -> JavaSchema {
+    JavaSchema {
+        class: "example.Label",
+        suid: 1,
+        fields: vec![SchemaField {
+            name: "text",
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/lang/String;"),
+            nested: None,
+            map: None,
+            set: None,
+            enumeration: None,
+        }],
+    }
+}
+
+#[test]
+fn serde_supports_multi_root_streams_and_resets() {
+    let mut writer = MultiRootWriter::new();
+    writer.push(&point_schema(), &Point { x: 1, y: 2 }).unwrap();
+    writer.reset();
+    writer
+        .push(
+            &label_schema(),
+            &Label {
+                text: "hi".to_owned(),
+            },
+        )
+        .unwrap();
+    let bytes = writer.finish().unwrap();
+
+    let graph = jser::decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(graph.items().len(), 3);
+    assert!(matches!(graph.items()[1], jser::JValue::Reset));
+
+    let roots: (Point, Label) = from_slice_multi(
+        &bytes,
+        &[&point_schema(), &label_schema()],
+        &Allowlist::all(),
+    )
+    .unwrap();
+    assert_eq!(roots.0, Point { x: 1, y: 2 });
+    assert_eq!(
+        roots.1,
+        Label {
+            text: "hi".to_owned()
+        }
+    );
+
+    let mut writer = MultiRootWriter::new();
+    writer.push(&point_schema(), &Point { x: 3, y: 4 }).unwrap();
+    writer
+        .push(
+            &label_schema(),
+            &Label {
+                text: "a".to_owned(),
+            },
+        )
+        .unwrap();
+    let bytes = writer.finish().unwrap();
+    let roots: (Point, Label) = from_slice_multi(
+        &bytes,
+        &[&point_schema(), &label_schema()],
+        &Allowlist::all(),
+    )
+    .unwrap();
+    assert_eq!(roots.0, Point { x: 3, y: 4 });
+    assert_eq!(
+        roots.1,
+        Label {
+            text: "a".to_owned()
+        }
+    );
+}
+
+#[test]
+fn serde_expands_shared_references_as_values() {
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    struct SharedInner {
+        id: i32,
+    }
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    struct SharedRoot {
+        a: SharedInner,
+        b: SharedInner,
+    }
+
+    // Build a stream where `a` and `b` point at the same object (TC_REFERENCE).
+    let mut graph = jser::Graph::new();
+    let inner_desc = graph
+        .add_class_desc(jser::ClassDesc {
+            name: "example.SharedInner".to_owned(),
+            suid: 1,
+            flags: 0x02,
+            fields: vec![jser::FieldDesc {
+                name: "id".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            }],
+            super_desc: None,
+            annotations: Vec::new(),
+        })
+        .unwrap();
+    let inner = graph
+        .new_object(vec![jser::ClassData {
+            desc: inner_desc,
+            fields: vec![("id".to_owned(), jser::JValue::Int(5))],
+            custom: None,
+        }])
+        .unwrap();
+    let root_desc = graph
+        .add_class_desc(jser::ClassDesc {
+            name: "example.SharedRoot".to_owned(),
+            suid: 1,
+            flags: 0x02,
+            fields: vec![
+                jser::FieldDesc {
+                    name: "a".to_owned(),
+                    typecode: FieldType::Object,
+                    class_name1: Some("Lexample/SharedInner;".to_owned()),
+                    class_name_handle: None,
+                },
+                jser::FieldDesc {
+                    name: "b".to_owned(),
+                    typecode: FieldType::Object,
+                    class_name1: Some("Lexample/SharedInner;".to_owned()),
+                    class_name_handle: None,
+                },
+            ],
+            super_desc: None,
+            annotations: Vec::new(),
+        })
+        .unwrap();
+    let root = graph
+        .new_object(vec![jser::ClassData {
+            desc: root_desc,
+            fields: vec![
+                ("a".to_owned(), jser::JValue::Obj(inner)),
+                ("b".to_owned(), jser::JValue::Obj(inner)),
+            ],
+            custom: None,
+        }])
+        .unwrap();
+    graph.add_item(jser::JValue::Obj(root));
+    let bytes = jser::encode_stream(&graph).unwrap();
+
+    let inner_schema = JavaSchema {
+        class: "example.SharedInner",
+        suid: 1,
+        fields: vec![SchemaField {
+            name: "id",
+            typecode: FieldType::Int,
+            class_name1: None,
+            nested: None,
+            map: None,
+            set: None,
+            enumeration: None,
+        }],
+    };
+    let root_schema = JavaSchema {
+        class: "example.SharedRoot",
+        suid: 1,
+        fields: vec![
+            SchemaField {
+                name: "a",
+                typecode: FieldType::Object,
+                class_name1: Some("Lexample/SharedInner;"),
+                nested: Some(Box::new(inner_schema.clone())),
+                map: None,
+                set: None,
+                enumeration: None,
+            },
+            SchemaField {
+                name: "b",
+                typecode: FieldType::Object,
+                class_name1: Some("Lexample/SharedInner;"),
+                nested: Some(Box::new(inner_schema)),
+                map: None,
+                set: None,
+                enumeration: None,
+            },
+        ],
+    };
+
+    let decoded: SharedRoot = from_slice(&bytes, &root_schema, &Allowlist::all()).unwrap();
+    assert_eq!(
+        decoded,
+        SharedRoot {
+            a: SharedInner { id: 5 },
+            b: SharedInner { id: 5 },
+        }
+    );
 }
