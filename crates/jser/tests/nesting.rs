@@ -9,7 +9,7 @@ mod common;
 
 use std::collections::HashMap;
 
-use common::fixture_allowlist;
+use common::{fixture_allowlist, read_fixture};
 use jser::builtin::{new_hash_map_entries, new_java_array};
 use jser::{
     decode_stream_with_allowlist, decode_typed_with_allowlist, encode_stream, encode_typed,
@@ -199,4 +199,86 @@ fn typed_map_of_vec_of_custom_round_trips() {
     let decoded: HashMap<String, Vec<Point>> =
         decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
     assert_eq!(decoded, map);
+}
+
+fn object_handle(value: &JValue) -> u32 {
+    match value {
+        JValue::Obj(handle) => handle.0,
+        other => panic!("expected an object, got {other:?}"),
+    }
+}
+
+#[test]
+fn decodes_hybrid_fixture_with_map_array_shared_and_cycle() {
+    let bytes = read_fixture("object/44");
+    let graph = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    let hybrid = &graph.items()[0];
+    assert_eq!(graph.class_name(hybrid).unwrap(), "Fixtures$Hybrid");
+
+    let elements = graph
+        .as_array(graph.require_field(hybrid, "array").unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(elements.len(), 3);
+
+    let point = &elements[0];
+    assert_eq!(graph.class_name(point).unwrap(), "Fixtures$Point");
+    assert_eq!(
+        graph
+            .as_i64(graph.require_field(point, "x").unwrap())
+            .unwrap(),
+        7
+    );
+    assert_eq!(
+        graph
+            .as_i64(graph.require_field(point, "y").unwrap())
+            .unwrap(),
+        8
+    );
+
+    let ints = graph.as_primitive_array(&elements[1]).unwrap().unwrap();
+    assert_eq!(ints.len(), 2);
+    assert_eq!(ints.get(0), Some(JValue::Int(4)));
+    assert_eq!(ints.get(1), Some(JValue::Int(5)));
+    assert_eq!(graph.as_str(&elements[2]).unwrap(), "tail");
+
+    let view = graph
+        .as_map(graph.require_field(hybrid, "map").unwrap())
+        .unwrap()
+        .unwrap();
+    let find = |name: &str| {
+        view.entries
+            .iter()
+            .find(|(key, _)| graph.as_str(key).ok() == Some(name))
+            .map(|(_, value)| value)
+            .unwrap()
+    };
+
+    assert_eq!(object_handle(find("point")), object_handle(point));
+    assert_eq!(
+        object_handle(graph.require_field(hybrid, "shared").unwrap()),
+        object_handle(point)
+    );
+
+    let map_ints = graph.as_primitive_array(find("ints")).unwrap().unwrap();
+    assert_eq!(map_ints.len(), 3);
+    assert_eq!(map_ints.get(0), Some(JValue::Int(1)));
+    assert_eq!(map_ints.get(2), Some(JValue::Int(3)));
+    assert_eq!(graph.as_str(find("text")).unwrap(), "mix");
+
+    let list = graph.as_list(find("list")).unwrap().unwrap();
+    assert_eq!(list.len(), 2);
+    assert_eq!(graph.as_str(list[0]).unwrap(), "a");
+    assert_eq!(graph.as_str(list[1]).unwrap(), "b");
+
+    assert_eq!(
+        object_handle(graph.require_field(hybrid, "self").unwrap()),
+        object_handle(hybrid),
+        "self field must point back to the owning object"
+    );
+    assert_eq!(
+        encode_stream(&graph).unwrap(),
+        bytes,
+        "hybrid fixture must replay byte-exactly"
+    );
 }

@@ -48,7 +48,9 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
-- 36 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every
+- Hybrid nested fixture `object/44`: Map × array × custom class with shared
+  references and a self-cycle; Rust build + decode/replay regressions.
+- 37 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every
   fixture re-encoded by Rust and read back), SUID comparison, deterministic
   fuzz smoke and a benchmark example.
 - Three-level nested POJO fixture (`object/41`) and regression tests.

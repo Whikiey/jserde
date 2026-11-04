@@ -161,6 +161,15 @@ public class Fixtures {
         }
     }
 
+    /** 混合嵌套：Map/数组/自定义类同图，且共享同一个 Point 并自引用成环。 */
+    static class Hybrid implements Serializable {
+        private static final long serialVersionUID = 1L;
+        Object[] array;
+        HashMap<String, Object> map = new HashMap<>();
+        Hybrid self;
+        Point shared;
+    }
+
     // ================= 生成逻辑 =================
 
     static int count = 0;
@@ -328,6 +337,19 @@ public class Fixtures {
                 OffsetTime.of(12, 34, 56, 123456789, ZoneOffset.ofHours(8)),
                 OffsetDateTime.of(2024, 2, 29, 12, 34, 56, 123456789, ZoneOffset.ofHours(8)),
         }));
+
+        gen(dir, "44-hybrid-nested.ser", out -> {
+            Point shared = new Point(7, 8);
+            Hybrid hybrid = new Hybrid();
+            hybrid.map.put("point", shared);
+            hybrid.map.put("ints", new int[] {1, 2, 3});
+            hybrid.map.put("text", "mix");
+            hybrid.map.put("list", new ArrayList<>(List.of("a", "b")));
+            hybrid.array = new Object[] {shared, new int[] {4, 5}, "tail"};
+            hybrid.shared = shared;
+            hybrid.self = hybrid;
+            out.writeObject(hybrid);
+        });
     }
 
     static void printSuids() {

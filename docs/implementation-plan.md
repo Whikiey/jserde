@@ -436,11 +436,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-30 完成：新增 `docs/bench-baseline.json` 与 `docs/bench_gate.py`，nightly 增加 `bench-gate`（35% 吞吐阈值、`int[]` RSS <3×）；本机门禁通过（Windows 无 `VmHWM` 时跳过 RSS） | P9-30 |
 | 2026-11-04 | P9-31 完成：新增 `Graph::set_map_entry`（替换/追加，primitive 自动装箱）与 `set_array_element`；mutation 测试覆盖全部标量、Map 替换/追加、对象数组；interop 增加 Mixed 三字段 Java 读回；全仓 147 passed | P9-31 |
 | 2026-11-04 | P9-32 完成：`jser-serde` 增加可编译 doctest；design §8/plan §18/requirements §6 全部定案（Java 17、不发布、性能门禁）；CI lint 增加 `cargo doc -D warnings`；全仓 148 passed（含 doctest） | P9-32 |
+| 2026-11-04 | P9-33 完成：新增 `object/44-hybrid-nested.ser`（Map×数组×自定义类、共享 Point、自环，486 B），manifest 37 例/75710 字节；`tests/nesting.rs` 增加解码/共享/环/逐字节回放断言；全仓 149 passed | P9-33 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **148 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；37 个 fixture / 75710 字节；全仓 **149 passed**；37 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -519,7 +520,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组）——✅ 已实现：`docs/bench-baseline.json` + `docs/bench_gate.py` + nightly `bench-gate` job（35% 阈值、`int[]` RSS <3×） | 低 / S |
 | P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合——✅ 已实现：新增 `Graph::set_map_entry`/`set_array_element`（Map 值自动装箱）；覆盖全部标量、Map 替换/追加、对象数组；Java 读回 Mixed 三字段 | 中 / M |
 | P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题——✅ 已实现：serde crate 增加可编译示例；§8/§18/requirements §6 全部定案（Java 17、不发布、性能门禁）；CI 增加 `RUSTDOCFLAGS=-D warnings cargo doc` | 低 / S |
-| P9-33 | 混合嵌套矩阵：Map × 数组 × 自定义类（含共享引用/环）的 fixture 与回归；先补 Rust 构造用例（`tests/nesting.rs`），JDK fixture 随 P8-3 生成 | 中 / S |
+| P9-33 | 混合嵌套矩阵：Map × 数组 × 自定义类（含共享引用/环）的 fixture 与回归——✅ 已实现：`object/44-hybrid-nested.ser`（Map 含 Point/int[]/String/ArrayList，Object[]，共享 Point，自环）；`tests/nesting.rs` 构造 + 解码/回放断言 | 中 / S |
 
 ### 21.6 不可实现 / 明确不做（与 §5 OUT 一致）
 

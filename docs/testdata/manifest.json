@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 36,
-  "total_bytes": 75224,
+  "case_count": 37,
+  "total_bytes": 75710,
   "cases": [
     {
       "id": "codec/01",
@@ -831,6 +831,52 @@
       },
       "size": 146,
       "sha256": "ab10d5f593306d3b293e644f3fdcf4d396417fdb473172538610c29f8ed5ae89"
+    },
+    {
+      "id": "object/44",
+      "file": "fixtures/object/44-hybrid-nested.ser",
+      "case": "Hybrid：Map/数组/自定义类 + 共享引用 + 自环",
+      "features": [
+        "混合嵌套",
+        "HashMap 值含 Point/int[]/String/ArrayList",
+        "Object[]",
+        "共享引用",
+        "自环"
+      ],
+      "expect": {
+        "kind": "object",
+        "class": "Fixtures$Hybrid",
+        "fields": {
+          "array": {
+            "kind": "array",
+            "type": "java.lang.Object",
+            "length": 3
+          },
+          "map": {
+            "kind": "map",
+            "type": "java.util.HashMap",
+            "keys": [
+              "point",
+              "ints",
+              "text",
+              "list"
+            ]
+          },
+          "self": {
+            "kind": "reference",
+            "class": "Fixtures$Hybrid"
+          },
+          "shared": {
+            "class": "Fixtures$Point",
+            "fields": {
+              "x": 7,
+              "y": 8
+            }
+          }
+        }
+      },
+      "size": 486,
+      "sha256": "3c10e74041eb7c3cb123d4c2d68ae2a371ca6a8083ef16619e3456515aceb08a"
     }
   ]
 }

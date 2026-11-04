@@ -315,7 +315,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 - **不适用**：新建的图、修改过字段/集合/引用的图；这些只要求"Java 读回语义相等"。
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
 - **防作弊**：mutation test（解码 → 改字段/Map 条目/数组元素 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO/数组 → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
-- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部 fixture 回放 + Java 读回（P9-27 后为 36 例）。
+- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部 fixture 回放 + Java 读回（P9-33 后为 37 例）。
 
 ### 5.2 Allowlist（2026-11-04 定案）
 
@@ -364,9 +364,9 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 36 例/75224 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 37 例/75710 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
 | M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
-| M2 ✅ | **写** + 回放门禁 + 双向对拍 | 36 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
+| M2 ✅ | **写** + 回放门禁 + 双向对拍 | 37 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
 | M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |

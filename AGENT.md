@@ -12,8 +12,8 @@
 |---|---|
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P7；P8 缺口见计划 §20 |
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成；P7-1 的 30 分钟 fuzz workflow 已接入但暂缓，等功能完成后执行；计划假设按默认执行，设计缺口已定案） |
-| 基准数据 | **已完成**：36 个用例、75224 字节（P6/P7/P8/P9 新增 object/40/41/42/43），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 primitive raw 数组、P8-3 嵌套 derive/serde、P8-5 java.time 余项、P9-7/8 serde Map/Set、P9-9 serde enum、P9-10/11 多根与 `TC_RESET`、P9-13 serde 直连、P9-14 对象数组、P9-15 继承、P9-16 enum、P9-21 java.time zone、P9-27 AC-02 全 fixture、P9-28/29 CI 与 cargo-deny、P9-30 bench 门禁、P9-31 mutation 扩展、P9-32 文档收口；148 项测试全绿 |
+| 基准数据 | **已完成**：37 个用例、75710 字节（P6/P7/P8/P9 新增 object/40/41/42/43/44），JDK 17.0.20.1 生成，见 `docs/testdata/` |
+| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 primitive raw 数组、P8-3 嵌套 derive/serde、P8-5 java.time 余项、P9-7/8 serde Map/Set、P9-9 serde enum、P9-10/11 多根与 `TC_RESET`、P9-13 serde 直连、P9-14 对象数组、P9-15 继承、P9-16 enum、P9-21 java.time zone、P9-27 AC-02 全 fixture、P9-28/29 CI 与 cargo-deny、P9-30 bench 门禁、P9-31 mutation 扩展、P9-32 文档收口、P9-33 混合嵌套 fixture；149 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
 所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20（近期优先）与 §21（全部纯 Rust 可实现的扩展候选）：P7-1 的 30 分钟 fuzz（AC-04）、`ZoneId` 等 java.time 余项、跨平台 CI 等。
@@ -106,7 +106,7 @@ cargo fmt --all -- --check
 cargo test -p jser --test codec        # 只跑 codec 12 例
 cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
-cargo test -p jser --test roundtrip_bytes # 36 例逐字节回放门禁
+cargo test -p jser --test roundtrip_bytes # 37 例逐字节回放门禁
 cargo test -p jser --test typed       # typed 转换
 cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --test derive      # derive 互通

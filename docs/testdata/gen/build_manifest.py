@@ -300,6 +300,19 @@ CASES = [
             {"type": "java.time.OffsetDateTime", "semantic": "2024-02-29T12:34:56.123456789+08:00"},
         ]},
     ),
+    dict(
+        id="object/44", file="fixtures/object/44-hybrid-nested.ser",
+        case="Hybrid：Map/数组/自定义类 + 共享引用 + 自环",
+        features=["混合嵌套", "HashMap 值含 Point/int[]/String/ArrayList", "Object[]",
+                  "共享引用", "自环"],
+        expect={"kind": "object", "class": "Fixtures$Hybrid", "fields": {
+            "array": {"kind": "array", "type": "java.lang.Object", "length": 3},
+            "map": {"kind": "map", "type": "java.util.HashMap",
+                    "keys": ["point", "ints", "text", "list"]},
+            "self": {"kind": "reference", "class": "Fixtures$Hybrid"},
+            "shared": {"class": "Fixtures$Point", "fields": {"x": 7, "y": 8}},
+        }},
+    ),
 ]
 
 

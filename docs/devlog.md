@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 16:20 · test: 混合嵌套 fixture（P9-33）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Fixtures.java` 新增 `Hybrid`（`Object[] array`、`HashMap<String,Object> map`、`Hybrid self`、`Point shared`）与 `object/44-hybrid-nested.ser`（486 B）：map 含 Point/int[]/String/ArrayList，数组含同一 Point，`shared` 与 `self` 构成共享与自环。
+  - `build_manifest.py` 登记 object/44；manifest 重新生成为 **37 例 / 75710 字节**（原有 36 例逐字节不变）。
+  - `tests/nesting.rs` 新增 `decodes_hybrid_fixture_with_map_array_shared_and_cycle`：Map/数组/共享句柄/自环/ArrayList/primitive 数组断言 + 逐字节回放；原有 Rust 构造型混合嵌套用例保留。
+- **验证**：`tests/nesting.rs` 3 passed；回放门禁 37 例通过；manifest `--check` 通过；全仓 **149 passed**；clippy/fmt 通过。
+
+---
+
 ## 2026-11-04 16:05 · docs: 文档收口与 §8 定案（P9-32）
 
 - **提交**：本次（hash 见 `git log`）
