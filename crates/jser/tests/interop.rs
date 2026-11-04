@@ -93,8 +93,7 @@ fn java_can_read_rust_written_streams() {
     }
 
     let testdata = testdata_dir();
-    let classes =
-        std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("jser-interop");
+    let classes = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("jser-interop");
     let _ = fs::remove_dir_all(&classes);
     fs::create_dir_all(&classes).unwrap();
 
