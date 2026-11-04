@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 11:00 · chore: 暂缓 fuzz（P8-1），停用 nightly schedule
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `.github/workflows/nightly.yml`：停用 `schedule`、保留 `workflow_dispatch`（恢复时取消注释）。
+  - `fuzz/README.md` 标注暂缓；`requirements.md` §4.1/§8、`implementation-plan.md` §11/§20、`README.md`、`SECURITY.md`、`CHANGELOG.md`、`AGENT.md` §1 同步为“暂缓，等功能完成后再执行”。
+- **验证**：仅配置/文档改动；`cargo test --workspace --offline` 维持 113 passed。
+- **TDD**：不适用（配置与文档）。
+
+---
+
 ## 2026-11-04 10:55 · ci: 接入 nightly 30 分钟 fuzz（P8-1）
 
 - **提交**：本次（hash 见 `git log`）

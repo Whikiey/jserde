@@ -261,7 +261,7 @@ P2 ─────────────────────────�
 | P7-6 ✅ | 全量回归 | 全部 fixture 用例；`gen.sh --check`；interop；fuzz 冒烟；bench 基线归档 | 全绿 |
 
 **状态（2026-11-04，TDD）**：P7 基本完成。
-- P7-1：`fuzz/` 三个 libFuzzer 目标（decode/roundtrip/mutf8）、离线 `tests/fuzz_smoke.rs` 与 CI `fuzz-smoke` job；**nightly workflow 已接入**（decode 1800s + roundtrip/mutf8 300s，语料取 fixture，2026-11-04），本机因无 `cargo-fuzz`/离线未跑满，AC-04 以首次绿色 nightly 为准。
+- P7-1：`fuzz/` 三个 libFuzzer 目标（decode/roundtrip/mutf8）、离线 `tests/fuzz_smoke.rs` 与 CI `fuzz-smoke` job；**nightly workflow 已接入**（decode 1800s + roundtrip/mutf8 300s，语料取 fixture，2026-11-04），本机因无 `cargo-fuzz`/离线未跑满；**2026-11-04 起暂缓**（用户决定：等功能完成后再执行），nightly schedule 已停用、保留手动触发。
 - P7-2：无 criterion 离线依赖，改用 `examples/bench.rs`；100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入，见 `docs/bench.md`（AC-06 的合成块负载；真实 primitive 大数组仍未达标）。
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
@@ -427,7 +427,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
-| P7-1 30 分钟 fuzz 未跑满 | ✅ 已接入 `.github/workflows/nightly.yml`：decode 1800s、roundtrip/mutf8 300s，corpus 取 fixture；待首次绿色运行 | P8-1 | AC-04 |
+| P7-1 30 分钟 fuzz 未跑满 | ⏸ 暂缓（2026-11-04 决定：等全部功能完成后再执行）；workflow 已就绪但 `schedule` 已停用，可从 Actions 手动触发 | P8-1 | AC-04 |
 | 真实 100 MB primitive 数组内存超 3× | 紧凑 `PrimitiveArr`/raw bytes 存储，`as_array` 改为视图；typed/derive 走 raw 路径 | P8-2（高） | AC-06 |
 | 嵌套 derive/serde | derive 增加字段级 class 描述符；serde 扩展递归 `JavaSchema` | P8-3 | FR-14/15 |
 | OUT 负例（TC_EXCEPTION/TC_CLASS/proxy/Externalizable no-block） | 只补错误断言与文档，不实现语义 | P8-4 | — |

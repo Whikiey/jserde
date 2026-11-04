@@ -30,8 +30,12 @@ printf '\xc0\x80' > fuzz/corpus/mutf8/seed-overlong-nul
 
 ## Nightly CI (AC-04)
 
-[`.github/workflows/nightly.yml`](../.github/workflows/nightly.yml) runs daily at
-18:00 UTC (02:00 Asia/Shanghai) and on manual dispatch:
+> **暂缓（2026-11-04）**：按用户决定，定时任务已停用，等功能开发完成后再启用；
+> 目前只能从 Actions 手动触发。恢复时取消 `nightly.yml` 中 `schedule` 的注释即可。
+
+[`.github/workflows/nightly.yml`](../.github/workflows/nightly.yml) runs on
+manual dispatch (the daily 18:00 UTC / 02:00 Asia/Shanghai schedule is disabled
+until feature work completes):
 
 - `decode`: `-max_total_time=1800` (30 minutes) — this is the AC-04 run;
 - `roundtrip` and `mutf8`: `-max_total_time=300` each;

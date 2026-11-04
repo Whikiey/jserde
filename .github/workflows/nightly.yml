@@ -1,9 +1,10 @@
 name: nightly
 
 on:
-  schedule:
-    # 18:00 UTC = 02:00 Asia/Shanghai (next day)
-    - cron: "0 18 * * *"
+  # 2026-11-04: 按用户决定暂缓，等功能开发完成后再启用定时任务。
+  # 恢复时取消下面两行注释即可（也可随时从 Actions 手动触发）。
+  # schedule:
+  #   - cron: "0 18 * * *"
   workflow_dispatch:
 
 env:

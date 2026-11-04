@@ -30,7 +30,7 @@
 - `Year`/`YearMonth`/`MonthDay`/`Period` semantic views are not implemented.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.
-- AC-04: nightly CI runs the 30-minute decode fuzz; awaiting its first green run.
-  The offline smoke test is always on.
+- AC-04: the 30-minute decode fuzz workflow is in place but deferred until
+  feature work is complete. The offline smoke test is always on.
 - AC-06: synthetic 100 MB block stream passes; a real 25M-element `int[]`
   currently exceeds the 3× memory target because primitive arrays use `JValue`.
