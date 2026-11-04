@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 15:00 · perf: serde 直连 JValue（P9-13）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `crates/jser-serde/src/direct.rs`：`Serializer` 将 schema 类型值直接写入 `Graph`；`Deserializer` 按 schema 读取 `JValue`（标量/String/Option/数组/嵌套 POJO/Map/Set/枚举/多根）。
+  - `to_vec`/`from_slice`、`to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum`、`MultiRootWriter`/`from_slice_multi` 全部走直连；`from_slice_roots` 保留 JSON 视图（返回 `Value`）。
+  - 错误仍带 schema 类名/SUID 校验；serde 错误经 `SerdeError` 转回 `jser::Error`。
+- **验证**：13 个 serde 测试全绿；全仓 **144 passed**；clippy `-D warnings`、fmt 通过。
+- **TDD/重构**：以现有 13 个 serde 用例作为回归门禁，直连实现逐项对齐 JSON 路径语义（含共享引用按值展开、多根/`TC_RESET`）。
+
+---
+
 ## 2026-11-04 14:30 · test: AC-02 全 fixture Java 读回（P9-27）
 
 - **提交**：本次（hash 见 `git log`）

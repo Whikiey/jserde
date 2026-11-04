@@ -1,33 +1,37 @@
 //! Optional, schema-driven serde bridge for `jser`.
 //!
 //! serde cannot carry Java class names, type codes or `serialVersionUID`, so
-//! this crate requires an explicit [`JavaSchema`]. It supports a **single root
-//! POJO** whose fields may be scalars, `String`, `Option<T>`, arrays, nested
-//! POJOs ([`SchemaField::nested`]), `HashMap`/`LinkedHashMap` fields
+//! this crate requires an explicit [`JavaSchema`]. Typed encode/decode goes
+//! through the direct [`JValue`] bridge in `direct` (no JSON intermediate):
+//! fields may be scalars, `String`, `Option<T>`, arrays, nested POJOs
+//! ([`SchemaField::nested`]), `HashMap`/`LinkedHashMap` fields
 //! ([`SchemaField::map`]), `HashSet` fields ([`SchemaField::set`]) and Java
 //! enums ([`SchemaField::enumeration`]).
-//! Map/set roots are available through [`to_vec_map`]/[`from_slice_map`] and
-//! [`to_vec_set`]/[`from_slice_set`]; enum roots through
-//! [`to_vec_enum`]/[`from_slice_enum`]. Multi-root streams (with optional
-//! `TC_RESET` markers) use [`MultiRootWriter`] and [`from_slice_multi`].
-//! Values are serde trees: shared references decode as duplicated subtrees and
-//! cycles are not representable (use [`jser::Graph`] for true identity/cycles).
-//! Arrays of objects and unknown classes are rejected.
+//!
+//! [`to_vec_map`]/[`from_slice_map`], [`to_vec_set`]/[`from_slice_set`] and
+//! [`to_vec_enum`]/[`from_slice_enum`] cover map/set/enum roots;
+//! [`MultiRootWriter`]/[`from_slice_multi`] cover multi-root streams with
+//! optional `TC_RESET` markers. [`from_slice_roots`] is the JSON-view helper
+//! (it returns `serde_json::Value` by design). Values are serde trees: shared
+//! references decode as duplicated subtrees and cycles are not representable
+//! (use [`jser::Graph`] for true identity/cycles). Arrays of objects and
+//! unknown classes are rejected.
 
-use jser::builtin::{
-    new_hash_map_entries, new_hash_set, new_java_array, new_linked_hash_map_entries,
-};
+mod direct;
+
 use jser::{
-    decode_stream_with_allowlist, decode_with_allowlist, encode_stream, Allowlist, ClassData,
-    ClassDesc, Error, FieldDesc, FieldType, Graph, JValue, Result,
+    decode_stream_with_allowlist, decode_with_allowlist, encode_stream, Allowlist, Error,
+    FieldType, Graph, JValue, Result,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-const HASH_MAP: &str = "Ljava/util/HashMap;";
-const LINKED_HASH_MAP: &str = "Ljava/util/LinkedHashMap;";
-const HASH_SET: &str = "Ljava/util/HashSet;";
+use direct::Ctx;
+
+pub(crate) const HASH_MAP: &str = "Ljava/util/HashMap;";
+pub(crate) const LINKED_HASH_MAP: &str = "Ljava/util/LinkedHashMap;";
+pub(crate) const HASH_SET: &str = "Ljava/util/HashSet;";
 
 /// Schema of one value inside a map or set.
 #[derive(Debug, Clone)]
@@ -113,12 +117,205 @@ pub struct JavaSchema {
 /// Serialize `value` and write one Java object stream.
 pub fn to_vec<T: Serialize>(value: &T, schema: &JavaSchema) -> Result<Vec<u8>> {
     validate_schema(schema)?;
-    let json = serde_json::to_value(value).map_err(serde_error)?;
-
     let mut graph = Graph::new();
-    let object = encode_object(&json, schema, &mut graph)?;
+    let object =
+        direct::to_jvalue(value, Ctx::Object(schema.clone()), &mut graph).map_err(Error::from)?;
     graph.add_item(object);
     encode_stream(&graph)
+}
+
+/// Read one Java object stream and deserialize it into `T`.
+pub fn from_slice<T: DeserializeOwned>(
+    bytes: &[u8],
+    schema: &JavaSchema,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_schema(schema)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    direct::from_jvalue(&graph.items()[0], &graph, Ctx::Object(schema.clone())).map_err(Error::from)
+}
+
+/// Builds a multi-root stream, optionally interleaving `TC_RESET`.
+#[derive(Debug, Default)]
+pub struct MultiRootWriter {
+    graph: Graph,
+}
+
+impl MultiRootWriter {
+    /// Create an empty writer.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Serialize `value` with `schema` and append it as the next root.
+    pub fn push<T: Serialize + ?Sized>(&mut self, schema: &JavaSchema, value: &T) -> Result<()> {
+        validate_schema(schema)?;
+        let object = direct::to_jvalue(value, Ctx::Object(schema.clone()), &mut self.graph)
+            .map_err(Error::from)?;
+        self.graph.add_item(object);
+        Ok(())
+    }
+
+    /// Append a `TC_RESET` marker between roots.
+    pub fn reset(&mut self) {
+        self.graph.add_reset();
+    }
+
+    /// Encode the accumulated roots into one stream.
+    pub fn finish(self) -> Result<Vec<u8>> {
+        encode_stream(&self.graph)
+    }
+}
+
+/// Decode every non-`TC_RESET` root and return its JSON value.
+///
+/// This is the explicit JSON-view API; typed code should use
+/// [`from_slice_multi`] instead.
+pub fn from_slice_roots(
+    bytes: &[u8],
+    schemas: &[&JavaSchema],
+    allowlist: &Allowlist,
+) -> Result<Vec<Value>> {
+    for schema in schemas {
+        validate_schema(schema)?;
+    }
+    let graph = decode_stream_with_allowlist(bytes, allowlist)?;
+    let mut roots = Vec::new();
+    let mut index = 0;
+
+    for item in graph.items() {
+        if matches!(item, JValue::Reset) {
+            continue;
+        }
+        let schema = schemas.get(index).ok_or_else(|| Error::FieldMismatch {
+            message: format!(
+                "stream has more roots than the {} schema(s) provided",
+                schemas.len()
+            ),
+        })?;
+        roots.push(decode_object(&graph, item, schema)?);
+        index += 1;
+    }
+
+    if index != schemas.len() {
+        return Err(Error::FieldMismatch {
+            message: format!("stream has {index} root(s), expected {}", schemas.len()),
+        });
+    }
+    Ok(roots)
+}
+
+/// Deserialize a multi-root stream into `T` (for example a tuple or `Vec`).
+pub fn from_slice_multi<T: DeserializeOwned>(
+    bytes: &[u8],
+    schemas: &[&JavaSchema],
+    allowlist: &Allowlist,
+) -> Result<T> {
+    for schema in schemas {
+        validate_schema(schema)?;
+    }
+    let graph = decode_stream_with_allowlist(bytes, allowlist)?;
+    let mut items = Vec::new();
+    for item in graph.items() {
+        if !matches!(item, JValue::Reset) {
+            items.push(item);
+        }
+    }
+    if items.len() != schemas.len() {
+        return Err(Error::FieldMismatch {
+            message: format!(
+                "stream has {} root(s), expected {}",
+                items.len(),
+                schemas.len()
+            ),
+        });
+    }
+    direct::from_roots(
+        &graph,
+        items,
+        schemas.iter().map(|schema| (*schema).clone()).collect(),
+    )
+    .map_err(Error::from)
+}
+
+/// Serialize a map value into a Java `HashMap`/`LinkedHashMap` root object.
+pub fn to_vec_map<T: Serialize>(
+    value: &T,
+    key: &SchemaValue,
+    map_value: &SchemaValue,
+    linked: bool,
+) -> Result<Vec<u8>> {
+    validate_value(key, true)?;
+    validate_value(map_value, false)?;
+    let mut graph = Graph::new();
+    let map = MapSchema {
+        key: key.clone(),
+        value: map_value.clone(),
+    };
+    let object =
+        direct::to_jvalue(value, Ctx::Map { map, linked }, &mut graph).map_err(Error::from)?;
+    graph.add_item(object);
+    encode_stream(&graph)
+}
+
+/// Read a Java map root and deserialize it into `T`.
+pub fn from_slice_map<T: DeserializeOwned>(
+    bytes: &[u8],
+    key: &SchemaValue,
+    map_value: &SchemaValue,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_value(key, true)?;
+    validate_value(map_value, false)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    let map = MapSchema {
+        key: key.clone(),
+        value: map_value.clone(),
+    };
+    direct::from_jvalue(&graph.items()[0], &graph, Ctx::Map { map, linked: false })
+        .map_err(Error::from)
+}
+
+/// Serialize a set value into a Java `HashSet` root object.
+pub fn to_vec_set<T: Serialize>(value: &T, element: &SchemaValue) -> Result<Vec<u8>> {
+    validate_value(element, false)?;
+    let mut graph = Graph::new();
+    let object =
+        direct::to_jvalue(value, Ctx::Set(element.clone()), &mut graph).map_err(Error::from)?;
+    graph.add_item(object);
+    encode_stream(&graph)
+}
+
+/// Read a Java set root and deserialize it into `T`.
+pub fn from_slice_set<T: DeserializeOwned>(
+    bytes: &[u8],
+    element: &SchemaValue,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_value(element, false)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    direct::from_jvalue(&graph.items()[0], &graph, Ctx::Set(element.clone())).map_err(Error::from)
+}
+
+/// Serialize a unit-variant value into a Java enum root object.
+pub fn to_vec_enum<T: Serialize>(value: &T, schema: &EnumSchema) -> Result<Vec<u8>> {
+    validate_enum(schema)?;
+    let mut graph = Graph::new();
+    let object =
+        direct::to_jvalue(value, Ctx::Enum(schema.clone()), &mut graph).map_err(Error::from)?;
+    graph.add_item(object);
+    encode_stream(&graph)
+}
+
+/// Read a Java enum root and deserialize it into `T`.
+pub fn from_slice_enum<T: DeserializeOwned>(
+    bytes: &[u8],
+    schema: &EnumSchema,
+    allowlist: &Allowlist,
+) -> Result<T> {
+    validate_enum(schema)?;
+    let graph = decode_with_allowlist(bytes, allowlist)?;
+    direct::from_jvalue(&graph.items()[0], &graph, Ctx::Enum(schema.clone())).map_err(Error::from)
 }
 
 fn validate_schema(schema: &JavaSchema) -> Result<()> {
@@ -214,163 +411,7 @@ fn validate_value(value: &SchemaValue, is_key: bool) -> Result<()> {
     Ok(())
 }
 
-fn encode_object(value: &Value, schema: &JavaSchema, graph: &mut Graph) -> Result<JValue> {
-    let object = value.as_object().ok_or_else(|| Error::FieldMismatch {
-        message: format!(
-            "serde value for `{}` must be an object/struct",
-            schema.class
-        ),
-    })?;
-
-    let mut field_descs = Vec::with_capacity(schema.fields.len());
-    let mut fields = Vec::with_capacity(schema.fields.len());
-
-    for field in &schema.fields {
-        let raw = object.get(field.name).ok_or_else(|| Error::FieldMismatch {
-            message: format!("serde value has no field `{}`", field.name),
-        })?;
-        let value = if let Some(enumeration) = &field.enumeration {
-            encode_enum(raw, enumeration, graph)?
-        } else if let Some(map) = &field.map {
-            encode_map(raw, map, field.class_name1, graph)?
-        } else if let Some(element) = &field.set {
-            encode_set(raw, element, graph)?
-        } else {
-            match &field.nested {
-                Some(nested) if !raw.is_null() => encode_object(raw, nested, graph)?,
-                Some(_) => JValue::Null,
-                None => json_to_jvalue(raw, field.typecode, field.class_name1, graph)?,
-            }
-        };
-        let class_name1 = field.class_name1.map(str::to_owned).or_else(|| {
-            field
-                .enumeration
-                .as_ref()
-                .map(|enumeration| format!("L{};", enumeration.class.replace('.', "/")))
-        });
-        field_descs.push(FieldDesc {
-            name: field.name.to_owned(),
-            typecode: field.typecode,
-            class_name1,
-            class_name_handle: None,
-        });
-        fields.push((field.name.to_owned(), value));
-    }
-
-    let desc = graph.add_class_desc(ClassDesc {
-        name: schema.class.to_owned(),
-        suid: schema.suid,
-        flags: 0x02,
-        fields: field_descs,
-        super_desc: None,
-        annotations: Vec::new(),
-    })?;
-    let object = graph.new_object(vec![ClassData {
-        desc,
-        fields,
-        custom: None,
-    }])?;
-    Ok(JValue::Obj(object))
-}
-
-/// Read one Java object stream and deserialize it into `T`.
-pub fn from_slice<T: DeserializeOwned>(
-    bytes: &[u8],
-    schema: &JavaSchema,
-    allowlist: &Allowlist,
-) -> Result<T> {
-    validate_schema(schema)?;
-    let graph = decode_with_allowlist(bytes, allowlist)?;
-    let value = &graph.items()[0];
-    let json = decode_object(&graph, value, schema)?;
-    serde_json::from_value(json).map_err(serde_error)
-}
-
-/// Builds a multi-root stream, optionally interleaving `TC_RESET`.
-///
-/// Each [`push`](MultiRootWriter::push) serializes one root; [`reset`](MultiRootWriter::reset)
-/// appends a `TC_RESET` marker so the following roots start a fresh wire
-/// handle table. Root values are serde trees: shared Rust references are
-/// written as duplicated subtrees (the dynamic [`jser::Graph`] API is the way
-/// to write true identity/cycles).
-#[derive(Debug, Default)]
-pub struct MultiRootWriter {
-    graph: Graph,
-}
-
-impl MultiRootWriter {
-    /// Create an empty writer.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Serialize `value` with `schema` and append it as the next root.
-    pub fn push<T: Serialize + ?Sized>(&mut self, schema: &JavaSchema, value: &T) -> Result<()> {
-        validate_schema(schema)?;
-        let json = serde_json::to_value(value).map_err(serde_error)?;
-        let object = encode_object(&json, schema, &mut self.graph)?;
-        self.graph.add_item(object);
-        Ok(())
-    }
-
-    /// Append a `TC_RESET` marker between roots.
-    pub fn reset(&mut self) {
-        self.graph.add_reset();
-    }
-
-    /// Encode the accumulated roots into one stream.
-    pub fn finish(self) -> Result<Vec<u8>> {
-        encode_stream(&self.graph)
-    }
-}
-
-/// Decode every non-`TC_RESET` root and return its JSON value.
-///
-/// `schemas` must provide one [`JavaSchema`] per root, in order. `TC_RESET`
-/// markers are skipped; they only reset wire handles.
-pub fn from_slice_roots(
-    bytes: &[u8],
-    schemas: &[&JavaSchema],
-    allowlist: &Allowlist,
-) -> Result<Vec<Value>> {
-    for schema in schemas {
-        validate_schema(schema)?;
-    }
-    let graph = decode_stream_with_allowlist(bytes, allowlist)?;
-    let mut roots = Vec::new();
-    let mut index = 0;
-
-    for item in graph.items() {
-        if matches!(item, JValue::Reset) {
-            continue;
-        }
-        let schema = schemas.get(index).ok_or_else(|| Error::FieldMismatch {
-            message: format!(
-                "stream has more roots than the {} schema(s) provided",
-                schemas.len()
-            ),
-        })?;
-        roots.push(decode_object(&graph, item, schema)?);
-        index += 1;
-    }
-
-    if index != schemas.len() {
-        return Err(Error::FieldMismatch {
-            message: format!("stream has {index} root(s), expected {}", schemas.len()),
-        });
-    }
-    Ok(roots)
-}
-
-/// Deserialize a multi-root stream into `T` (for example a tuple or `Vec`).
-pub fn from_slice_multi<T: DeserializeOwned>(
-    bytes: &[u8],
-    schemas: &[&JavaSchema],
-    allowlist: &Allowlist,
-) -> Result<T> {
-    let roots = from_slice_roots(bytes, schemas, allowlist)?;
-    serde_json::from_value(Value::Array(roots)).map_err(serde_error)
-}
+// ==================== JSON-view decoding (from_slice_roots) ====================
 
 fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<Value> {
     let class = graph.class_name(value)?;
@@ -416,93 +457,6 @@ fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<V
     Ok(Value::Object(object))
 }
 
-fn encode_map(
-    raw: &Value,
-    map: &MapSchema,
-    class_name1: Option<&'static str>,
-    graph: &mut Graph,
-) -> Result<JValue> {
-    if raw.is_null() {
-        return Ok(JValue::Null);
-    }
-    let object = raw
-        .as_object()
-        .ok_or_else(|| type_error("a JSON object for a Map field"))?;
-    let mut entries = Vec::with_capacity(object.len());
-    for (key, value) in object {
-        let key = json_key_to_jvalue(key, &map.key, graph)?;
-        let value = json_to_value(value, &map.value, graph)?;
-        entries.push((key, value));
-    }
-    let handle = if class_name1 == Some(LINKED_HASH_MAP) {
-        new_linked_hash_map_entries(graph, entries, false)?
-    } else {
-        new_hash_map_entries(graph, entries)?
-    };
-    Ok(JValue::Obj(handle))
-}
-
-fn encode_set(raw: &Value, element: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
-    if raw.is_null() {
-        return Ok(JValue::Null);
-    }
-    let array = raw
-        .as_array()
-        .ok_or_else(|| type_error("a JSON array for a Set field"))?;
-    let mut values = Vec::with_capacity(array.len());
-    for item in array {
-        values.push(json_to_value(item, element, graph)?);
-    }
-    Ok(JValue::Obj(new_hash_set(graph, values)?))
-}
-
-fn json_to_value(value: &Value, schema: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
-    if value.is_null() {
-        return Ok(JValue::Null);
-    }
-    match &schema.nested {
-        Some(nested) => encode_object(value, nested, graph),
-        None => json_to_jvalue(value, schema.typecode, schema.class_name1, graph),
-    }
-}
-
-fn json_key_to_jvalue(key: &str, schema: &SchemaValue, graph: &mut Graph) -> Result<JValue> {
-    if schema.nested.is_some() || schema.typecode == FieldType::Array {
-        return Err(Error::InvalidSchema(
-            "map keys must be scalar or String".to_owned(),
-        ));
-    }
-
-    let invalid = || Error::FieldMismatch {
-        message: format!("map key `{key}` does not match {:?}", schema.typecode),
-    };
-
-    Ok(match schema.typecode {
-        FieldType::Object => json_to_jvalue(
-            &Value::String(key.to_owned()),
-            schema.typecode,
-            schema.class_name1,
-            graph,
-        )?,
-        FieldType::Byte => JValue::Byte(key.parse().map_err(|_| invalid())?),
-        FieldType::Short => JValue::Short(key.parse().map_err(|_| invalid())?),
-        FieldType::Int => JValue::Int(key.parse().map_err(|_| invalid())?),
-        FieldType::Long => JValue::Long(key.parse().map_err(|_| invalid())?),
-        FieldType::Boolean => JValue::Bool(key.parse().map_err(|_| invalid())?),
-        FieldType::Float => JValue::Float(key.parse().map_err(|_| invalid())?),
-        FieldType::Double => JValue::Double(key.parse().map_err(|_| invalid())?),
-        FieldType::Char => {
-            let mut chars = key.chars();
-            let value = chars.next().ok_or_else(invalid)?;
-            if chars.next().is_some() {
-                return Err(invalid());
-            }
-            JValue::Char(value as u16)
-        }
-        FieldType::Array => unreachable!("array keys are rejected above"),
-    })
-}
-
 fn decode_map(graph: &Graph, value: &JValue, map: &MapSchema) -> Result<Value> {
     if matches!(value, JValue::Null) {
         return Ok(Value::Null);
@@ -529,128 +483,6 @@ fn decode_set(graph: &Graph, value: &JValue, element: &SchemaValue) -> Result<Va
     Ok(Value::Array(json))
 }
 
-fn value_to_json(graph: &Graph, value: &JValue, schema: &SchemaValue) -> Result<Value> {
-    if matches!(value, JValue::Null) {
-        return Ok(Value::Null);
-    }
-    match &schema.nested {
-        Some(nested) => decode_object(graph, value, nested),
-        None => jvalue_to_json(graph, value, schema.typecode, schema.class_name1),
-    }
-}
-
-fn json_key_to_string(value: Value) -> Result<String> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::Number(value) => Ok(value.to_string()),
-        Value::Bool(value) => Ok(value.to_string()),
-        _ => Err(Error::FieldMismatch {
-            message: "map key must be scalar or String".to_owned(),
-        }),
-    }
-}
-
-/// Serialize a map value into a Java `HashMap`/`LinkedHashMap` root object.
-pub fn to_vec_map<T: Serialize>(
-    value: &T,
-    key: &SchemaValue,
-    map_value: &SchemaValue,
-    linked: bool,
-) -> Result<Vec<u8>> {
-    validate_value(key, true)?;
-    validate_value(map_value, false)?;
-    let json = serde_json::to_value(value).map_err(serde_error)?;
-    if !json.is_object() {
-        return Err(Error::FieldMismatch {
-            message: "map root must serialize to a JSON object".to_owned(),
-        });
-    }
-    let mut graph = Graph::new();
-    let map = MapSchema {
-        key: key.clone(),
-        value: map_value.clone(),
-    };
-    let class_name1 = Some(if linked { LINKED_HASH_MAP } else { HASH_MAP });
-    let value = encode_map(&json, &map, class_name1, &mut graph)?;
-    graph.add_item(value);
-    encode_stream(&graph)
-}
-
-/// Read a Java map root and deserialize it into `T`.
-pub fn from_slice_map<T: DeserializeOwned>(
-    bytes: &[u8],
-    key: &SchemaValue,
-    map_value: &SchemaValue,
-    allowlist: &Allowlist,
-) -> Result<T> {
-    validate_value(key, true)?;
-    validate_value(map_value, false)?;
-    let graph = decode_with_allowlist(bytes, allowlist)?;
-    let map = MapSchema {
-        key: key.clone(),
-        value: map_value.clone(),
-    };
-    let json = decode_map(&graph, &graph.items()[0], &map)?;
-    serde_json::from_value(json).map_err(serde_error)
-}
-
-/// Serialize a set value (JSON array) into a Java `HashSet` root object.
-pub fn to_vec_set<T: Serialize>(value: &T, element: &SchemaValue) -> Result<Vec<u8>> {
-    validate_value(element, false)?;
-    let json = serde_json::to_value(value).map_err(serde_error)?;
-    if !json.is_array() {
-        return Err(Error::FieldMismatch {
-            message: "set root must serialize to a JSON array".to_owned(),
-        });
-    }
-    let mut graph = Graph::new();
-    let value = encode_set(&json, element, &mut graph)?;
-    graph.add_item(value);
-    encode_stream(&graph)
-}
-
-/// Read a Java set root and deserialize it into `T`.
-pub fn from_slice_set<T: DeserializeOwned>(
-    bytes: &[u8],
-    element: &SchemaValue,
-    allowlist: &Allowlist,
-) -> Result<T> {
-    validate_value(element, false)?;
-    let graph = decode_with_allowlist(bytes, allowlist)?;
-    let json = decode_set(&graph, &graph.items()[0], element)?;
-    serde_json::from_value(json).map_err(serde_error)
-}
-
-fn encode_enum(value: &Value, schema: &EnumSchema, graph: &mut Graph) -> Result<JValue> {
-    if value.is_null() {
-        return Ok(JValue::Null);
-    }
-    let serde_name = value
-        .as_str()
-        .ok_or_else(|| type_error("a string for an enum field"))?;
-    let java_name = schema.java_name(serde_name)?;
-
-    let enum_desc = graph.add_class_desc(ClassDesc {
-        name: "java.lang.Enum".to_owned(),
-        suid: 0,
-        flags: 0x12,
-        fields: Vec::new(),
-        super_desc: None,
-        annotations: Vec::new(),
-    })?;
-    let desc = graph.add_class_desc(ClassDesc {
-        name: schema.class.to_owned(),
-        suid: 0,
-        flags: 0x12,
-        fields: Vec::new(),
-        super_desc: Some(enum_desc),
-        annotations: Vec::new(),
-    })?;
-    let constant = graph.new_string(java_name);
-    let handle = graph.new_enum(desc, constant)?;
-    Ok(JValue::Enum(handle))
-}
-
 fn decode_enum(graph: &Graph, value: &JValue, schema: &EnumSchema) -> Result<Value> {
     if matches!(value, JValue::Null) {
         return Ok(Value::Null);
@@ -670,110 +502,24 @@ fn decode_enum(graph: &Graph, value: &JValue, schema: &EnumSchema) -> Result<Val
     Ok(Value::String(schema.serde_name(java_name)?.to_owned()))
 }
 
-/// Serialize a unit-variant value into a Java enum root object.
-pub fn to_vec_enum<T: Serialize>(value: &T, schema: &EnumSchema) -> Result<Vec<u8>> {
-    validate_enum(schema)?;
-    let json = serde_json::to_value(value).map_err(serde_error)?;
-    if !json.is_string() {
-        return Err(Error::FieldMismatch {
-            message: "enum root must serialize to a string (unit variant)".to_owned(),
-        });
+fn value_to_json(graph: &Graph, value: &JValue, schema: &SchemaValue) -> Result<Value> {
+    if matches!(value, JValue::Null) {
+        return Ok(Value::Null);
     }
-    let mut graph = Graph::new();
-    let value = encode_enum(&json, schema, &mut graph)?;
-    graph.add_item(value);
-    encode_stream(&graph)
+    match &schema.nested {
+        Some(nested) => decode_object(graph, value, nested),
+        None => jvalue_to_json(graph, value, schema.typecode, schema.class_name1),
+    }
 }
 
-/// Read a Java enum root and deserialize it into `T`.
-pub fn from_slice_enum<T: DeserializeOwned>(
-    bytes: &[u8],
-    schema: &EnumSchema,
-    allowlist: &Allowlist,
-) -> Result<T> {
-    validate_enum(schema)?;
-    let graph = decode_with_allowlist(bytes, allowlist)?;
-    let json = decode_enum(&graph, &graph.items()[0], schema)?;
-    serde_json::from_value(json).map_err(serde_error)
-}
-
-fn json_to_jvalue(
-    value: &Value,
-    typecode: FieldType,
-    class_name1: Option<&str>,
-    graph: &mut Graph,
-) -> Result<JValue> {
-    if value.is_null() {
-        return Ok(JValue::Null);
-    }
-
-    match typecode {
-        FieldType::Boolean => Ok(JValue::Bool(
-            value.as_bool().ok_or_else(|| type_error("boolean"))?,
-        )),
-        FieldType::Byte => Ok(JValue::Byte(
-            i8::try_from(value.as_i64().ok_or_else(|| type_error("byte integer"))?)
-                .map_err(|_| type_error("i8 range"))?,
-        )),
-        FieldType::Char => {
-            let text = value.as_str().ok_or_else(|| type_error("char string"))?;
-            let mut chars = text.chars();
-            let character = chars.next().ok_or_else(|| type_error("empty char"))?;
-            if chars.next().is_some() {
-                return Err(type_error("single char"));
-            }
-            Ok(JValue::Char(character as u16))
-        }
-        FieldType::Short => Ok(JValue::Short(
-            i16::try_from(value.as_i64().ok_or_else(|| type_error("short integer"))?)
-                .map_err(|_| type_error("i16 range"))?,
-        )),
-        FieldType::Int => Ok(JValue::Int(
-            i32::try_from(value.as_i64().ok_or_else(|| type_error("int"))?)
-                .map_err(|_| type_error("i32 range"))?,
-        )),
-        FieldType::Long => Ok(JValue::Long(
-            value.as_i64().ok_or_else(|| type_error("long"))?,
-        )),
-        FieldType::Float => Ok(JValue::Float(
-            value.as_f64().ok_or_else(|| type_error("float"))? as f32,
-        )),
-        FieldType::Double => Ok(JValue::Double(
-            value.as_f64().ok_or_else(|| type_error("double"))?,
-        )),
-        FieldType::Object => match class_name1 {
-            Some("Ljava/lang/String;") => Ok(JValue::Str(
-                graph.new_string(
-                    value
-                        .as_str()
-                        .ok_or_else(|| type_error("String"))?
-                        .to_owned(),
-                ),
-            )),
-            Some(other) => Err(Error::UnsupportedClass(format!(
-                "serde bridge does not support object field `{other}`"
-            ))),
-            None => Err(Error::FieldMismatch {
-                message: "object field has no className1".to_owned(),
-            }),
-        },
-        FieldType::Array => {
-            let class = class_name1.ok_or_else(|| Error::FieldMismatch {
-                message: "array field has no className1".to_owned(),
-            })?;
-            let values = value.as_array().ok_or_else(|| type_error("array"))?;
-            let element = array_element_descriptor(class)?;
-            let mut elements = Vec::with_capacity(values.len());
-            for value in values {
-                elements.push(json_to_jvalue(
-                    value,
-                    element.typecode,
-                    element.class_name1,
-                    graph,
-                )?);
-            }
-            Ok(JValue::Arr(new_java_array(graph, class, elements)?))
-        }
+fn json_key_to_string(value: Value) -> Result<String> {
+    match value {
+        Value::String(value) => Ok(value),
+        Value::Number(value) => Ok(value.to_string()),
+        Value::Bool(value) => Ok(value.to_string()),
+        _ => Err(Error::FieldMismatch {
+            message: "map key must be scalar or String".to_owned(),
+        }),
     }
 }
 
@@ -894,11 +640,5 @@ fn array_element_descriptor(class_name: &str) -> Result<ElementDescriptor> {
 fn type_error(expected: &str) -> Error {
     Error::FieldMismatch {
         message: format!("serde bridge expected {expected}"),
-    }
-}
-
-fn serde_error(error: serde_json::Error) -> Error {
-    Error::FieldMismatch {
-        message: format!("serde: {error}"),
     }
 }

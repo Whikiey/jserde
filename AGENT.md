@@ -155,7 +155,7 @@ jser/
 
 - 核心数据模型是**句柄化动态图 + arena 句柄表**（`JValue` + `Handle(u32)` + `Graph`）：引用型值（`String`/数组/对象/enum）统一走 `Handle`，`classDesc` 也占句柄；primitive 数组按 wire 大端字节存 raw（`PrimitiveArray`），`as_array` 只返回对象数组；内部 `Handle` 单调递增，`TC_RESET` 只清 wire 映射。不要用 `Rc<RefCell<..>>` 建环（泄漏且与 serde/并发冲突）。
 - 写出走 `JavaSerializable` trait + `JavaSchema`，**不要**试图只用 serde derive 表达 `serialVersionUID` / 字段类型码 / `classDescFlags` / 集合头部。derive 支持嵌套自定义字段（`DESCRIPTOR`）、`Option<Custom>`、`Vec<Custom>`（`ARRAY_DESCRIPTOR`，数组 SUID 自动计算）、继承（`#[java(flatten)]`）与 unit-only enum（`TC_ENUM`、flags 0x12、SUID 0）。
-- serde 只做单根/多根、无环、无回指、已知 POJO 的便利层；字段可经 `SchemaField::nested` 递归嵌套，并支持 Map/Set/枚举字段与 Map/Set/枚举根；多根与 `TC_RESET` 用 `MultiRootWriter`/`from_slice_multi`；共享引用按值展开、环不在树模型内（真实身份/环用动态 `Graph`）；仍不支持对象数组与未知类，超范围直接报错。
+- serde 只做单根/多根、无环、无回指、已知 POJO 的便利层；typed 路径由 `direct` 模块直连 `JValue`（无 JSON 中间层，`from_slice_roots` 除外，它按设计返回 JSON）；字段可经 `SchemaField::nested` 递归嵌套，并支持 Map/Set/枚举字段与 Map/Set/枚举根；多根与 `TC_RESET` 用 `MultiRootWriter`/`from_slice_multi`；共享引用按值展开、环不在树模型内（真实身份/环用动态 `Graph`）；仍不支持对象数组与未知类，超范围直接报错。
 - 已知类走注册表 + 特例 codec；未知类在 allowlist 放行时降级为 `JValue::Obj` 并支持原样回写。
 - 错误用 `thiserror` 枚举，至少区分：协议错误 / 不支持（**带类名**）/ 结构不匹配。
 - 解析器用迭代式而非深递归，并显式限制最大深度、最大元素数、最大流大小。

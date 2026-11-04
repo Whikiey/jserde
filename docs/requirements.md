@@ -182,3 +182,5 @@
 | 2026-11-04 | P9-9：serde 支持枚举字段（serde↔Java 常量映射）与枚举根（`to_vec_enum`/`from_slice_enum`） | P9-9 |
 | 2026-11-04 | P9-10/11：serde 支持多根流与 `TC_RESET`（`MultiRootWriter`/`from_slice_multi`）；P9-12 定界：共享引用按值展开，环用动态 Graph | P9-10/11 |
 | 2026-11-04 | P9-21：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime）与对应 `BuiltinValue` 语义；manifest 36 例/75224 字节 | P9-21 |
+| 2026-11-04 | P9-27：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；emit 重编码全部 fixture；`tests/interop.rs`/`interop.sh` 逐例 Java 读回（AC-02 全 fixture） | P9-27 |
+| 2026-11-04 | P9-13：serde typed 路径改为直连 `JValue`（`direct.rs`），去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图 | P9-13 |

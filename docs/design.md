@@ -144,7 +144,7 @@ pub trait JavaSerializable: Sized {
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值是树：共享引用解码为重复子树，环无法用有限 schema 表达（真实身份/环用动态 `Graph`）。仍拒绝对象数组与未知类。
+`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：typed 路径用 `direct` 模块的 `Serializer`/`Deserializer` 直接读写 `JValue`（无 `serde_json::Value` 中间层）；`from_slice_roots` 是显式 JSON 视图（返回 `Value`）。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值是树：共享引用解码为重复子树，环无法用有限 schema 表达（真实身份/环用动态 `Graph`）。仍拒绝对象数组与未知类。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 

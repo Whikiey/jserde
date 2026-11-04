@@ -431,6 +431,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-10/11 完成（TDD）：`MultiRootWriter`（`push`/`reset`/`finish`）+ `from_slice_roots`/`from_slice_multi`，支持多根与 `TC_RESET`；P9-12 语义定界（共享引用按值展开，环用动态 Graph）；新增多根/共享引用测试；全仓 143 项通过 | P9-10/11 |
 | 2026-11-04 | P9-21 完成（TDD）：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime），`BuiltinValue` 补齐四种语义；manifest 36 例/75224 字节；全仓 144 项通过 | P9-21 |
 | 2026-11-04 | P9-27 完成：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；`emit.rs` 重编码全部 fixture（`build/rust/all/`，可用 `JSER_EMIT_DIR` 覆盖）；`interop.sh` 与 `tests/interop.rs` 逐例 Java 读回（36 例 + 构造/typed/derive/serde） | P9-27 |
+| 2026-11-04 | P9-13 完成：新增 `direct.rs`（`Serializer`/`Deserializer` 直连 `JValue`），`to_vec`/`from_slice` 及 map/set/enum/multi-root 均去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图；13 个 serde 测试全绿 | P9-13 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
@@ -479,7 +480,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | P9-10 | 多根流 | ✅ 已实现：`MultiRootWriter` + `from_slice_roots`/`from_slice_multi`（逐根 schema） | 中 / M |
 | P9-11 | `TC_RESET` 流 | ✅ 已实现：`MultiRootWriter::reset()` 插入 `TC_RESET`；解码跳过 Reset 并按段读取 | 中 / S |
 | P9-12 | 共享引用/环 | ◐ 语义定界：解码时共享引用按值展开；环无法用有限 schema 表达，真实身份/环仍用动态 `Graph`；未做指针级 serde 支持 | 低 / XL |
-| P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层） | 性能与错误定位；外部 API 不变 | 中 / L |
+| P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层）——✅ 已实现：typed 路径直连 `JValue`；`from_slice_roots` 仍返回 JSON（按设计） | 性能与错误定位；外部 API 不变 | 中 / L |
 
 ### 21.3 derive / typed
 
