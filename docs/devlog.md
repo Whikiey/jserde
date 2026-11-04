@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 10:55 · ci: 接入 nightly 30 分钟 fuzz（P8-1）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `.github/workflows/nightly.yml`：每日 18:00 UTC（Asia/Shanghai 02:00）+ 手动触发；nightly 工具链、corpus 缓存与 fixture 播种、decode `-max_total_time=1800`（AC-04）、roundtrip/mutf8 各 300s、`-rss_limit_mb=2048` / `-timeout=30`，失败上传 `fuzz/artifacts` 与 `fuzz/corpus`。
+  - `fuzz/README.md`：本地 seed/运行命令、nightly 说明与 AC-04 口径。
+  - 状态同步：requirements §4.1/§8、implementation-plan §11/§19/§20、README、SECURITY、CHANGELOG、AGENT §1/§5。
+- **验证**：本机无 `cargo-fuzz` 且离线，无法执行 30 分钟实跑；workflow 结构与现有 `ci.yml` 一致，待远端首次运行；`cargo test --workspace` 维持 113 passed（本次未改 Rust 代码）。
+- **TDD**：不适用（CI 配置与文档）。
+
+---
+
 ## 2026-11-04 10:45 · chore: 忽略 Visual Studio 的 .vs 目录
 
 - **提交**：本次（hash 见 `git log`）

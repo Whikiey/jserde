@@ -6,8 +6,8 @@ untrusted-on-the-wire format; it is **not** a sandbox.
 Current implementation: v0.1.0, P0–P7 code line, strict allowlist by default,
 113 tests. The remaining security-relevant gaps are listed in
 `docs/implementation-plan.md` §20 (notably: allowlist is not a gadget sandbox,
-30-minute fuzz is still pending, and real 100 MB primitive arrays exceed the
-memory target).
+the 30-minute fuzz runs in nightly CI and awaits its first green run, and real
+100 MB primitive arrays exceed the memory target).
 
 ## Default policy
 

@@ -1,0 +1,73 @@
+name: nightly
+
+on:
+  schedule:
+    # 18:00 UTC = 02:00 Asia/Shanghai (next day)
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  DECODE_FUZZ_SECONDS: 1800
+  AUX_FUZZ_SECONDS: 300
+
+jobs:
+  fuzz:
+    name: fuzz (AC-04)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            fuzz -> fuzz/target
+
+      - name: Restore fuzz corpus
+        uses: actions/cache@v4
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Seed corpora from committed fixtures
+        run: |
+          set -euo pipefail
+          mkdir -p fuzz/corpus/decode fuzz/corpus/roundtrip fuzz/corpus/mutf8
+          find docs/testdata/fixtures -type f -name '*.ser' -print0 |
+            while IFS= read -r -d '' file; do
+              cp "$file" fuzz/corpus/decode/
+              cp "$file" fuzz/corpus/roundtrip/
+            done
+          # Modified-UTF-8 seeds (NUL, overlong NUL, CJK, surrogate pair).
+          printf '\x00' > fuzz/corpus/mutf8/seed-nul
+          printf '\xc0\x80' > fuzz/corpus/mutf8/seed-overlong-nul
+          printf '\xe4\xb8\xad' > fuzz/corpus/mutf8/seed-cjk
+          printf '\xed\xa0\xbd\xed\xb8\x80' > fuzz/corpus/mutf8/seed-emoji
+
+      - name: Fuzz decode for 30 minutes (AC-04)
+        run: cargo fuzz run decode -- -max_total_time="$DECODE_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+
+      - name: Fuzz roundtrip (short)
+        run: cargo fuzz run roundtrip -- -max_total_time="$AUX_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+
+      - name: Fuzz mutf8 (short)
+        run: cargo fuzz run mutf8 -- -max_total_time="$AUX_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: |
+            fuzz/artifacts/
+            fuzz/corpus/
+          if-no-files-found: ignore

@@ -109,7 +109,7 @@
 | AC-01 | ✅ | 34 个 fixture 全部解码；`36`/`40` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
 | AC-02 | ✅（代表性） | `tests/interop.rs` + `Verify.java` 覆盖 Point/Mixed/Map/环/enum/derive/serde；未逐类覆盖全部 Java 类型 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
-| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；30 分钟完整运行待夜间 |
+| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入 30 分钟 decode（2026-11-04），待首次绿色运行 |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
 | AC-06 | ◐ | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；真实 2500 万元素 `int[]` 因 `JValue` 32 B/元素尚未达标 |
 
@@ -170,3 +170,4 @@
 | 2026-11-04 | FR-14（derive）落地：`JavaSerializable`/`#[derive(JavaSerializable)]`、typed 互通；同时实现 `computeDefaultSUID` 与 `suid` 工具，`Fixtures$NoSuid` 与 JDK 一致 | P5 |
 | 2026-11-04 | FR-13/FR-15 部分落地：`Date`/`BigInteger`/`BigDecimal`/`java.time` 语义；新增 `object/40`（33 例）；`jser-serde` schema 驱动单根扁平桥，明确拒绝嵌套/环/reset/多根；`Optional` 非 Serializable 不纳入 | P6 |
 | 2026-11-04 | P7 加固：panic 审计（核心库禁 unwrap/expect）、fuzz 目标与离线冒烟、100 MB 合成块 bench（约 4.7 GB/s、2.0× RSS）、README/SECURITY/CHANGELOG；AC-06 合成负载通过，AC-04 的 30 分钟 fuzz 待夜间执行 | P7 |
+| 2026-11-04 | P8-1：新增 nightly fuzz workflow（decode 1800s、roundtrip/mutf8 300s、corpus 取 fixture、失败上传 artifacts）；AC-04 待首次绿色运行 | P8-1 |
