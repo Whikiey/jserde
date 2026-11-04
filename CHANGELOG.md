@@ -38,6 +38,8 @@
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
+- CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
+  `cargo-deny` (licenses/bans/sources/advisories) audit.
 - 36 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every
   fixture re-encoded by Rust and read back), SUID comparison, deterministic
   fuzz smoke and a benchmark example.

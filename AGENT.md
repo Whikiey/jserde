@@ -100,11 +100,12 @@ Rust 侧命令（骨架建好后必须保持可用）：
 ```bash
 cargo test --workspace                 # 全部测试，含 fixture 驱动用例
 cargo clippy --workspace --all-targets -- -D warnings
+cargo deny check                       # 依赖/许可证/来源审计（deny.toml）
 cargo fmt --all -- --check
 cargo test -p jser --test codec        # 只跑 codec 12 例
 cargo test -p jser --test reader       # StreamReader 单元契约
 cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
-cargo test -p jser --test roundtrip_bytes # 34 例逐字节回放门禁
+cargo test -p jser --test roundtrip_bytes # 36 例逐字节回放门禁
 cargo test -p jser --test typed       # typed 转换
 cargo test -p jser --test allowlist   # 默认严格 allowlist
 cargo test -p jser --test derive      # derive 互通

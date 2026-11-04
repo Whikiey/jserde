@@ -31,7 +31,7 @@ v0.1 的完成定义：**35 个 fixture 全部解码正确；Rust 写出的流�
 | A-1 | 目标 **Java 17**（fixture 为 17.0.20.1） | wire 格式自 1.2 未变；17 决定 `java.time`/`BigInteger` 的字段集合 |
 | A-2 | **双向**实现（读 + 写） | `FR-02` 为 `MUST`，`S-2` 明确双向 |
 | A-3 | **已确认**：默认 **严格 allowlist**（`java.lang.*`、`java.util.*` + 显式放行） | `NFR-04` 的安全默认；放宽用 `Allowlist::all()` 并文档警告 |
-| A-4 | Rust `edition 2021`、`rust-version = 1.75` | 保守、无 nightly 依赖；可在 P0 调整 |
+| A-4 | Rust `edition 2021`、`rust-version = 1.77` | 保守、无 nightly 依赖；`thiserror 2.0.21` 要求 1.77（P9-28 校准） |
 | A-5 | 首版**不发布** crates.io | 设计 §8 未决；不影响代码结构，只影响文档/CI 投入 |
 | A-6 | 单人开发估算，人日为 1 个熟练 Rust 工程师 | 并行化建议见 §2 |
 | A-7 | 本机可能无 JDK，CI 必须有 JDK 17 | 无 JDK 时 `tests/interop.rs` 运行时跳过，fixture 校验与 interop job 在 CI 跑 |
@@ -97,7 +97,7 @@ P2 ─────────────────────────�
 | ID | 任务 | 产出 | 验证 |
 |---|---|---|---|
 | P0-1 | 初始化版本控制并提交当前文档基线（**已完成**：`main` @ `ad46c43`） | `.git/`、首次提交 | `git log` 可见文档快照 |
-| P0-2 | ✅ workspace 骨架 | `Cargo.toml`（`members = ["crates/*"]`、`resolver = "2"`、`rust-version = "1.75"`）、`rust-toolchain.toml`（可选） | `cargo metadata` 通过 |
+| P0-2 | ✅ workspace 骨架 | `Cargo.toml`（`members = ["crates/*"]`、`resolver = "2"`、`rust-version = "1.77"`）、`rust-toolchain.toml`（可选） | `cargo metadata` 通过 |
 | P0-3 | ✅ 核心 crate 空壳 | `crates/jser/{Cargo.toml,src/lib.rs}`，`#![forbid(unsafe_code)]`，模块占位 `wire/ desc/ value/ builtin/` | `cargo check` |
 | P0-4 | ✅ derive / serde 占位 crate | `crates/jser-derive`（`proc-macro = true`）、`crates/jser-serde`（独立占位，P6 再接） | `cargo check --workspace` |
 | P0-5 | ✅ 错误模型 | `error.rs`：`BadMagic`、`Truncated`、`BadTag`、`BadHandle`、`MalformedString`、`UnsupportedClass(String)`、`FieldMismatch`、`LimitExceeded` | 测试构造每种错误 |
@@ -315,7 +315,7 @@ ac 对应：`AC-01` → P1/P2/P3；`AC-02` → P3；`AC-03` → P3/P4；`AC-04` 
 | fuzz-smoke | PR | `cargo test -p jser --test fuzz_smoke` | panic |
 | nightly | 定时 | fuzz 30 分钟、bench 对比 | 回归/panic（P8-2 待接入） |
 
-CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `~/.cargo`、`target/`。
+CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 cargo-deny job。缓存 `~/.cargo`、`target/`。
 
 ---
 
@@ -432,11 +432,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-21 完成（TDD）：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime），`BuiltinValue` 补齐四种语义；manifest 36 例/75224 字节；全仓 144 项通过 | P9-21 |
 | 2026-11-04 | P9-27 完成：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；`emit.rs` 重编码全部 fixture（`build/rust/all/`，可用 `JSER_EMIT_DIR` 覆盖）；`interop.sh` 与 `tests/interop.rs` 逐例 Java 读回（36 例 + 构造/typed/derive/serde） | P9-27 |
 | 2026-11-04 | P9-13 完成：新增 `direct.rs`（`Serializer`/`Deserializer` 直连 `JValue`），`to_vec`/`from_slice` 及 map/set/enum/multi-root 均去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图；13 个 serde 测试全绿 | P9-13 |
+| 2026-11-04 | P9-28/29 完成：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77 job、i686 `cargo check`；`rust-version` 校准为 1.77；新增 `deny.toml`（licenses/bans/sources/advisories）与 cargo-deny job | P9-28/29 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **144 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-14/P9-15/P9-16/P9-21 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **144 passed**；36 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -510,8 +511,8 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 |---|---|---|
 | P9-26 | property-based 测试（`tests/property.rs`，§12 已列但未实现；离线 dev-dependency 需说明） | 高 / M |
 | P9-27 | `AC-02` 逐类覆盖：`Verify.java` 增加 `--read`/`--sequence`/`--primitives`/`--blocks`/`--array`，`emit.rs` 重编码全部 fixture；`interop.sh` 与 `tests/interop.rs` 逐例读回——✅ 已实现（36 例） | 高 / M |
-| P9-28 | CI：MSRV 1.75 job、32-bit job、macOS/Windows matrix（细化 P8-6） | 中 / M |
-| P9-29 | `cargo-deny`/依赖审计（M6 出口提到但未落地） | 中 / S |
+| P9-28 | CI：MSRV 1.77 job、i686 `cargo check` job、Linux/macOS/Windows test matrix——✅ 已实现（`.github/workflows/ci.yml`） | 中 / M |
+| P9-29 | `cargo-deny`/依赖审计——✅ 已实现：`deny.toml`（licenses/bans/sources/advisories）+ CI `cargo-deny-action` | 中 / S |
 | P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组） | 低 / S |
 | P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合 | 中 / M |
 | P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题（目标 Java 版本/发布/性能数值） | 低 / S |

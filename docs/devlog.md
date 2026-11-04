@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 15:20 · ci: matrix/MSRV/i686 与 cargo-deny（P9-28/29）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `ci.yml`：`test` 改为 Linux/macOS/Windows matrix；新增 `msrv`（1.77.0，`cargo check --all-targets --locked`）、`i686`（`cargo check --target i686-unknown-linux-gnu --locked`）与 `deny`（`EmbarkStudios/cargo-deny-action@v2`）job。
+  - `rust-version` 从 1.75 校准为 **1.77**（锁定依赖 `thiserror 2.0.21` 声明 1.77）；workspace 与三个 crate 增加 `license = "MIT OR Apache-2.0"`。
+  - 新增 `deny.toml`：licenses allowlist（MIT/Apache/BSD/ISC/Unicode/Unlicense/Zlib）、`bans`（wildcards deny、multiple-versions warn）、`sources`（仅 crates.io）、`advisories`（yanked deny）。
+- **验证**：`cargo test --workspace` 144 passed；clippy/fmt 通过；`py -c "tomllib..."` 校验 `deny.toml` 语法；本机无 cargo-deny/YAML 解析器，CI job 会在 GitHub 上执行 `cargo deny check`（YAML 结构按 GitHub Actions 语法手检）。
+
+---
+
 ## 2026-11-04 15:00 · perf: serde 直连 JValue（P9-13）
 
 - **提交**：本次（hash 见 `git log`）

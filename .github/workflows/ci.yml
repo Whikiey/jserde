@@ -20,12 +20,47 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
+
+  msrv:
+    name: msrv (1.77)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.77.0
+      - uses: Swatinem/rust-cache@v2
+      # `thiserror 2.0.21` declares rust-version 1.77; keep the toolchain and
+      # workspace rust-version in sync (Cargo.lock is v3 for 1.77+).
+      - run: cargo check --workspace --all-targets --locked
+
+  i686:
+    name: i686 check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add i686-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets --target i686-unknown-linux-gnu --locked
+
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
 
   fuzz-smoke:
     runs-on: ubuntu-latest

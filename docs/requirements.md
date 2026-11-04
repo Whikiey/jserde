@@ -184,3 +184,4 @@
 | 2026-11-04 | P9-21：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime）与对应 `BuiltinValue` 语义；manifest 36 例/75224 字节 | P9-21 |
 | 2026-11-04 | P9-27：`Verify.java` 增加 `--read/--sequence/--primitives/--blocks/--array`；emit 重编码全部 fixture；`tests/interop.rs`/`interop.sh` 逐例 Java 读回（AC-02 全 fixture） | P9-27 |
 | 2026-11-04 | P9-13：serde typed 路径改为直连 `JValue`（`direct.rs`），去掉 JSON 中间层；`from_slice_roots` 保留 JSON 视图 | P9-13 |
+| 2026-11-04 | P9-28/29：CI 增加 Linux/macOS/Windows matrix、MSRV 1.77、i686 check；`rust-version` 校准为 1.77；新增 `deny.toml` 与 cargo-deny job | P9-28/29 |

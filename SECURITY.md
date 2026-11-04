@@ -47,6 +47,12 @@ Random/truncated input is expected to return `Err`; it must not panic. Fuzz
 targets live in `fuzz/`, and `cargo test -p jser --test fuzz_smoke` is the
 offline smoke test.
 
+## Dependency audit
+
+`cargo deny check` (configuration in `deny.toml`) is part of CI: advisories
+(yanked denied), license allowlist (MIT/Apache-2.0/BSD/ISC/Unicode/Unlicense/
+Zlib), wildcard ban and registry pinning. Run it locally before releases.
+
 ## Reporting
 
 This is a pre-release project without a private security channel yet. Do not
