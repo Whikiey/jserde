@@ -297,3 +297,88 @@ fn derive_supports_custom_object_arrays() {
     let decoded: Bag = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
     assert_eq!(decoded, empty);
 }
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Base", suid = 1)]
+struct Base {
+    a: i32,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Inherited", suid = 1)]
+struct Inherited {
+    #[java(flatten)]
+    base: Base,
+    b: String,
+}
+
+#[test]
+fn derive_flattens_a_superclass_layer() {
+    let value = Inherited {
+        base: Base { a: 1 },
+        b: "b".to_owned(),
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: Inherited = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    let inherited = &graph.items()[0];
+    let object = graph.as_object(inherited).unwrap().unwrap();
+    assert_eq!(object.classes.len(), 2, "parent layer then child layer");
+    assert_eq!(
+        graph.descriptor(object.classes[0].desc).unwrap().name,
+        "Fixtures$Base"
+    );
+    assert_eq!(
+        graph.descriptor(object.classes[1].desc).unwrap().name,
+        "Fixtures$Inherited"
+    );
+    assert_eq!(
+        graph
+            .descriptor(object.classes[1].desc)
+            .unwrap()
+            .super_desc
+            .map(|handle| graph.descriptor(handle).unwrap().name.as_str()),
+        Some("Fixtures$Base")
+    );
+    assert_eq!(
+        graph
+            .as_i32(graph.require_field(inherited, "a").unwrap())
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        graph
+            .as_str(graph.require_field(inherited, "b").unwrap())
+            .unwrap(),
+        "b"
+    );
+}
+
+#[test]
+fn derive_decodes_the_java_inheritance_fixture() {
+    // object/22 is Fixtures$Base{a:int} <- Fixtures$Derived{b:String}.
+    #[derive(JavaSerializable, Debug, Clone, PartialEq)]
+    #[java(class = "Fixtures$Derived", suid = 1)]
+    struct FixtureDerived {
+        #[java(flatten)]
+        base: Base,
+        b: String,
+    }
+
+    let derived: FixtureDerived =
+        decode_typed_with_allowlist(&read_fixture("object/22"), &fixture_allowlist()).unwrap();
+    assert_eq!(
+        derived,
+        FixtureDerived {
+            base: Base { a: 1 },
+            b: "b".to_owned(),
+        }
+    );
+
+    let bytes = encode_typed(derived.clone()).unwrap();
+    let decoded: FixtureDerived =
+        decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, derived);
+}

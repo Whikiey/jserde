@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 12:20 · feat: P9-15 derive 继承（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `jser-derive` 新增 `#[java(flatten)]` 父类字段：编码时先调用父类 `to_jvalue`，克隆其 `ClassData` 层，子类 `ClassDesc.super_desc` 指向父类最派生描述符，`classdata` 按父→子写入；解码时父类 `from_jvalue` 自动跨层 `require_field`。
+  - 约束：最多一个 `flatten` 字段；必须是非 primitive/String/集合的 `JavaSerializable` 类型；不可与 `transient`/`rename` 组合。
+  - 测试：`Base <- Inherited` 往返与类层次断言（2 层、`super_desc`、字段 a/b）；用 flatten struct 解码 Java fixture `object/22` 并再往返；宏单测 `flatten_requires_a_custom_type`。
+- **验证**：`cargo test --workspace` **131 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 flatten 用例（宏报 `flatten` 未知/无 `super_desc`）；Green：实现父类层合并与 `super_desc` 后全绿。
+
+---
+
 ## 2026-11-04 12:05 · feat: P9-14 对象数组 Vec<Custom>（TDD）
 
 - **提交**：本次（hash 见 `git log`）

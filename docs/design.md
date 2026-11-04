@@ -140,7 +140,7 @@ pub trait JavaSerializable: Sized {
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算），以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承仍待 P9-15。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
+`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`、`#[java(flatten)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算），以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承通过 `#[java(flatten)]` 父类字段支持（类型安全，生成 `super_desc` 与父类 classdata 层）。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
@@ -351,7 +351,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 
 serde 桥额外限制：单根 POJO；字段限标量/String/`Option`/数组/递归嵌套 POJO（`SchemaField::nested`）；不支持 Map/Set 字段、对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
 
-嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>` 与 `Vec<Custom>`；serde 通过递归 `SchemaField::nested` 支持多层 POJO。继承仍未支持（P9-15）。
+嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>` 与继承（`#[java(flatten)]`）；serde 通过递归 `SchemaField::nested` 支持多层 POJO。
 
 ## 6. 里程碑与出口条件
 

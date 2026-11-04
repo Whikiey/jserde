@@ -30,6 +30,7 @@ struct JavaAttrs {
     suid: Option<i64>,
     rename: Option<String>,
     transient: bool,
+    flatten: bool,
 }
 
 fn parse_java_attrs(attrs: &[Attribute]) -> syn::Result<JavaAttrs> {
@@ -51,6 +52,8 @@ fn parse_java_attrs(attrs: &[Attribute]) -> syn::Result<JavaAttrs> {
                 result.rename = Some(value.value());
             } else if meta.path.is_ident("transient") {
                 result.transient = true;
+            } else if meta.path.is_ident("flatten") {
+                result.flatten = true;
             } else {
                 return Err(meta.error("unknown `java` attribute"));
             }
@@ -71,6 +74,7 @@ struct FieldInfo {
     array_class: Option<String>,
     vec_element: Option<syn::Type>,
     transient: bool,
+    flatten: bool,
 }
 
 fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
@@ -94,10 +98,10 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             "missing `#[java(suid = ...)]`",
         ));
     };
-    if attrs.rename.is_some() || attrs.transient {
+    if attrs.rename.is_some() || attrs.transient || attrs.flatten {
         return Err(syn::Error::new_spanned(
             &input.ident,
-            "`rename`/`transient` are field attributes",
+            "`rename`/`transient`/`flatten` are field attributes",
         ));
     }
 
@@ -119,6 +123,14 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         infos.push(field_info(field)?);
     }
 
+    let flatten_count = infos.iter().filter(|field| field.flatten).count();
+    if flatten_count > 1 {
+        return Err(syn::Error::new_spanned(
+            &input.ident,
+            "at most one `#[java(flatten)]` superclass field is supported",
+        ));
+    }
+
     // Java wire order: primitives by name, then object/array fields by name.
     infos.sort_by(|left, right| {
         left.primitive
@@ -130,40 +142,49 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &input.ident;
     let descriptor = format!("L{};", class.replace('.', "/"));
     let array_descriptor = format!("[L{};", class.replace('.', "/"));
-    let schema = infos.iter().filter(|field| !field.transient).map(|field| {
-        let java_name = &field.java_name;
-        let typecode = &field.typecode;
-        let class_name1 = match &field.class_name1 {
-            Some(value) => quote! { Some(#value) },
-            None => quote! { None },
-        };
-        quote! {
-            jser::JavaField {
-                name: #java_name,
-                typecode: #typecode,
-                class_name1: #class_name1,
+    let schema = infos
+        .iter()
+        .filter(|field| !field.transient && !field.flatten)
+        .map(|field| {
+            let java_name = &field.java_name;
+            let typecode = &field.typecode;
+            let class_name1 = match &field.class_name1 {
+                Some(value) => quote! { Some(#value) },
+                None => quote! { None },
+            };
+            quote! {
+                jser::JavaField {
+                    name: #java_name,
+                    typecode: #typecode,
+                    class_name1: #class_name1,
+                }
             }
-        }
-    });
+        });
 
-    let desc_fields = infos.iter().filter(|field| !field.transient).map(|field| {
-        let java_name = &field.java_name;
-        let typecode = &field.typecode;
-        let class_name1 = match &field.class_name1 {
-            Some(value) => quote! { Some(#value.to_owned()) },
-            None => quote! { None },
-        };
-        quote! {
-            desc_fields.push(jser::FieldDesc {
-                name: #java_name.to_owned(),
-                typecode: #typecode,
-                class_name1: #class_name1,
-                class_name_handle: None,
-            });
-        }
-    });
+    let desc_fields = infos
+        .iter()
+        .filter(|field| !field.transient && !field.flatten)
+        .map(|field| {
+            let java_name = &field.java_name;
+            let typecode = &field.typecode;
+            let class_name1 = match &field.class_name1 {
+                Some(value) => quote! { Some(#value.to_owned()) },
+                None => quote! { None },
+            };
+            quote! {
+                desc_fields.push(jser::FieldDesc {
+                    name: #java_name.to_owned(),
+                    typecode: #typecode,
+                    class_name1: #class_name1,
+                    class_name_handle: None,
+                });
+            }
+        });
 
-    let values = infos.iter().filter(|field| !field.transient).map(|field| {
+    let values = infos
+        .iter()
+        .filter(|field| !field.transient && !field.flatten)
+        .map(|field| {
         let ident = &field.ident;
         let java_name = &field.java_name;
         let value = if field.vec {
@@ -209,6 +230,8 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         let ident = &field.ident;
         if field.transient {
             quote! { #ident: Default::default() }
+        } else if field.flatten {
+            quote! { #ident: jser::FromJValue::from_jvalue(value, graph)? }
         } else {
             let java_name = &field.java_name;
             quote! {
@@ -219,6 +242,35 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
     });
+
+    let (parent_setup, super_desc) = if let Some(field) = infos.iter().find(|field| field.flatten) {
+        let ident = &field.ident;
+        (
+            quote! {
+                let parent_value =
+                    jser::IntoJValue::into_jvalue(self.#ident.clone(), graph)?;
+                let mut parent_classes = graph
+                    .as_object(&parent_value)?
+                    .ok_or_else(|| jser::Error::FieldMismatch {
+                        message: "flatten field must be a Java object".to_owned(),
+                    })?
+                    .classes
+                    .clone();
+                let parent_desc = parent_classes
+                    .last()
+                    .ok_or_else(|| jser::Error::FieldMismatch {
+                        message: "flatten field has no class data".to_owned(),
+                    })?
+                    .desc;
+            },
+            quote! { Some(parent_desc) },
+        )
+    } else {
+        (
+            quote! { let mut parent_classes = Vec::new(); },
+            quote! { None },
+        )
+    };
 
     let output = quote! {
         impl jser::JavaSerializable for #name {
@@ -233,6 +285,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
 
             fn to_jvalue(&self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
+                #parent_setup
                 let mut desc_fields = Vec::new();
                 #(#desc_fields)*
                 let desc = jser::ClassDesc {
@@ -240,18 +293,19 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                     suid: Self::SUID,
                     flags: 0x02,
                     fields: desc_fields,
-                    super_desc: None,
+                    super_desc: #super_desc,
                     annotations: Vec::new(),
                 };
                 let desc = graph.add_class_desc(desc)?;
 
                 let mut object_fields = Vec::new();
                 #(#values)*
-                let object = graph.new_object(vec![jser::ClassData {
+                parent_classes.push(jser::ClassData {
                     desc,
                     fields: object_fields,
                     custom: None,
-                }])?;
+                });
+                let object = graph.new_object(parent_classes)?;
                 Ok(jser::JValue::Obj(object))
             }
 
@@ -299,8 +353,24 @@ fn field_info(field: &Field) -> syn::Result<FieldInfo> {
 
     let java_name = attrs
         .rename
+        .clone()
         .unwrap_or_else(|| ident.to_string().trim_start_matches("r#").to_owned());
     let ty = field_type(&field.ty, &java_name)?;
+
+    if attrs.flatten {
+        if attrs.transient || attrs.rename.is_some() {
+            return Err(syn::Error::new_spanned(
+                field,
+                "`flatten` cannot be combined with `transient` or `rename`",
+            ));
+        }
+        if !ty.custom {
+            return Err(syn::Error::new_spanned(
+                field,
+                "`#[java(flatten)]` requires a JavaSerializable field type",
+            ));
+        }
+    }
 
     Ok(FieldInfo {
         ident,
@@ -312,6 +382,7 @@ fn field_info(field: &Field) -> syn::Result<FieldInfo> {
         array_class: ty.array_class,
         vec_element: ty.vec_element,
         transient: attrs.transient,
+        flatten: attrs.flatten,
     })
 }
 
@@ -561,6 +632,21 @@ mod tests {
             }
         };
         assert!(expand(input).is_ok());
+    }
+
+    #[test]
+    fn flatten_requires_a_custom_type() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo", suid = 1)]
+            struct Foo {
+                #[java(flatten)]
+                value: i32,
+            }
+        };
+        let error = expand(input).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("requires a JavaSerializable field type"));
     }
 
     #[test]
