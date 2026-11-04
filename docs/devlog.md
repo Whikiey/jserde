@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 13:10 · feat: derive Java enum（P9-16，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `jser-derive` 支持 unit-only enum：生成 `TC_ENUM` 值，flags `0x12`、SUID 0、super `java.lang.Enum`；常量名默认由 variant 转 UPPER_SNAKE（`Green`→`GREEN`、`XmlHttp`→`XML_HTTP`），`#[java(rename)]` 覆盖。
+  - 校验：enum 的 `suid` 必须为 0（可省略）；variant 必须是 unit，仅支持 `rename`；空 enum 报错。
+  - 测试：`Fixtures$Color` 解码（GREEN）、三个 variant 往返、图断言（SUID/flags/super）；宏单测（非 unit、suid≠0、默认 SUID 0）。
+- **验证**：`cargo test --workspace` **138 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 enum 用例（宏报 “only derived for structs”）；Green：实现 enum 分支与常量名映射后全绿。
+
+---
+
 ## 2026-11-04 12:55 · feat: serde Map/Set 字段与根（P9-7/8，TDD）
 
 - **提交**：本次（hash 见 `git log`）

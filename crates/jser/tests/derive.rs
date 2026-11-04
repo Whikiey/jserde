@@ -382,3 +382,39 @@ fn derive_decodes_the_java_inheritance_fixture() {
         decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
     assert_eq!(decoded, derived);
 }
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Color", suid = 0)]
+enum Color {
+    Red,
+    Green,
+    #[java(rename = "BLUE")]
+    Blue,
+}
+
+#[test]
+fn derive_supports_java_enums() {
+    let color: Color =
+        decode_typed_with_allowlist(&read_fixture("object/24"), &fixture_allowlist()).unwrap();
+    assert_eq!(color, Color::Green);
+    assert_eq!(<Color as JavaSerializable>::SUID, 0);
+
+    for color in [Color::Red, Color::Green, Color::Blue] {
+        let bytes = encode_typed(color.clone()).unwrap();
+        let decoded: Color = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+        assert_eq!(decoded, color);
+    }
+
+    let bytes = encode_typed(Color::Blue).unwrap();
+    let graph = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    let value = &graph.items()[0];
+    assert_eq!(graph.class_name(value).unwrap(), "Fixtures$Color");
+    assert_eq!(graph.as_enum_constant(value).unwrap(), Some("BLUE"));
+    let desc = graph.descriptor_of(value).unwrap();
+    assert_eq!(desc.suid, 0);
+    assert_eq!(desc.flags, 0x12);
+    assert_eq!(
+        graph.descriptor(desc.super_desc.unwrap()).unwrap().name,
+        "java.lang.Enum"
+    );
+}

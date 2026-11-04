@@ -177,3 +177,4 @@
 | 2026-11-04 | P9-14：数组类 SUID 改由默认算法计算（含自定义元素数组），`new_java_array` 支持任意对象数组；`ARRAY_DESCRIPTOR` + derive `Vec<Custom>`；继承留待 P9-15 | P9-14 |
 | 2026-11-04 | P9-15：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层；derive 继承与 `object/22` 互通 | P9-15 |
 | 2026-11-04 | P9-7/8：serde 支持 Map/Set 字段（HashMap/LinkedHashMap/HashSet）与 Map/Set 根；新增 LinkedHashMap 写侧构造器；仍不支持对象数组/环/TC_RESET/多根 | P9-7/8 |
+| 2026-11-04 | P9-16：unit-only enum derive（`TC_ENUM`、flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 互通 | P9-16 |

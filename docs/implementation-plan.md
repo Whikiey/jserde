@@ -425,11 +425,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-14 完成（TDD）：`array_class_suid` 用默认算法计算任意数组类 SUID（含自定义元素），`new_java_array` 去掉固定表；`JavaSerializable::ARRAY_DESCRIPTOR` + derive `Vec<Custom>`；新增 SUID 已知值表与 `Bag{items: Vec<Inner>}` 测试；全仓 128 项通过 | P9-14 |
 | 2026-11-04 | P9-15 完成（TDD）：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层；`object/22` 由 flatten struct 解码并往返；全仓 131 项通过 | P9-15 |
 | 2026-11-04 | P9-7/8 完成（TDD）：serde 支持 `SchemaField::map`（HashMap/LinkedHashMap）、`SchemaField::set`（HashSet），以及 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set` 根入口；新增 LinkedHashMap 写侧构造器；全仓 134 项通过 | P9-7/8 |
+| 2026-11-04 | P9-16 完成（TDD）：unit-only enum derive 生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 解码与各 variant 往返；全仓 138 项通过 | P9-16 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **134 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P9-7/P9-8/P9-14/P9-15 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **138 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P9-7/P9-8/P9-14/P9-15/P9-16 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -481,7 +482,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 |---|---|---|
 | P9-14 | 对象数组 `Vec<Custom>` 字段（字段级 class 描述符 + 数组类 SUID）——✅ 已实现：`JavaSerializable::ARRAY_DESCRIPTOR`，数组 SUID 由默认算法计算 | 高 / M |
 | P9-15 | 继承：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层（类型安全，无需字符串匹配）——✅ 已实现 | 中 / M |
-| P9-16 | Rust enum ↔ Java enum：`#[derive(JavaSerializable)]` 用于 enum（`TC_ENUM`、flags `0x12`、SUID 0） | 中 / M |
+| P9-16 | Rust enum ↔ Java enum：unit-only enum 默认 UPPER_SNAKE 常量名（`rename` 覆盖），flags 0x12、SUID 0、super `java.lang.Enum`——✅ 已实现 | 中 / M |
 | P9-17 | 泛型结构体（字段具体化后单态化；仍拒绝未约束的泛型参数） | 低 / L |
 | P9-18 | 组合字段：`Option<Vec<T>>`、`Option<HashMap>`、`Vec<Option<T>>` | 中 / S |
 | P9-19 | typed/derive 解码校验类名与 SUID（不匹配返回 `FieldMismatch`，含两个 SUID） | 高 / S |

@@ -1,12 +1,16 @@
 //! `#[derive(JavaSerializable)]` for `jser`.
 //!
 //! Attributes:
-//! - `#[java(class = "com.example.Foo", suid = 1)]` on the struct (both required)
-//! - `#[java(rename = "javaField")]` on a field
+//! - `#[java(class = "com.example.Foo", suid = 1)]` on a struct (both required)
+//! - `#[java(class = "com.example.Color")]` on a unit-only enum (SUID defaults to 0)
+//! - `#[java(rename = "javaField")]` on a field or enum variant
 //! - `#[java(transient)]` on a field (not serialized; defaults on decode)
+//! - `#[java(flatten)]` on a struct field (superclass layer)
 //!
 //! Supported field types: Java primitives, `String`, `Option<T>`, `Vec<T>`
-//! (arrays), `HashMap<K, V>` and `HashSet<T>`. Derived structs must implement
+//! (arrays), `HashMap<K, V>`, `HashSet<T>` and nested `JavaSerializable` types.
+//! Unit-only Rust enums map to Java enums (`TC_ENUM`, flags `0x12`, SUID 0);
+//! variant names default to UPPER_SNAKE_CASE. Derived types must implement
 //! `Clone` because the encoder converts fields by value.
 
 use proc_macro::TokenStream;
@@ -92,12 +96,6 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             "missing `#[java(class = \"...\")]`",
         ));
     };
-    let Some(suid) = attrs.suid else {
-        return Err(syn::Error::new_spanned(
-            &input.ident,
-            "missing `#[java(suid = ...)]`",
-        ));
-    };
     if attrs.rename.is_some() || attrs.transient || attrs.flatten {
         return Err(syn::Error::new_spanned(
             &input.ident,
@@ -105,10 +103,32 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         ));
     }
 
+    let name = &input.ident;
+    let descriptor = format!("L{};", class.replace('.', "/"));
+    let array_descriptor = format!("[L{};", class.replace('.', "/"));
+
+    if let Data::Enum(data) = &input.data {
+        return expand_enum(
+            name,
+            &class,
+            attrs.suid.unwrap_or(0),
+            &descriptor,
+            &array_descriptor,
+            data,
+        );
+    }
+
+    let Some(suid) = attrs.suid else {
+        return Err(syn::Error::new_spanned(
+            &input.ident,
+            "missing `#[java(suid = ...)]`",
+        ));
+    };
+
     let Data::Struct(data) = &input.data else {
         return Err(syn::Error::new_spanned(
             &input.ident,
-            "JavaSerializable can only be derived for structs",
+            "JavaSerializable can only be derived for structs or unit-only enums",
         ));
     };
     let Fields::Named(fields) = &data.fields else {
@@ -139,9 +159,6 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             .then_with(|| left.java_name.cmp(&right.java_name))
     });
 
-    let name = &input.ident;
-    let descriptor = format!("L{};", class.replace('.', "/"));
-    let array_descriptor = format!("[L{};", class.replace('.', "/"));
     let schema = infos
         .iter()
         .filter(|field| !field.transient && !field.flatten)
@@ -336,6 +353,152 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     };
 
     Ok(output)
+}
+
+fn expand_enum(
+    name: &syn::Ident,
+    class: &str,
+    suid: i64,
+    descriptor: &str,
+    array_descriptor: &str,
+    data: &syn::DataEnum,
+) -> syn::Result<proc_macro2::TokenStream> {
+    if suid != 0 {
+        return Err(syn::Error::new_spanned(
+            name,
+            "Java enum serialVersionUID must be 0",
+        ));
+    }
+    if data.variants.is_empty() {
+        return Err(syn::Error::new_spanned(
+            name,
+            "a Java enum needs at least one variant",
+        ));
+    }
+
+    let mut variants = Vec::new();
+    for variant in &data.variants {
+        if !matches!(variant.fields, Fields::Unit) {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "Java enum variants must be unit variants",
+            ));
+        }
+        let attrs = parse_java_attrs(&variant.attrs)?;
+        if attrs.class.is_some() || attrs.suid.is_some() || attrs.transient || attrs.flatten {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "enum variants only support `rename`",
+            ));
+        }
+        let java_name = attrs
+            .rename
+            .unwrap_or_else(|| java_enum_constant(&variant.ident));
+        variants.push((variant.ident.clone(), java_name));
+    }
+
+    let to_arms = variants
+        .iter()
+        .map(|(ident, name)| quote! { Self::#ident => #name, });
+    let from_arms = variants
+        .iter()
+        .map(|(ident, name)| quote! { #name => Ok(Self::#ident), });
+
+    let output = quote! {
+        impl jser::JavaSerializable for #name {
+            const CLASS: &'static str = #class;
+            const SUID: i64 = 0;
+            const DESCRIPTOR: &'static str = #descriptor;
+            const ARRAY_DESCRIPTOR: &'static str = #array_descriptor;
+
+            fn schema() -> &'static [jser::JavaField] {
+                &[]
+            }
+
+            fn to_jvalue(&self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
+                let constant: &'static str = match self {
+                    #( #to_arms )*
+                };
+                let enum_desc = graph.add_class_desc(jser::ClassDesc {
+                    name: "java.lang.Enum".to_owned(),
+                    suid: 0,
+                    flags: 0x12,
+                    fields: Vec::new(),
+                    super_desc: None,
+                    annotations: Vec::new(),
+                })?;
+                let desc = graph.add_class_desc(jser::ClassDesc {
+                    name: Self::CLASS.to_owned(),
+                    suid: 0,
+                    flags: 0x12,
+                    fields: Vec::new(),
+                    super_desc: Some(enum_desc),
+                    annotations: Vec::new(),
+                })?;
+                let constant = graph.new_string(constant);
+                let value = graph.new_enum(desc, constant)?;
+                Ok(jser::JValue::Enum(value))
+            }
+
+            fn from_jvalue(
+                value: &jser::JValue,
+                graph: &jser::Graph,
+            ) -> jser::Result<Self> {
+                let constant = graph.as_enum_constant(value)?.ok_or_else(|| {
+                    jser::Error::FieldMismatch {
+                        message: format!("expected a Java enum for `{}`", Self::CLASS),
+                    }
+                })?;
+                match constant {
+                    #( #from_arms )*
+                    other => Err(jser::Error::FieldMismatch {
+                        message: format!(
+                            "unknown enum constant `{other}` for `{}`",
+                            Self::CLASS
+                        ),
+                    }),
+                }
+            }
+        }
+
+        impl jser::FromJValue for #name {
+            fn from_jvalue(
+                value: &jser::JValue,
+                graph: &jser::Graph,
+            ) -> jser::Result<Self> {
+                <Self as jser::JavaSerializable>::from_jvalue(value, graph)
+            }
+        }
+
+        impl jser::IntoJValue for #name {
+            fn into_jvalue(self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
+                <Self as jser::JavaSerializable>::to_jvalue(&self, graph)
+            }
+        }
+    };
+
+    Ok(output)
+}
+
+fn java_enum_constant(ident: &syn::Ident) -> String {
+    let name = ident.to_string();
+    let name = name.trim_start_matches("r#");
+    let mut constant = String::new();
+    let mut previous: Option<char> = None;
+
+    for character in name.chars() {
+        if character.is_uppercase() {
+            if let Some(previous) = previous {
+                if previous.is_lowercase() || previous.is_ascii_digit() {
+                    constant.push('_');
+                }
+            }
+        }
+        constant.push(character.to_ascii_uppercase());
+        previous = Some(character);
+    }
+
+    constant
 }
 
 fn field_info(field: &Field) -> syn::Result<FieldInfo> {
@@ -647,6 +810,41 @@ mod tests {
         assert!(error
             .to_string()
             .contains("requires a JavaSerializable field type"));
+    }
+
+    #[test]
+    fn enum_variants_must_be_unit() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo")]
+            enum Foo {
+                A(i32),
+            }
+        };
+        let error = expand(input).unwrap_err();
+        assert!(error.to_string().contains("unit variants"));
+    }
+
+    #[test]
+    fn enum_suid_must_be_zero() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo", suid = 1)]
+            enum Foo {
+                A,
+            }
+        };
+        let error = expand(input).unwrap_err();
+        assert!(error.to_string().contains("must be 0"));
+    }
+
+    #[test]
+    fn enums_default_to_suid_zero() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo")]
+            enum Foo {
+                A,
+            }
+        };
+        assert!(expand(input).is_ok());
     }
 
     #[test]
