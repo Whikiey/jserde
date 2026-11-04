@@ -14,7 +14,8 @@
 - `computeDefaultSUID` + `.class` parser + `suid` binary.
 - Semantic views for `Date`, `BigInteger`, `BigDecimal` and `java.time`
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime,
-  Year, YearMonth, MonthDay, Period).
+  Year, YearMonth, MonthDay, Period, ZoneId, ZoneOffset, OffsetTime,
+  OffsetDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
 - Derive unit-only Rust enums as Java enums (`TC_ENUM`, flags `0x12`, SUID 0,
   `java.lang.Enum` superclass); variant names default to UPPER_SNAKE_CASE.

@@ -6,8 +6,8 @@
 
 ## 当前进度
 
-- P0–P7 已实现：35 个 fixture / 75078 字节、143 项测试通过、Java/SUID 互操作 14 项。
-- 已覆盖：动态编解码、集合、环/共享、typed、derive（含 enum）、SUID、内置类语义（含 Year/YearMonth/MonthDay/Period）、allowlist、serde 桥（嵌套 POJO/Map/Set/枚举/多根）、三层嵌套对象。
+- P0–P7 已实现：36 个 fixture / 75224 字节、144 项测试通过、Java/SUID 互操作 14 项。
+- 已覆盖：动态编解码、集合、环/共享、typed、derive（含 enum）、SUID、内置类语义（含 Year/YearMonth/MonthDay/Period、ZoneId/ZoneOffset/OffsetTime/OffsetDateTime）、allowlist、serde 桥（嵌套 POJO/Map/Set/枚举/多根）、三层嵌套对象。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地工作集约 2.03×（AC-06）。
 - 未收口：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪、等功能完成后再执行）；嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
 - 缺口与优先级见 [implementation-plan.md §20](docs/implementation-plan.md#20-当前进度与后续缺口2026-11-04)（近期）；全部纯 Rust 可实现的扩展候选见 [§21](docs/implementation-plan.md#21-扩展-backlog可行性登记)。
@@ -93,7 +93,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
 cd docs/testdata
-./gen/gen.sh --check       # 校验 JDK 生成的 35 个 fixture / 75078 字节
+./gen/gen.sh --check       # 校验 JDK 生成的 36 个 fixture / 75224 字节
 ./gen/interop.sh           # Rust 写 → Java 读回 + SUID 对拍（需 JDK 17）
 
 # 可选

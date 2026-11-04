@@ -5,7 +5,8 @@ mod common;
 use common::{decode_fixture, read_fixture};
 use jser::builtin::{
     BigDecimal, BigInteger, BuiltinValue, Duration, Instant, JavaDate, LocalDate, LocalDateTime,
-    LocalTime, MonthDay, Period, Registry, Year, YearMonth, ZonedDateTime,
+    LocalTime, MonthDay, OffsetDateTime, OffsetTime, Period, Registry, Year, YearMonth, ZoneId,
+    ZoneOffset, ZonedDateTime,
 };
 
 fn array_item(graph: &jser::Graph, index: usize) -> jser::JValue {
@@ -152,6 +153,55 @@ fn decodes_year_month_day_and_period() {
             years: 1,
             months: 2,
             days: 3,
+        }))
+    );
+}
+
+#[test]
+fn decodes_zone_and_offset_time_values() {
+    let graph = decode_fixture(&read_fixture("object/43")).unwrap();
+
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 0)).unwrap(),
+        Some(BuiltinValue::ZoneId(ZoneId {
+            id: "Asia/Shanghai".to_owned(),
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 1)).unwrap(),
+        Some(BuiltinValue::ZoneOffset(ZoneOffset {
+            total_seconds: 8 * 3600,
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 2)).unwrap(),
+        Some(BuiltinValue::OffsetTime(OffsetTime {
+            time: LocalTime {
+                hour: 12,
+                minute: 34,
+                second: 56,
+                nano: 123_456_789,
+            },
+            offset_seconds: 8 * 3600,
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 3)).unwrap(),
+        Some(BuiltinValue::OffsetDateTime(OffsetDateTime {
+            date_time: LocalDateTime {
+                date: LocalDate {
+                    year: 2024,
+                    month: 2,
+                    day: 29,
+                },
+                time: LocalTime {
+                    hour: 12,
+                    minute: 34,
+                    second: 56,
+                    nano: 123_456_789,
+                },
+            },
+            offset_seconds: 8 * 3600,
         }))
     );
 }

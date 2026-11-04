@@ -19,10 +19,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 /**
@@ -317,6 +320,13 @@ public class Fixtures {
                 YearMonth.of(2024, 2),
                 MonthDay.of(2, 29),
                 Period.of(1, 2, 3),
+        }));
+
+        gen(dir, "43-java-time-zone.ser", out -> out.writeObject(new Object[] {
+                ZoneId.of("Asia/Shanghai"),
+                ZoneOffset.ofHours(8),
+                OffsetTime.of(12, 34, 56, 123456789, ZoneOffset.ofHours(8)),
+                OffsetDateTime.of(2024, 2, 29, 12, 34, 56, 123456789, ZoneOffset.ofHours(8)),
         }));
     }
 

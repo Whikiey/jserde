@@ -346,6 +346,10 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `java.time.LocalTime` | ✅ hour/minute/second/nano | `BuiltinValue::LocalTime` |
 | `java.time.LocalDateTime` | ✅ date + time | `BuiltinValue::LocalDateTime` |
 | `java.time.ZonedDateTime` | ✅ date/time + offset + zone | `BuiltinValue::ZonedDateTime` |
+| `java.time.ZoneId` | ✅ region id | `BuiltinValue::ZoneId` |
+| `java.time.ZoneOffset` | ✅ total seconds | `BuiltinValue::ZoneOffset` |
+| `java.time.OffsetTime` | ✅ time + offset | `BuiltinValue::OffsetTime` |
+| `java.time.OffsetDateTime` | ✅ date-time + offset | `BuiltinValue::OffsetDateTime` |
 | `java.time.Year` | ✅ year | `BuiltinValue::Year` |
 | `java.time.YearMonth` | ✅ year/month | `BuiltinValue::YearMonth` |
 | `java.time.MonthDay` | ✅ month/day | `BuiltinValue::MonthDay` |
@@ -360,7 +364,7 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 35 例/75078 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 36 例/75224 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
 | M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
 | M2 ✅ | **写** + 回放门禁 + 双向对拍 | 34 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |

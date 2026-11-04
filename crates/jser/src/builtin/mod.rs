@@ -17,7 +17,8 @@ use crate::value::{
 use crate::wire::reader::StreamReader;
 pub use semantic::{
     BigDecimal, BigInteger, BuiltinValue, Duration, Instant, JavaDate, LocalDate, LocalDateTime,
-    LocalTime, MonthDay, Period, Registry, Year, YearMonth, ZonedDateTime,
+    LocalTime, MonthDay, OffsetDateTime, OffsetTime, Period, Registry, Year, YearMonth, ZoneId,
+    ZoneOffset, ZonedDateTime,
 };
 
 pub const ARRAY_LIST: &str = "java.util.ArrayList";

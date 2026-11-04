@@ -289,6 +289,17 @@ CASES = [
             {"type": "java.time.Period", "years": 1, "months": 2, "days": 3},
         ]},
     ),
+    dict(
+        id="object/43", file="fixtures/object/43-java-time-zone.ser",
+        case="Object[]{ZoneId, ZoneOffset, OffsetTime, OffsetDateTime}",
+        features=["java.time.Ser", "ZoneId/ZoneOffset/OffsetTime/OffsetDateTime"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.time.ZoneId", "id": "Asia/Shanghai"},
+            {"type": "java.time.ZoneOffset", "total_seconds": 28800},
+            {"type": "java.time.OffsetTime", "semantic": "12:34:56.123456789+08:00"},
+            {"type": "java.time.OffsetDateTime", "semantic": "2024-02-29T12:34:56.123456789+08:00"},
+        ]},
+    ),
 ]
 
 

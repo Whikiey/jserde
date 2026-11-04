@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 35,
-  "total_bytes": 75078,
+  "case_count": 36,
+  "total_bytes": 75224,
   "cases": [
     {
       "id": "codec/01",
@@ -798,6 +798,39 @@
       },
       "size": 131,
       "sha256": "8cd0870bf172991ceb7ce4c031dc9f0890b507e8a764853f1b2b08211f425370"
+    },
+    {
+      "id": "object/43",
+      "file": "fixtures/object/43-java-time-zone.ser",
+      "case": "Object[]{ZoneId, ZoneOffset, OffsetTime, OffsetDateTime}",
+      "features": [
+        "java.time.Ser",
+        "ZoneId/ZoneOffset/OffsetTime/OffsetDateTime"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.time.ZoneId",
+            "id": "Asia/Shanghai"
+          },
+          {
+            "type": "java.time.ZoneOffset",
+            "total_seconds": 28800
+          },
+          {
+            "type": "java.time.OffsetTime",
+            "semantic": "12:34:56.123456789+08:00"
+          },
+          {
+            "type": "java.time.OffsetDateTime",
+            "semantic": "2024-02-29T12:34:56.123456789+08:00"
+          }
+        ]
+      },
+      "size": 146,
+      "sha256": "ab10d5f593306d3b293e644f3fdcf4d396417fdb473172538610c29f8ed5ae89"
     }
   ]
 }

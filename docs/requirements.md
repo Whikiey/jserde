@@ -106,7 +106,7 @@
 
 | AC | 状态 | 证据/缺口 |
 |---|---|---|
-| AC-01 | ✅ | 35 个 fixture 全部解码；`36`/`40`/`42` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
+| AC-01 | ✅ | 36 个 fixture 全部解码；`36`/`40`/`42`/`43` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
 | AC-02 | ✅（代表性） | `tests/interop.rs` + `Verify.java` 覆盖 Point/Mixed/Map/环/enum/derive/serde；未逐类覆盖全部 Java 类型 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
 | AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
@@ -181,3 +181,4 @@
 | 2026-11-04 | P8-5：新增 `object/42`（Year/YearMonth/MonthDay/Period）与对应 `BuiltinValue` 语义；manifest 35 例/75078 字节；`build_manifest.py` 支持 Windows 路径 | P8-5 |
 | 2026-11-04 | P9-9：serde 支持枚举字段（serde↔Java 常量映射）与枚举根（`to_vec_enum`/`from_slice_enum`） | P9-9 |
 | 2026-11-04 | P9-10/11：serde 支持多根流与 `TC_RESET`（`MultiRootWriter`/`from_slice_multi`）；P9-12 定界：共享引用按值展开，环用动态 Graph | P9-10/11 |
+| 2026-11-04 | P9-21：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime）与对应 `BuiltinValue` 语义；manifest 36 例/75224 字节 | P9-21 |

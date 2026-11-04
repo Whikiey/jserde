@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 14:15 · feat: java.time zone 类型（P9-21，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Fixtures.java` 新增 `object/43-java-time-zone.ser`（`ZoneId.of("Asia/Shanghai")`、`ZoneOffset.ofHours(8)`、`OffsetTime`、`OffsetDateTime`，146 字节）；manifest 登记期望语义并重新生成（36 例 / 75224 字节）。
+  - `builtin::semantic` 新增 `ZoneId`/`ZoneOffset`/`OffsetTime`/`OffsetDateTime` 与对应 `BuiltinValue`；java.time.Ser 类型码 7/8/9/10，复用 offset/region 读取逻辑。
+  - 测试：`tests/builtin.rs` 断言 object/43 四个语义值；`tests/manifest.rs` 计数更新为 36。
+- **验证**：本机 JDK 25 重新生成与已提交 35 例逐字节一致后仅新增 object/43；`py gen/build_manifest.py --check` 通过；`cargo test --workspace` **144 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 object/43 语义断言（类型码/布局未实现）；Green：按 fixture 字节实现 7/8/9/10 后全绿。
+
+---
+
 ## 2026-11-04 14:00 · feat: serde 多根流/TC_RESET/共享引用（P9-10/11/12，TDD）
 
 - **提交**：本次（hash 见 `git log`）

@@ -429,11 +429,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P8-5 完成（TDD）：新增 `object/42`（Year/YearMonth/MonthDay/Period），manifest 35 例/75078 字节；`BuiltinValue` 新增四种语义；`build_manifest.py` 路径比较改 `as_posix()` 以支持 Windows；全仓 139 项通过 | P8-5 |
 | 2026-11-04 | P9-9 完成（TDD）：serde 支持 `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射）与 `to_vec_enum`/`from_slice_enum` 根入口；新增枚举字段/根测试；全仓 141 项通过 | P9-9 |
 | 2026-11-04 | P9-10/11 完成（TDD）：`MultiRootWriter`（`push`/`reset`/`finish`）+ `from_slice_roots`/`from_slice_multi`，支持多根与 `TC_RESET`；P9-12 语义定界（共享引用按值展开，环用动态 Graph）；新增多根/共享引用测试；全仓 143 项通过 | P9-10/11 |
+| 2026-11-04 | P9-21 完成（TDD）：新增 `object/43`（ZoneId/ZoneOffset/OffsetTime/OffsetDateTime），`BuiltinValue` 补齐四种语义；manifest 36 例/75224 字节；全仓 144 项通过 | P9-21 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；35 个 fixture / 75078 字节；全仓 **143 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-14/P9-15/P9-16 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；36 个 fixture / 75224 字节；全仓 **144 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-14/P9-15/P9-16/P9-21 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -495,7 +496,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 | ID | 目标 | 优先级/复杂度 |
 |---|---|---|
-| P9-21 | java.time 余项：`ZoneId`/`ZoneOffset`/`OffsetDateTime`/`OffsetTime`（Year/YearMonth/MonthDay/Period 已由 P8-5 完成） | 中 / M |
+| P9-21 | java.time 余项：`ZoneId`/`ZoneOffset`/`OffsetTime`/`OffsetDateTime`——✅ 已实现：新增 `object/43` 与四种 `BuiltinValue` | 中 / M |
 | P9-22 | 常见值类：`UUID`、`Currency`、`Locale`、`BitSet`、`StringBuilder`/`StringBuffer`、`Pattern`、`java.sql.Date/Time/Timestamp` | 中 / M |
 | P9-23 | 容器：`LinkedHashSet`、`TreeMap`、`TreeSet`、`ArrayDeque`、`PriorityQueue`、`Vector`、`Stack`、`Hashtable`、`Properties`、`EnumSet`/`EnumMap`、`Collections.unmodifiable*/synchronized*` 包装、`Arrays$ArrayList` | 中 / L |
 | P9-24 | 对应写侧构造器：`new_linked_hash_map`/`new_linked_hash_set`/`new_tree_map`/`new_array_deque` 等 | 中 / M |

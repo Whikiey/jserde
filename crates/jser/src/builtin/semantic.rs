@@ -170,6 +170,32 @@ pub struct Period {
     pub days: i32,
 }
 
+/// `java.time.ZoneId` (region form, e.g. `Asia/Shanghai`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZoneId {
+    pub id: String,
+}
+
+/// `java.time.ZoneOffset`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ZoneOffset {
+    pub total_seconds: i32,
+}
+
+/// `java.time.OffsetTime`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OffsetTime {
+    pub time: LocalTime,
+    pub offset_seconds: i32,
+}
+
+/// `java.time.OffsetDateTime`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OffsetDateTime {
+    pub date_time: LocalDateTime,
+    pub offset_seconds: i32,
+}
+
 /// A semantic value decoded from a built-in Java class.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuiltinValue {
@@ -186,6 +212,10 @@ pub enum BuiltinValue {
     YearMonth(YearMonth),
     MonthDay(MonthDay),
     Period(Period),
+    ZoneId(ZoneId),
+    ZoneOffset(ZoneOffset),
+    OffsetTime(OffsetTime),
+    OffsetDateTime(OffsetDateTime),
 }
 
 /// Maps Java class names to semantic codecs; unknown classes are left to the
@@ -314,6 +344,20 @@ fn decode_java_time(graph: &Graph, value: &JValue) -> Result<BuiltinValue> {
         4 => BuiltinValue::LocalTime(read_local_time(&mut reader)?),
         5 => BuiltinValue::LocalDateTime(read_local_date_time(&mut reader)?),
         6 => BuiltinValue::ZonedDateTime(read_zoned_date_time(&mut reader)?),
+        7 => BuiltinValue::ZoneId(ZoneId {
+            id: read_zone_region(&mut reader)?,
+        }),
+        8 => BuiltinValue::ZoneOffset(ZoneOffset {
+            total_seconds: read_zone_offset(&mut reader)?,
+        }),
+        9 => BuiltinValue::OffsetTime(OffsetTime {
+            time: read_local_time(&mut reader)?,
+            offset_seconds: read_zone_offset(&mut reader)?,
+        }),
+        10 => BuiltinValue::OffsetDateTime(OffsetDateTime {
+            date_time: read_local_date_time(&mut reader)?,
+            offset_seconds: read_zone_offset(&mut reader)?,
+        }),
         11 => BuiltinValue::Year(Year {
             year: reader.read_i32()?,
         }),
@@ -381,6 +425,12 @@ fn read_zone_offset(reader: &mut StreamReader<'_>) -> Result<i32> {
     } else {
         Ok(i32::from(encoded) * 900)
     }
+}
+
+fn read_zone_region(reader: &mut StreamReader<'_>) -> Result<String> {
+    let length = usize::from(reader.read_u16()?);
+    let offset = reader.position();
+    mutf8::decode_at(reader.read_exact(length)?, offset)
 }
 
 fn read_zone_id(reader: &mut StreamReader<'_>, offset_seconds: i32) -> Result<String> {
