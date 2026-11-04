@@ -417,6 +417,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |
 | 2026-11-04 | P6 完成（TDD）：内置类语义（Date/BigInteger/BigDecimal/java.time）、Registry、`object/40` fixture、schema 驱动 serde 桥；全仓 110 项通过，Java interop 14 项 + SUID | P6 |
 | 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.8GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 113 项通过 | P7 |
+| 2026-11-04 | 新增 §21 扩展 backlog：登记全部纯 Rust 可实现的缺口（32 项，P9-1～P9-32）并单列不可实现项与理由；§20 加近期/全量指引 | 用户要求 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
@@ -433,3 +434,85 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 跨平台/并发/深链 | CI matrix、深度测试、并发文档 | P8-6 | NFR-05 |
 
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
+>
+> §21 登记了全部纯 Rust 可实现的扩展候选（32 项）；本节只保留近期优先项。
+
+## 21. 扩展 backlog（可行性登记）
+
+本节把 **理论上可在纯 Rust 内实现** 的已知能力缺口全部登记为候选任务，避免遗漏；§20 只保留近期优先项。编号 `P9-*` 表示排在 P8 之后，**不代表已排期或承诺版本**。每项仍按 AGENT.md 的 TDD 与 fixture-first 规则执行；新增字节布局用例必须由 `docs/testdata/gen/gen.sh` 生成并登记 manifest，不得手写 `.ser`/sha256。
+
+复杂度：`S`（<1 人日）/ `M`（1–3）/ `L`（3–7）/ `XL`（需设计评审）。涉及 `Graph`/D1 或 serde/D3 边界的项，动手前必须先改 `design.md` 并评审。
+
+### 21.1 核心协议与数据模型（改动 `Graph`/`JValue`，需评审）
+
+| ID | 目标 | 影响 | 依赖 | 优先级/复杂度 |
+|---|---|---|---|---|
+| P9-1 | `TC_CLASS` 保真回放：新增 `JValue::Class(Handle)` + `Slot::Class { desc }`，解码/重编码字节一致；不解类加载语义 | D1 模型、Reader/Writer、回放门禁 | 新 fixture（`Class` 对象）、design D1 | 中 / M |
+| P9-2 | `TC_PROXYCLASSDESC` 保真回放：新增 proxy 描述符槽（接口名 + annotation），对象 classdata 按 0 字段处理；代理语义仍 OUT-02 | D1 扩展、allowlist 检查接口名 | JDK 生成 proxy fixture | 低 / L |
+| P9-3 | `TC_EXCEPTION` 语义化：解析异常对象并保留类名/message/字段，错误类型携带结构化信息（当前只返回 `UnsupportedClass`） | Error 模型、fixture | 新 fixture | 中 / S |
+| P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`（当前仅 `&[u8]`/`Vec<u8>`） | wire 层缓冲、错误偏移、文档 | — | 中 / M |
+| P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |
+| P9-6 | `HashMap` 写侧 `capacity`/`threshold` 与 JDK 完全一致（当前按 size 反推） | 编码器 | fixture 对拍 | 低 / S |
+
+### 21.2 serde 桥（改变 D3 边界，需先改 design §5.4）
+
+嵌套自定义对象由 P8-3 覆盖，不在本节重复；本节其余项都是 P8-3 递归 `JavaSchema` 的自然延伸。
+
+| ID | 目标 | 说明 | 优先级/复杂度 |
+|---|---|---|---|
+| P9-7 | Map 字段（`HashMap`/`LinkedHashMap`）与 Map 根 | `Object` 分支支持 `Ljava/util/HashMap;` 等，键/值递归 schema | 高 / M |
+| P9-8 | Set 字段（`HashSet`）与 Set 根 | 同上 | 中 / M |
+| P9-9 | 枚举字段/根 | `JavaSchema` 增加枚举常量映射（`TC_ENUM`） | 中 / M |
+| P9-10 | 多根流 | `to_vec_multi`/`from_slice_multi`，每元素独立 schema；跨根共享仍拒绝 | 中 / M |
+| P9-11 | `TC_RESET` 流 | 按段重置 wire 句柄；与 P9-10 配套 | 中 / S |
+| P9-12 | 共享引用/环 | serde 模型需指针/句柄化（`Rc`/`Arc` + schema 标注）；高复杂度 | 低 / XL |
+| P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层） | 性能与错误定位；外部 API 不变 | 中 / L |
+
+### 21.3 derive / typed
+
+| ID | 目标 | 优先级/复杂度 |
+|---|---|---|
+| P9-14 | 对象数组 `Vec<Custom>` 字段（字段级 class 描述符 + 数组类 SUID） | 高 / M |
+| P9-15 | 继承：`#[java(super = "Base")]` 生成 `super_desc` 与父类 classdata 层 | 中 / M |
+| P9-16 | Rust enum ↔ Java enum：`#[derive(JavaSerializable)]` 用于 enum（`TC_ENUM`、flags `0x12`、SUID 0） | 中 / M |
+| P9-17 | 泛型结构体（字段具体化后单态化；仍拒绝未约束的泛型参数） | 低 / L |
+| P9-18 | 组合字段：`Option<Vec<T>>`、`Option<HashMap>`、`Vec<Option<T>>` | 中 / S |
+| P9-19 | typed/derive 解码校验类名与 SUID（不匹配返回 `FieldMismatch`，含两个 SUID） | 高 / S |
+| P9-20 | `IntoJValue` 扩展：`&[T]`、`[T; N]`、`BTreeMap`/`BTreeSet` | 低 / S |
+
+### 21.4 内置类语义与写侧构造器
+
+| ID | 目标 | 优先级/复杂度 |
+|---|---|---|
+| P9-21 | java.time 余项：`Year`/`YearMonth`/`MonthDay`/`Period`（P8-5）+ `ZoneId`/`ZoneOffset`/`OffsetDateTime`/`OffsetTime` | 中 / M |
+| P9-22 | 常见值类：`UUID`、`Currency`、`Locale`、`BitSet`、`StringBuilder`/`StringBuffer`、`Pattern`、`java.sql.Date/Time/Timestamp` | 中 / M |
+| P9-23 | 容器：`LinkedHashSet`、`TreeMap`、`TreeSet`、`ArrayDeque`、`PriorityQueue`、`Vector`、`Stack`、`Hashtable`、`Properties`、`EnumSet`/`EnumMap`、`Collections.unmodifiable*/synchronized*` 包装、`Arrays$ArrayList` | 中 / L |
+| P9-24 | 对应写侧构造器：`new_linked_hash_map`/`new_linked_hash_set`/`new_tree_map`/`new_array_deque` 等 | 中 / M |
+| P9-25 | `Registry`/`BuiltinValue` 语义视图扩展到上述类型（`JValue::Obj` 回放保持不变） | 中 / M |
+
+### 21.5 工程、测试与 CI
+
+| ID | 目标 | 优先级/复杂度 |
+|---|---|---|
+| P9-26 | property-based 测试（`tests/property.rs`，§12 已列但未实现；离线 dev-dependency 需说明） | 高 / M |
+| P9-27 | `AC-02` 逐类覆盖：`Verify.java`/`emit.rs` 覆盖全部 fixture 类型与新增内置类 | 高 / M |
+| P9-28 | CI：MSRV 1.75 job、32-bit job、macOS/Windows matrix（细化 P8-6） | 中 / M |
+| P9-29 | `cargo-deny`/依赖审计（M6 出口提到但未落地） | 中 / S |
+| P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组） | 低 / S |
+| P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合 | 中 / M |
+| P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题（目标 Java 版本/发布/性能数值） | 低 / S |
+
+### 21.6 不可实现 / 明确不做（与 §5 OUT 一致）
+
+| 项 | 原因 |
+|---|---|
+| `Externalizable` 通用 `readExternal/writeExternal` 语义 | 对端逻辑不可知；旧式（无 `SC_BLOCK_DATA`）无法确定数据终点，不能安全跳过。已知类特例继续走注册表（OUT-01） |
+| 动态代理的**代理语义**（`InvocationHandler`） | 需要 JVM 调用语义；P9-2 只做字节保真回放（OUT-02） |
+| `TC_CLASS` 的**类加载语义** | 纯 Rust 无类加载概念；P9-1 只做保真回放（OUT-04） |
+| RMI / JNDI 传输层 | 与序列化格式无关（OUT-03） |
+| 完整反序列化 gadget 沙箱 | 无法在纯 Rust 复现 JVM 行为；allowlist 只是入口门禁（OUT-06） |
+| `no_std` | 依赖 `String`/`Vec`/`alloc` 与 `thiserror`，不在范围 |
+| 含孤立代理项的 `String` → Rust `String` | 表示不可能；FR-03 已定案报错。如需原始 UTF-16 视图须先改需求 |
+| `java.util.Optional` 系列 | 非 `Serializable`，Java 端不会产出 |
+
+> 原则：§21 只是登记，不代表排期承诺；涉及 `Graph`/D1 与 serde/D3 的项（P9-1/2/5、P9-7～13）必须先更新 `design.md` 并评审。新增 fixture 必须走 `gen.sh`，不得手写字节或 sha256。

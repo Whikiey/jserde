@@ -16,7 +16,7 @@
 | Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；113 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20：P7-1 的 30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
+所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20（近期优先）与 §21（全部纯 Rust 可实现的扩展候选）：P7-1 的 30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI 等。
 
 ---
 

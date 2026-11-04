@@ -9,7 +9,7 @@
 - P0–P7 已实现：34 个 fixture / 74947 字节、113 项测试通过、Java/SUID 互操作 14 项。
 - 已覆盖：动态编解码、集合、环/共享、typed、derive、SUID、内置类语义、allowlist、serde 桥、三层嵌套对象。
 - 未收口：30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
-- 缺口与优先级见 [implementation-plan.md §20](docs/implementation-plan.md#20-当前进度与后续缺口2026-11-04)。
+- 缺口与优先级见 [implementation-plan.md §20](docs/implementation-plan.md#20-当前进度与后续缺口2026-11-04)（近期）；全部纯 Rust 可实现的扩展候选见 [§21](docs/implementation-plan.md#21-扩展-backlog可行性登记)。
 
 ## 能力
 
@@ -118,3 +118,4 @@ cargo test -p jser --test fuzz_smoke
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - `docs/bench.md` 的 100 MB 是合成块流；真实 2500 万元素 `int[]` 受 `JValue` 32 字节/元素影响，尚未满足 3× 内存目标。
 - 默认 allowlist 不能替代完整反序列化沙箱。
+- 完整扩展 backlog（Map/Set serde、`TC_CLASS`/proxy 保真回放、嵌套 derive、更多内置类等）见 [implementation-plan.md §21](docs/implementation-plan.md#21-扩展-backlog可行性登记)。

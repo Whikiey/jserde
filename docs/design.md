@@ -342,7 +342,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ❌ 未实现（fixture 未覆盖） | — |
 | `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
 
-serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Option`/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。
+serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Option`/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、`TC_RESET`、共享/环、直接 serde 实现）已登记在 `implementation-plan.md` §21.2；在这些项落地前，D3 的边界不变。
 
 嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现，derive 只支持扁平字段，serde 明确拒绝嵌套对象字段。
 

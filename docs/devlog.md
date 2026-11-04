@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 10:40 · docs: 登记全部纯 Rust 可实现的扩展 backlog
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `docs/implementation-plan.md`：§20 增加近期/全量指引；新增 §21「扩展 backlog（可行性登记）」32 项（P9-1～P9-32）——`TC_CLASS`/proxy 保真回放、`TC_EXCEPTION` 语义化、流式 IO、零拷贝、serde Map/Set/枚举/多根/`TC_RESET`/共享、derive 对象数组/继承/enum/泛型/SUID 校验、java.time 与 java.util 内置类、写侧构造器、property 测试、AC-02 全类型、CI matrix、cargo-deny、bench 门禁、文档收口；§21.6 单列不可实现项及理由；§19 变更记录。
+  - `README.md`、`AGENT.md` §1、`docs/design.md` §5.4：同步 §21 指引；明确 D3 边界在扩展落地前不变。
+- **验证**：仅文档改动，无代码/fixture 变更；不触碰 `.ser` 与 manifest。
+- **TDD**：不适用（计划与文档登记）。
+
+---
+
 ## 2026-11-04 03:10 · docs: 同步当前进度与缺口
 
 - **提交**：本次（hash 见 `git log`）
