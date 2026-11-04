@@ -13,7 +13,8 @@
 - `#[derive(JavaSerializable)]` with `class`/`suid`/`rename`/`transient`.
 - `computeDefaultSUID` + `.class` parser + `suid` binary.
 - Semantic views for `Date`, `BigInteger`, `BigDecimal` and `java.time`
-  (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
+  (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime,
+  Year, YearMonth, MonthDay, Period).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
 - Derive unit-only Rust enums as Java enums (`TC_ENUM`, flags `0x12`, SUID 0,
   `java.lang.Enum` superclass); variant names default to UPPER_SNAKE_CASE.
@@ -40,7 +41,6 @@
 - Generic `Externalizable`, dynamic proxies, `TC_CLASS`, RMI/JNDI are out of scope.
 - serde bridge: no object arrays, cycles/shared refs, `TC_RESET` or
   multi-root streams.
-- `Year`/`YearMonth`/`MonthDay`/`Period` semantic views are not implemented.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.
 - AC-04: the 30-minute decode fuzz workflow is in place but deferred until

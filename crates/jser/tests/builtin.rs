@@ -5,7 +5,7 @@ mod common;
 use common::{decode_fixture, read_fixture};
 use jser::builtin::{
     BigDecimal, BigInteger, BuiltinValue, Duration, Instant, JavaDate, LocalDate, LocalDateTime,
-    LocalTime, Registry, ZonedDateTime,
+    LocalTime, MonthDay, Period, Registry, Year, YearMonth, ZonedDateTime,
 };
 
 fn array_item(graph: &jser::Graph, index: usize) -> jser::JValue {
@@ -123,6 +123,35 @@ fn decodes_java_time_values() {
             },
             offset_seconds: 8 * 3600,
             zone: "Asia/Shanghai".to_owned(),
+        }))
+    );
+}
+
+#[test]
+fn decodes_year_month_day_and_period() {
+    let graph = decode_fixture(&read_fixture("object/42")).unwrap();
+
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 0)).unwrap(),
+        Some(BuiltinValue::Year(Year { year: 2024 }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 1)).unwrap(),
+        Some(BuiltinValue::YearMonth(YearMonth {
+            year: 2024,
+            month: 2,
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 2)).unwrap(),
+        Some(BuiltinValue::MonthDay(MonthDay { month: 2, day: 29 }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 3)).unwrap(),
+        Some(BuiltinValue::Period(Period {
+            years: 1,
+            months: 2,
+            days: 3,
         }))
     );
 }

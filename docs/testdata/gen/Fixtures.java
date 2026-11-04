@@ -18,6 +18,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.MonthDay;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -307,6 +311,13 @@ public class Fixtures {
 
         gen(dir, "41-nested-objects.ser", out -> out.writeObject(
                 new Outer(new Middle("mid", new Leaf(42)))));
+
+        gen(dir, "42-java-time-more.ser", out -> out.writeObject(new Object[] {
+                Year.of(2024),
+                YearMonth.of(2024, 2),
+                MonthDay.of(2, 29),
+                Period.of(1, 2, 3),
+        }));
     }
 
     static void printSuids() {

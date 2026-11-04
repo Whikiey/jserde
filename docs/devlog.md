@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 13:30 · feat: java.time 余项 Year/YearMonth/MonthDay/Period（P8-5，TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Fixtures.java` 新增 `object/42-java-time-more.ser`（`Object[]{Year.of(2024), YearMonth.of(2024,2), MonthDay.of(2,29), Period.of(1,2,3)}`，131 字节）；`build_manifest.py` 登记期望语义；manifest 重新生成为 **35 例 / 75078 字节**。
+  - `builtin::semantic` 新增 `Year`/`YearMonth`/`MonthDay`/`Period` 与对应 `BuiltinValue` 变体；`java.time.Ser` 类型码按 fixture 实测为 11/12/13/14。
+  - `build_manifest.py` 的未登记文件比较改用 `as_posix()`，修复 Windows 反斜杠导致的误报（此前只能靠 Linux CI 跑 `--check`）。
+  - 测试：`tests/builtin.rs` 新增 object/42 语义断言；`tests/manifest.rs` 计数更新为 35。
+- **验证**：用本机 JDK 25 重新生成全部 fixture，与已提交的 34 例**逐字节一致**后，仅新增 object/42；`py gen/build_manifest.py --check` 通过；`cargo test --workspace` **139 passed**；clippy/fmt 通过。
+- **TDD**：Red：先加 object/42 语义断言（类型码按记忆写成 11=Period 等导致 `Truncated`）；Green：按 fixture 字节修正为 11=Year/12=YearMonth/13=MonthDay/14=Period 后全绿。
+
+---
+
 ## 2026-11-04 13:10 · feat: derive Java enum（P9-16，TDD）
 
 - **提交**：本次（hash 见 `git log`）

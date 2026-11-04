@@ -106,7 +106,7 @@
 
 | AC | 状态 | 证据/缺口 |
 |---|---|---|
-| AC-01 | ✅ | 34 个 fixture 全部解码；`36`/`40` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
+| AC-01 | ✅ | 35 个 fixture 全部解码；`36`/`40`/`42` 语义与 `41` 三层嵌套由 `tests/builtin.rs`、`tests/nested.rs` 覆盖 |
 | AC-02 | ✅（代表性） | `tests/interop.rs` + `Verify.java` 覆盖 Point/Mixed/Map/环/enum/derive/serde；未逐类覆盖全部 Java 类型 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
 | AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
@@ -178,3 +178,4 @@
 | 2026-11-04 | P9-15：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层；derive 继承与 `object/22` 互通 | P9-15 |
 | 2026-11-04 | P9-7/8：serde 支持 Map/Set 字段（HashMap/LinkedHashMap/HashSet）与 Map/Set 根；新增 LinkedHashMap 写侧构造器；仍不支持对象数组/环/TC_RESET/多根 | P9-7/8 |
 | 2026-11-04 | P9-16：unit-only enum derive（`TC_ENUM`、flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 互通 | P9-16 |
+| 2026-11-04 | P8-5：新增 `object/42`（Year/YearMonth/MonthDay/Period）与对应 `BuiltinValue` 语义；manifest 35 例/75078 字节；`build_manifest.py` 支持 Windows 路径 | P8-5 |

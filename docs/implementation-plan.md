@@ -13,7 +13,7 @@
 
 ## 0. 交付目标与总策略
 
-v0.1 的完成定义：**34 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
+v0.1 的完成定义：**35 个 fixture 全部解码正确；Rust 写出的流能被 JDK 读回；`Map`/`List`/`Set`/POJO/数组/环/`reset` 双向互通；解码不 panic、零 JVM 依赖。**
 
 总策略四条：
 
@@ -426,11 +426,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P9-15 完成（TDD）：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层；`object/22` 由 flatten struct 解码并往返；全仓 131 项通过 | P9-15 |
 | 2026-11-04 | P9-7/8 完成（TDD）：serde 支持 `SchemaField::map`（HashMap/LinkedHashMap）、`SchemaField::set`（HashSet），以及 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set` 根入口；新增 LinkedHashMap 写侧构造器；全仓 134 项通过 | P9-7/8 |
 | 2026-11-04 | P9-16 完成（TDD）：unit-only enum derive 生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），常量名默认 UPPER_SNAKE、支持 `rename`；`object/24` 解码与各 variant 往返；全仓 138 项通过 | P9-16 |
+| 2026-11-04 | P8-5 完成（TDD）：新增 `object/42`（Year/YearMonth/MonthDay/Period），manifest 35 例/75078 字节；`BuiltinValue` 新增四种语义；`build_manifest.py` 路径比较改 `as_posix()` 以支持 Windows；全仓 139 项通过 | P8-5 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **138 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P9-7/P9-8/P9-14/P9-15/P9-16 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；35 个 fixture / 75078 字节；全仓 **139 passed**；Java/SUID 互操作 14 项；P8-2/P8-3/P8-5/P9-7/P9-8/P9-14/P9-15/P9-16 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -438,7 +439,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 真实 100 MB primitive 数组内存超 3× | ✅ 已实现：`ArrayData::Primitive` raw bytes + `PrimitiveArray` 视图；`as_array` 仅对象数组，typed/derive/serde 走 raw；25M `int[]` 本地工作集采样 **2.03×**（Windows，Linux `bench -- array` 可复核） | P8-2（高） | AC-06 |
 | 嵌套 derive/serde | ✅ 已实现：derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>` 与继承（`DESCRIPTOR`/`ARRAY_DESCRIPTOR`/`flatten`）；serde 支持递归 `SchemaField::nested`、Map/Set 字段与 Map/Set 根 | P8-3 | FR-14/15 |
 | OUT 负例（TC_EXCEPTION/TC_CLASS/proxy/Externalizable no-block） | 只补错误断言与文档，不实现语义 | P8-4 | — |
-| `Year`/`YearMonth`/`MonthDay`/`Period` | 新增 fixture + `BuiltinValue` 语义 | P8-5 | FR-13 |
+| `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ 已实现：新增 `object/42` fixture + `BuiltinValue::Year/YearMonth/MonthDay/Period` | P8-5 | FR-13 |
 | 跨平台/并发/深链 | CI matrix、深度测试、并发文档 | P8-6 | NFR-05 |
 
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
@@ -492,7 +493,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 | ID | 目标 | 优先级/复杂度 |
 |---|---|---|
-| P9-21 | java.time 余项：`Year`/`YearMonth`/`MonthDay`/`Period`（P8-5）+ `ZoneId`/`ZoneOffset`/`OffsetDateTime`/`OffsetTime` | 中 / M |
+| P9-21 | java.time 余项：`ZoneId`/`ZoneOffset`/`OffsetDateTime`/`OffsetTime`（Year/YearMonth/MonthDay/Period 已由 P8-5 完成） | 中 / M |
 | P9-22 | 常见值类：`UUID`、`Currency`、`Locale`、`BitSet`、`StringBuilder`/`StringBuffer`、`Pattern`、`java.sql.Date/Time/Timestamp` | 中 / M |
 | P9-23 | 容器：`LinkedHashSet`、`TreeMap`、`TreeSet`、`ArrayDeque`、`PriorityQueue`、`Vector`、`Stack`、`Hashtable`、`Properties`、`EnumSet`/`EnumMap`、`Collections.unmodifiable*/synchronized*` 包装、`Arrays$ArrayList` | 中 / L |
 | P9-24 | 对应写侧构造器：`new_linked_hash_map`/`new_linked_hash_set`/`new_tree_map`/`new_array_deque` 等 | 中 / M |

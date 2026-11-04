@@ -346,7 +346,10 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `java.time.LocalTime` | ✅ hour/minute/second/nano | `BuiltinValue::LocalTime` |
 | `java.time.LocalDateTime` | ✅ date + time | `BuiltinValue::LocalDateTime` |
 | `java.time.ZonedDateTime` | ✅ date/time + offset + zone | `BuiltinValue::ZonedDateTime` |
-| `Year`/`YearMonth`/`MonthDay`/`Period` | ❌ 未实现（fixture 未覆盖） | — |
+| `java.time.Year` | ✅ year | `BuiltinValue::Year` |
+| `java.time.YearMonth` | ✅ year/month | `BuiltinValue::YearMonth` |
+| `java.time.MonthDay` | ✅ month/day | `BuiltinValue::MonthDay` |
+| `java.time.Period` | ✅ years/months/days | `BuiltinValue::Period` |
 | `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
 
 serde 桥额外限制：单根 POJO；字段可为标量/String/`Option`/数组、递归嵌套 POJO（`SchemaField::nested`）、Map（`SchemaField::map`，HashMap/LinkedHashMap）与 Set（`SchemaField::set`，HashSet）；Map/Set 根有独立入口；不支持对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
@@ -357,7 +360,7 @@ serde 桥额外限制：单根 POJO；字段可为标量/String/`Option`/数组�
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 34 例/74947 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 35 例/75078 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
 | M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
 | M2 ✅ | **写** + 回放门禁 + 双向对拍 | 34 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |

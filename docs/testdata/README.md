@@ -1,6 +1,6 @@
 # testdata/ — 基准数据与生成器
 
-**当前状态**：已产出。34 个用例、74947 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
+**当前状态**：已产出。35 个用例、75078 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
 
 这批数据是协议层的唯一事实来源：`requirements.md` 的 **AC-01** 就是"全部用例的解码结果与 `manifest.json` 的期望值一致"，AC-02 反向要求 Rust 写出的字节能被 Java 读回。
 
@@ -10,7 +10,7 @@
 
 | 路径 | 说明 | 入库 |
 |---|---|---|
-| `manifest.json` | **机读契约**：34 个用例的编号、文件、覆盖特性、期望语义值、size、sha256 | 是 |
+| `manifest.json` | **机读契约**：35 个用例的编号、文件、覆盖特性、期望语义值、size、sha256 | 是 |
 | `fixtures/codec/` | codec 层：无类描述符的流原语（字符串/空/块数据/句柄回指/reset） | 是 |
 | `fixtures/object/` | object 层：类描述符、SUID、继承、自定义 `writeObject`、enum、数组、集合、循环引用、三层对象嵌套 | 是 |
 | `gen/Fixtures.java` | **权威生成器**（JDK 17+），同时把各类的 `serialVersionUID` 打到 stdout | 是 |
@@ -53,6 +53,7 @@ cd testdata
 | object | 33–35 | 对象共享、循环引用、流中 `reset()` |
 | object | 36–40 | `Date`/`BigInteger`/`BigDecimal`/`java.time.Ser`、`transient`、JDK 计算的 SUID、java.time 多类型 |
 | object | 41 | 三层对象嵌套 `Outer → Middle → Leaf`（对象字段递归） |
+| object | 42 | `Year`/`YearMonth`/`MonthDay`/`Period`（java.time.Ser 余项） |
 
 ## SUID 表
 

@@ -142,6 +142,34 @@ pub struct ZonedDateTime {
     pub zone: String,
 }
 
+/// `java.time.Year`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Year {
+    pub year: i32,
+}
+
+/// `java.time.YearMonth`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct YearMonth {
+    pub year: i32,
+    pub month: u8,
+}
+
+/// `java.time.MonthDay`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MonthDay {
+    pub month: u8,
+    pub day: u8,
+}
+
+/// `java.time.Period`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Period {
+    pub years: i32,
+    pub months: i32,
+    pub days: i32,
+}
+
 /// A semantic value decoded from a built-in Java class.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuiltinValue {
@@ -154,6 +182,10 @@ pub enum BuiltinValue {
     Instant(Instant),
     Duration(Duration),
     ZonedDateTime(ZonedDateTime),
+    Year(Year),
+    YearMonth(YearMonth),
+    MonthDay(MonthDay),
+    Period(Period),
 }
 
 /// Maps Java class names to semantic codecs; unknown classes are left to the
@@ -282,6 +314,22 @@ fn decode_java_time(graph: &Graph, value: &JValue) -> Result<BuiltinValue> {
         4 => BuiltinValue::LocalTime(read_local_time(&mut reader)?),
         5 => BuiltinValue::LocalDateTime(read_local_date_time(&mut reader)?),
         6 => BuiltinValue::ZonedDateTime(read_zoned_date_time(&mut reader)?),
+        11 => BuiltinValue::Year(Year {
+            year: reader.read_i32()?,
+        }),
+        12 => BuiltinValue::YearMonth(YearMonth {
+            year: reader.read_i32()?,
+            month: reader.read_u8()?,
+        }),
+        13 => BuiltinValue::MonthDay(MonthDay {
+            month: reader.read_u8()?,
+            day: reader.read_u8()?,
+        }),
+        14 => BuiltinValue::Period(Period {
+            years: reader.read_i32()?,
+            months: reader.read_i32()?,
+            days: reader.read_i32()?,
+        }),
         other => {
             return Err(Error::UnsupportedClass(format!(
                 "java.time.Ser type {other}"

@@ -278,6 +278,17 @@ CASES = [
             }},
         }},
     ),
+    dict(
+        id="object/42", file="fixtures/object/42-java-time-more.ser",
+        case="Object[]{Year, YearMonth, MonthDay, Period}",
+        features=["java.time.Ser", "Year/YearMonth/MonthDay/Period"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.time.Year", "year": 2024},
+            {"type": "java.time.YearMonth", "year": 2024, "month": 2},
+            {"type": "java.time.MonthDay", "month": 2, "day": 29},
+            {"type": "java.time.Period", "years": 1, "months": 2, "days": 3},
+        ]},
+    ),
 ]
 
 
@@ -317,9 +328,9 @@ def main() -> int:
     # 反向校验：fixtures/ 下不能有未登记的 .ser
     listed = {c["file"] for c in CASES}
     stray = sorted(
-        str(p.relative_to(ROOT))
+        p.relative_to(ROOT).as_posix()
         for p in (ROOT / "fixtures").rglob("*.ser")
-        if str(p.relative_to(ROOT)) not in listed
+        if p.relative_to(ROOT).as_posix() not in listed
     )
     if stray:
         print("未登记的文件：", *stray, sep="\n  ")
@@ -337,7 +348,7 @@ def main() -> int:
               f"{manifest['total_bytes']} 字节")
         return 0
 
-    MANIFEST.write_text(text, encoding="utf-8")
+    MANIFEST.write_text(text, encoding="utf-8", newline="\n")
     print(f"已写入 {MANIFEST.relative_to(ROOT)}：{manifest['case_count']} 个用例，"
           f"{manifest['total_bytes']} 字节")
     return 0
