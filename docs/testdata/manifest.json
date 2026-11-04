@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 37,
-  "total_bytes": 75710,
+  "case_count": 38,
+  "total_bytes": 76637,
   "cases": [
     {
       "id": "codec/01",
@@ -877,6 +877,73 @@
       },
       "size": 486,
       "sha256": "3c10e74041eb7c3cb123d4c2d68ae2a371ca6a8083ef16619e3456515aceb08a"
+    },
+    {
+      "id": "object/45",
+      "file": "fixtures/object/45-value-classes.ser",
+      "case": "Object[]{UUID, Currency, Locale, BitSet, StringBuilder, StringBuffer, Pattern, sql.Date/Time/Timestamp}",
+      "features": [
+        "UUID/Currency/Locale",
+        "BitSet long[]",
+        "StringBuilder/StringBuffer",
+        "Pattern",
+        "java.sql 日期时间"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.util.UUID",
+            "most_sig_bits": 81985529216486895,
+            "least_sig_bits": -81985529216486896
+          },
+          {
+            "type": "java.util.Currency",
+            "currency_code": "USD"
+          },
+          {
+            "type": "java.util.Locale",
+            "language": "en",
+            "country": "US"
+          },
+          {
+            "type": "java.util.BitSet",
+            "words": [
+              10,
+              4294967295
+            ]
+          },
+          {
+            "type": "java.lang.StringBuilder",
+            "value": "builder"
+          },
+          {
+            "type": "java.lang.StringBuffer",
+            "value": "buffer"
+          },
+          {
+            "type": "java.util.regex.Pattern",
+            "pattern": "a+b",
+            "flags": 0
+          },
+          {
+            "type": "java.sql.Date",
+            "epoch_millis": 0
+          },
+          {
+            "type": "java.sql.Time",
+            "epoch_millis": 0
+          },
+          {
+            "type": "java.sql.Timestamp",
+            "epoch_millis": 0,
+            "nanos": 123456789
+          }
+        ]
+      },
+      "size": 927,
+      "sha256": "c6729b5807ea84eeb57c87d00388a7e3d913a418b123e4a7e07481ee0b9fdf79"
     }
   ]
 }

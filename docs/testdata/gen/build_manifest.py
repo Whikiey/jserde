@@ -313,6 +313,25 @@ CASES = [
             "shared": {"class": "Fixtures$Point", "fields": {"x": 7, "y": 8}},
         }},
     ),
+    dict(
+        id="object/45", file="fixtures/object/45-value-classes.ser",
+        case="Object[]{UUID, Currency, Locale, BitSet, StringBuilder, StringBuffer, Pattern, sql.Date/Time/Timestamp}",
+        features=["UUID/Currency/Locale", "BitSet long[]", "StringBuilder/StringBuffer",
+                  "Pattern", "java.sql 日期时间"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.util.UUID", "most_sig_bits": 81985529216486895,
+             "least_sig_bits": -81985529216486896},
+            {"type": "java.util.Currency", "currency_code": "USD"},
+            {"type": "java.util.Locale", "language": "en", "country": "US"},
+            {"type": "java.util.BitSet", "words": [10, 4294967295]},
+            {"type": "java.lang.StringBuilder", "value": "builder"},
+            {"type": "java.lang.StringBuffer", "value": "buffer"},
+            {"type": "java.util.regex.Pattern", "pattern": "a+b", "flags": 0},
+            {"type": "java.sql.Date", "epoch_millis": 0},
+            {"type": "java.sql.Time", "epoch_millis": 0},
+            {"type": "java.sql.Timestamp", "epoch_millis": 0, "nanos": 123456789},
+        ]},
+    ),
 ]
 
 

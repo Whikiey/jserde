@@ -100,14 +100,14 @@
 | AC-05 | 未知类的用例不整体失败，且能原样再编码 | FR-09 |
 | AC-06 | 100 MB 级输入在配置上限内成功解码，内存峰值 < 3× 输入 | NFR-02 |
 
-> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 37 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
+> 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 38 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
 
 ### 4.1 当前实现状态（2026-11-04）
 
 | AC | 状态 | 证据/缺口 |
 |---|---|---|
-| AC-01 | ✅ | 37 个 fixture 全部解码；`36`/`40`/`42`/`43` 语义、`41` 三层嵌套与 `44` 混合/共享/环由 `tests/builtin.rs`、`tests/nested.rs`、`tests/nesting.rs` 覆盖 |
-| AC-02 | ✅（全 fixture） | `tests/interop.rs` + `Verify.java`：37 个 fixture 全部由 Rust 重编码后经 Java `ObjectInputStream` 读回（`--read`/`--sequence`/`--primitives`/`--blocks`/`--array`）；构造/typed/derive/serde 代表用例断言字段值；范围外类型（`Externalizable` 语义、代理等）仍不覆盖 |
+| AC-01 | ✅ | 38 个 fixture 全部解码；`36`/`40`/`42`/`43` 语义、`41` 三层嵌套、`44` 混合/共享/环、`45` 常见值类由 `tests/builtin.rs`、`tests/nested.rs`、`tests/nesting.rs` 覆盖 |
+| AC-02 | ✅（全 fixture） | `tests/interop.rs` + `Verify.java`：38 个 fixture 全部由 Rust 重编码后经 Java `ObjectInputStream` 读回（`--read`/`--sequence`/`--primitives`/`--blocks`/`--array`）；构造/typed/derive/serde 代表用例断言字段值；范围外类型（`Externalizable` 语义、代理等）仍不覆盖 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
 | AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
@@ -191,3 +191,4 @@
 | 2026-11-04 | P9-32：serde crate 增加 doctest；§6/design §8/plan §18 定案（Java 17、不发布、性能门禁）；CI 增加 `cargo doc -D warnings`；全仓 148 passed | P9-32 |
 | 2026-11-04 | P9-33：新增 `object/44`（Map×数组×自定义类、共享引用、自环），manifest 37 例/75710 字节；`tests/nesting.rs` 增加解码/共享/环/回放断言；全仓 149 passed | P9-33 |
 | 2026-11-04 | P9-26：新增无依赖固定种子 property 测试（字符串/长字符串/数组/Map/重编码/随机字节/截断/变异）；全仓 157 passed | P9-26 |
+| 2026-11-04 | P9-22：新增 `object/45`（UUID/Currency/Locale/BitSet/StringBuilder/StringBuffer/Pattern/java.sql）与 10 种 `BuiltinValue`；manifest 38 例/76637 字节；全仓 158 passed | P9-22 |

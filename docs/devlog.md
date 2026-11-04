@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 17:20 · feat: 常见值类语义（P9-22）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `Fixtures.java` 新增 `object/45-value-classes.ser`（927 B，UTC 无时区依赖）：UUID/Currency/Locale/BitSet/StringBuilder/StringBuffer/Pattern + `java.sql.Date/Time/Timestamp`。
+  - `builtin::semantic` 新增 `Uuid`/`Currency`/`Locale`/`BitSet`/`StringBuilderValue`/`StringBufferValue`/`Pattern`/`SqlDate`/`SqlTime`/`SqlTimestamp` 与对应 `BuiltinValue`；支持 StringBuilder custom 长度块 + char[]、StringBuffer 字段、BitSet long[]、sql 子类复用 Date custom。
+  - `tests/builtin.rs` 断言 10 种语义；fixture allowlist 增加 `java.sql.*`、`java.util.regex.*`；manifest 38 例/76637 字节。
+- **验证**：builtin 6 passed；全仓 **158 passed**；clippy/fmt 通过。
+- **说明**：容器扩展（P9-23/24/25）另行提交；EnumSet/EnumMap 依赖 `TC_CLASS`（P9-1），暂不在本批。
+
+---
+
 ## 2026-11-04 16:35 · test: 无依赖 property 测试（P9-26）
 
 - **提交**：本次（hash 见 `git log`）

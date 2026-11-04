@@ -7,13 +7,31 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.Currency;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
+import java.util.PriorityQueue;
+import java.util.Properties;
+import java.util.Stack;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.Vector;
+import java.util.regex.Pattern;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -349,6 +367,46 @@ public class Fixtures {
             hybrid.shared = shared;
             hybrid.self = hybrid;
             out.writeObject(hybrid);
+        });
+
+        gen(dir, "45-value-classes.ser", out -> out.writeObject(new Object[] {
+                new UUID(0x0123456789abcdefL, 0xfedcba9876543210L),
+                Currency.getInstance("USD"),
+                Locale.US,
+                BitSet.valueOf(new long[] {0b1010L, 0xFFFF_FFFFL}),
+                new StringBuilder("builder"),
+                new StringBuffer("buffer"),
+                Pattern.compile("a+b"),
+                new java.sql.Date(0L),
+                new java.sql.Time(0L),
+                java.sql.Timestamp.from(Instant.ofEpochSecond(0, 123456789)),
+        }));
+
+        gen(dir, "46-containers.ser", out -> {
+            LinkedHashSet<String> linkedSet = new LinkedHashSet<>(List.of("a", "b"));
+            TreeMap<String, Integer> treeMap = new TreeMap<>();
+            treeMap.put("a", 1);
+            treeMap.put("b", 2);
+            TreeSet<String> treeSet = new TreeSet<>(List.of("x", "y"));
+            ArrayDeque<String> deque = new ArrayDeque<>(List.of("p", "q"));
+            PriorityQueue<Integer> queue = new PriorityQueue<>(List.of(3, 1, 2));
+            Vector<String> vector = new Vector<>(List.of("v1", "v2"));
+            Stack<String> stack = new Stack<>();
+            stack.push("s1");
+            stack.push("s2");
+            Hashtable<String, Integer> table = new Hashtable<>();
+            table.put("h1", 1);
+            table.put("h2", 2);
+            Properties properties = new Properties();
+            properties.setProperty("k", "v");
+            List<String> unmodifiable = Collections.unmodifiableList(new ArrayList<>(List.of("u1", "u2")));
+            List<String> synchronizedList = Collections.synchronizedList(new ArrayList<>(List.of("s1", "s2")));
+            List<String> arraysList = Arrays.asList("a1", "a2");
+
+            out.writeObject(new Object[] {
+                    linkedSet, treeMap, treeSet, deque, queue, vector, stack,
+                    table, properties, unmodifiable, synchronizedList, arraysList,
+            });
         });
     }
 

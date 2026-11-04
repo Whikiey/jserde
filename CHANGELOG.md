@@ -48,6 +48,8 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
+- Semantic views for common value classes: UUID, Currency, Locale, BitSet,
+  StringBuilder/StringBuffer, Pattern and java.sql.Date/Time/Timestamp.
 - Dependency-free seeded property tests (`tests/property.rs`): strings, long
   strings, vectors, maps, re-encode stability, random/truncated bytes, mutation.
 - Hybrid nested fixture `object/44`: Map × array × custom class with shared

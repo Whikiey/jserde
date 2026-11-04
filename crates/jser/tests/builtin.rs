@@ -4,9 +4,10 @@ mod common;
 
 use common::{decode_fixture, read_fixture};
 use jser::builtin::{
-    BigDecimal, BigInteger, BuiltinValue, Duration, Instant, JavaDate, LocalDate, LocalDateTime,
-    LocalTime, MonthDay, OffsetDateTime, OffsetTime, Period, Registry, Year, YearMonth, ZoneId,
-    ZoneOffset, ZonedDateTime,
+    BigDecimal, BigInteger, BitSet, BuiltinValue, Currency, Duration, Instant, JavaDate, LocalDate,
+    LocalDateTime, LocalTime, Locale, MonthDay, OffsetDateTime, OffsetTime, Pattern, Period,
+    Registry, SqlDate, SqlTime, SqlTimestamp, StringBufferValue, StringBuilderValue, Uuid, Year,
+    YearMonth, ZoneId, ZoneOffset, ZonedDateTime,
 };
 
 fn array_item(graph: &jser::Graph, index: usize) -> jser::JValue {
@@ -202,6 +203,75 @@ fn decodes_zone_and_offset_time_values() {
                 },
             },
             offset_seconds: 8 * 3600,
+        }))
+    );
+}
+
+#[test]
+fn decodes_common_value_classes() {
+    let graph = decode_fixture(&read_fixture("object/45")).unwrap();
+
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 0)).unwrap(),
+        Some(BuiltinValue::Uuid(Uuid {
+            most_sig_bits: 81985529216486895,
+            least_sig_bits: -81985529216486896,
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 1)).unwrap(),
+        Some(BuiltinValue::Currency(Currency {
+            currency_code: "USD".to_owned(),
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 2)).unwrap(),
+        Some(BuiltinValue::Locale(Locale {
+            language: "en".to_owned(),
+            country: "US".to_owned(),
+            variant: String::new(),
+            script: String::new(),
+            extensions: String::new(),
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 3)).unwrap(),
+        Some(BuiltinValue::BitSet(BitSet {
+            words: vec![10, 4_294_967_295],
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 4)).unwrap(),
+        Some(BuiltinValue::StringBuilder(StringBuilderValue {
+            value: "builder".to_owned(),
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 5)).unwrap(),
+        Some(BuiltinValue::StringBuffer(StringBufferValue {
+            value: "buffer".to_owned(),
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 6)).unwrap(),
+        Some(BuiltinValue::Pattern(Pattern {
+            pattern: "a+b".to_owned(),
+            flags: 0,
+        }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 7)).unwrap(),
+        Some(BuiltinValue::SqlDate(SqlDate { epoch_millis: 0 }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 8)).unwrap(),
+        Some(BuiltinValue::SqlTime(SqlTime { epoch_millis: 0 }))
+    );
+    assert_eq!(
+        graph.builtin(&array_item(&graph, 9)).unwrap(),
+        Some(BuiltinValue::SqlTimestamp(SqlTimestamp {
+            epoch_millis: 0,
+            nanos: 123_456_789,
         }))
     );
 }

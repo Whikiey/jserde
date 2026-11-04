@@ -196,6 +196,74 @@ pub struct OffsetDateTime {
     pub offset_seconds: i32,
 }
 
+/// `java.util.UUID`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Uuid {
+    pub most_sig_bits: i64,
+    pub least_sig_bits: i64,
+}
+
+/// `java.util.Currency`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Currency {
+    pub currency_code: String,
+}
+
+/// `java.util.Locale`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Locale {
+    pub language: String,
+    pub country: String,
+    pub variant: String,
+    pub script: String,
+    pub extensions: String,
+}
+
+/// `java.util.BitSet` (little-endian 64-bit words).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BitSet {
+    pub words: Vec<u64>,
+}
+
+/// `java.lang.StringBuilder`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StringBuilderValue {
+    pub value: String,
+}
+
+/// `java.lang.StringBuffer`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StringBufferValue {
+    pub value: String,
+}
+
+/// `java.util.regex.Pattern` (flags + pattern source; compiled automaton is not
+/// serialized).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pattern {
+    pub pattern: String,
+    pub flags: i32,
+}
+
+/// `java.sql.Date`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SqlDate {
+    pub epoch_millis: i64,
+}
+
+/// `java.sql.Time`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SqlTime {
+    pub epoch_millis: i64,
+}
+
+/// `java.sql.Timestamp`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SqlTimestamp {
+    pub epoch_millis: i64,
+    pub nanos: i32,
+}
+
 /// A semantic value decoded from a built-in Java class.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuiltinValue {
@@ -216,6 +284,16 @@ pub enum BuiltinValue {
     ZoneOffset(ZoneOffset),
     OffsetTime(OffsetTime),
     OffsetDateTime(OffsetDateTime),
+    Uuid(Uuid),
+    Currency(Currency),
+    Locale(Locale),
+    BitSet(BitSet),
+    StringBuilder(StringBuilderValue),
+    StringBuffer(StringBufferValue),
+    Pattern(Pattern),
+    SqlDate(SqlDate),
+    SqlTime(SqlTime),
+    SqlTimestamp(SqlTimestamp),
 }
 
 /// Maps Java class names to semantic codecs; unknown classes are left to the
@@ -232,7 +310,20 @@ impl Registry {
     pub fn is_known(&self, class: &str) -> bool {
         matches!(
             class,
-            "java.util.Date" | "java.math.BigInteger" | "java.math.BigDecimal" | "java.time.Ser"
+            "java.util.Date"
+                | "java.math.BigInteger"
+                | "java.math.BigDecimal"
+                | "java.time.Ser"
+                | "java.util.UUID"
+                | "java.util.Currency"
+                | "java.util.Locale"
+                | "java.util.BitSet"
+                | "java.lang.StringBuilder"
+                | "java.lang.StringBuffer"
+                | "java.util.regex.Pattern"
+                | "java.sql.Date"
+                | "java.sql.Time"
+                | "java.sql.Timestamp"
         )
     }
 
@@ -248,6 +339,44 @@ impl Registry {
             "java.math.BigInteger" => BuiltinValue::BigInteger(decode_big_integer(graph, value)?),
             "java.math.BigDecimal" => BuiltinValue::BigDecimal(decode_big_decimal(graph, value)?),
             "java.time.Ser" => decode_java_time(graph, value)?,
+            "java.util.UUID" => BuiltinValue::Uuid(Uuid {
+                most_sig_bits: long_field(graph, value, "mostSigBits")?,
+                least_sig_bits: long_field(graph, value, "leastSigBits")?,
+            }),
+            "java.util.Currency" => BuiltinValue::Currency(Currency {
+                currency_code: string_field(graph, value, "currencyCode")?,
+            }),
+            "java.util.Locale" => BuiltinValue::Locale(Locale {
+                language: string_field(graph, value, "language")?,
+                country: string_field(graph, value, "country")?,
+                variant: string_field(graph, value, "variant")?,
+                script: string_field(graph, value, "script")?,
+                extensions: string_field(graph, value, "extensions")?,
+            }),
+            "java.util.BitSet" => BuiltinValue::BitSet(decode_bit_set(graph, value)?),
+            "java.lang.StringBuilder" => BuiltinValue::StringBuilder(StringBuilderValue {
+                value: decode_string_builder(graph, value)?,
+            }),
+            "java.lang.StringBuffer" => BuiltinValue::StringBuffer(StringBufferValue {
+                value: decode_string_buffer(graph, value)?,
+            }),
+            "java.util.regex.Pattern" => BuiltinValue::Pattern(Pattern {
+                pattern: string_field(graph, value, "pattern")?,
+                flags: int_field(graph, value, "flags")?,
+            }),
+            "java.sql.Date" => BuiltinValue::SqlDate(SqlDate {
+                epoch_millis: decode_date(graph, value)?.epoch_millis,
+            }),
+            "java.sql.Time" => BuiltinValue::SqlTime(SqlTime {
+                epoch_millis: decode_date(graph, value)?.epoch_millis,
+            }),
+            "java.sql.Timestamp" => {
+                let epoch_millis = decode_date(graph, value)?.epoch_millis;
+                BuiltinValue::SqlTimestamp(SqlTimestamp {
+                    epoch_millis,
+                    nanos: int_field(graph, value, "nanos")?,
+                })
+            }
             _ => return Ok(None),
         };
         Ok(Some(decoded))
@@ -293,6 +422,140 @@ fn decode_big_decimal(graph: &Graph, value: &JValue) -> Result<BigDecimal> {
 
 fn int_field(graph: &Graph, value: &JValue, name: &str) -> Result<i32> {
     graph.as_i32(graph.require_field(value, name)?)
+}
+
+fn long_field(graph: &Graph, value: &JValue, name: &str) -> Result<i64> {
+    graph.as_i64(graph.require_field(value, name)?)
+}
+
+fn string_field(graph: &Graph, value: &JValue, name: &str) -> Result<String> {
+    Ok(graph.as_str(graph.require_field(value, name)?)?.to_owned())
+}
+
+fn decode_bit_set(graph: &Graph, value: &JValue) -> Result<BitSet> {
+    let bits = graph.require_field(value, "bits")?;
+    let array = graph
+        .as_primitive_array(bits)?
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "BitSet.bits is not a primitive array".to_owned(),
+        })?;
+    if array.typecode() != FieldType::Long {
+        return Err(Error::FieldMismatch {
+            message: format!(
+                "BitSet.bits has {:?} elements, expected long",
+                array.typecode()
+            ),
+        });
+    }
+    let mut words = Vec::with_capacity(array.len());
+    for index in 0..array.len() {
+        match array.get(index) {
+            Some(JValue::Long(word)) => words.push(word as u64),
+            other => {
+                return Err(Error::FieldMismatch {
+                    message: format!("BitSet.bits[{index}] is {other:?}, expected long"),
+                })
+            }
+        }
+    }
+    Ok(BitSet { words })
+}
+
+fn decode_string_builder(graph: &Graph, value: &JValue) -> Result<String> {
+    let object = graph
+        .as_object(value)?
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "StringBuilder is not an object".to_owned(),
+        })?;
+    let layer = object
+        .classes
+        .iter()
+        .find(|class| {
+            graph
+                .descriptor(class.desc)
+                .map(|desc| desc.name == "java.lang.StringBuilder")
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "missing java.lang.StringBuilder layer".to_owned(),
+        })?;
+    let custom = layer
+        .custom
+        .as_deref()
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "StringBuilder has no custom data".to_owned(),
+        })?;
+
+    let mut count = None;
+    let mut chars = None;
+    for item in custom {
+        match item {
+            JValue::Block(block) if block.bytes.len() == 4 => {
+                let mut reader = StreamReader::new(&block.bytes);
+                count = Some(reader.read_i32()?);
+            }
+            JValue::Arr(_) => chars = Some(item),
+            other => {
+                return Err(Error::FieldMismatch {
+                    message: format!("StringBuilder custom data contains {other:?}"),
+                })
+            }
+        }
+    }
+    let count = count.ok_or_else(|| Error::FieldMismatch {
+        message: "StringBuilder custom data has no length block".to_owned(),
+    })?;
+    let chars = chars.ok_or_else(|| Error::FieldMismatch {
+        message: "StringBuilder custom data has no char array".to_owned(),
+    })?;
+    char_array_string(
+        graph,
+        chars,
+        Some(usize::try_from(count).map_err(|_| Error::FieldMismatch {
+            message: "StringBuilder length is negative".to_owned(),
+        })?),
+    )
+}
+
+fn decode_string_buffer(graph: &Graph, value: &JValue) -> Result<String> {
+    let count = int_field(graph, value, "count")?;
+    let count = usize::try_from(count).map_err(|_| Error::FieldMismatch {
+        message: "StringBuffer.count is negative".to_owned(),
+    })?;
+    char_array_string(graph, graph.require_field(value, "value")?, Some(count))
+}
+
+fn char_array_string(graph: &Graph, value: &JValue, count: Option<usize>) -> Result<String> {
+    let array = graph
+        .as_primitive_array(value)?
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "expected a char array".to_owned(),
+        })?;
+    if array.typecode() != FieldType::Char {
+        return Err(Error::FieldMismatch {
+            message: format!("expected char[], found {:?}", array.typecode()),
+        });
+    }
+    let length = count.map_or(array.len(), |count| count.min(array.len()));
+    if count.is_some_and(|count| count > array.len()) {
+        return Err(Error::FieldMismatch {
+            message: "char count exceeds the backing array".to_owned(),
+        });
+    }
+    let mut units = Vec::with_capacity(length);
+    for index in 0..length {
+        match array.get(index) {
+            Some(JValue::Char(unit)) => units.push(unit),
+            other => {
+                return Err(Error::FieldMismatch {
+                    message: format!("char[{index}] is {other:?}"),
+                })
+            }
+        }
+    }
+    String::from_utf16(&units).map_err(|_| Error::FieldMismatch {
+        message: "unpaired UTF-16 surrogate in char array".to_owned(),
+    })
 }
 
 fn custom_bytes(graph: &Graph, value: &JValue, class: &str) -> Result<Vec<u8>> {

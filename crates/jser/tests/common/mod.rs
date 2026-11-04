@@ -70,7 +70,13 @@ pub fn read_fixture(id: &str) -> Vec<u8> {
 /// Allowlist used by fixture tests: strict defaults plus the test classes.
 pub fn fixture_allowlist() -> Allowlist {
     let mut allowlist = Allowlist::strict();
-    for pattern in ["Fixtures$*", "java.math.*", "java.time.*"] {
+    for pattern in [
+        "Fixtures$*",
+        "java.math.*",
+        "java.time.*",
+        "java.sql.*",
+        "java.util.regex.*",
+    ] {
         allowlist.add(pattern).expect("valid fixture allowlist");
     }
     allowlist
