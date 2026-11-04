@@ -48,6 +48,8 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
+- Dependency-free seeded property tests (`tests/property.rs`): strings, long
+  strings, vectors, maps, re-encode stability, random/truncated bytes, mutation.
 - Hybrid nested fixture `object/44`: Map × array × custom class with shared
   references and a self-cycle; Rust build + decode/replay regressions.
 - 37 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every

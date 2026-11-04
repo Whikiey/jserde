@@ -103,7 +103,7 @@ P2 ─────────────────────────�
 | P0-5 | ✅ 错误模型 | `error.rs`：`BadMagic`、`Truncated`、`BadTag`、`BadHandle`、`MalformedString`、`UnsupportedClass(String)`、`FieldMismatch`、`LimitExceeded` | 测试构造每种错误 |
 | P0-6 | ✅ manifest 测试夹具 | `crates/jser/tests/common/mod.rs`：按 `CARGO_MANIFEST_DIR` + `../../docs/testdata/manifest.json` 定位，反序列化为 `Case { id, file, features, expect, size, sha256 }` | 用例数 = 32 的断言 |
 | P0-7 | ✅ CI 骨架（已添加，待远端首次运行） | `.github/workflows/ci.yml`：`fmt` / `clippy -D warnings` / `test`；`fixtures` job 装 JDK 17 跑 `docs/testdata/gen/gen.sh --check` | CI 三个 job 通过（待远端） |
-| P0-8 | ✅ 依赖白名单 | 运行时仅 `thiserror`；dev 为 `serde`/`serde_json`（读 manifest）；`proptest` 在 P4 引入 | `cargo tree` 复核 |
+| P0-8 | ✅ 依赖白名单 | 运行时仅 `thiserror`；dev 为 `serde`/`serde_json`（读 manifest）；property 测试用自带 xorshift（无外部 dev-dep，见 P9-26） | `cargo tree` 复核 |
 
 **状态（2026-11-03）**：P0-2～P0-8 已完成。`cargo test --workspace` 通过 11 项 P0 测试（manifest 7 + error 4），`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 均通过；CI 配置待远端首次运行验证。
 
@@ -283,7 +283,7 @@ P2 ─────────────────────────�
 | 构造流 Java | 手工构造 Map/POJO → 编码 → Java 读回 | `tests/interop.rs` | P3 起 |
 | 双向对拍（Java） | Rust 写 → `Verify` 读，语义相等 | `tests/interop.rs`（`#[ignore]` 无 JDK） | P3 起 |
 | typed/derive | `decode_typed`、derive 互通 | `tests/typed.rs`、`tests/derive.rs` | P4/P5 |
-| property | 随机 `JValue` 树/图往返；随机字节不 panic | `tests/property.rs` | P4 起 |
+| property | 随机字符串/长字符串/数组/Map 往返；重编码稳定；随机/截断字节不 panic；字段变异 | `tests/property.rs`（固定种子 xorshift） | P9-26 |
 | fuzz | 任意字节、round-trip | `fuzz/fuzz_targets/` | P7（PR 冒烟） |
 | bench | 吞吐/内存 | `benches/` | P7 |
 
@@ -437,11 +437,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-31 完成：新增 `Graph::set_map_entry`（替换/追加，primitive 自动装箱）与 `set_array_element`；mutation 测试覆盖全部标量、Map 替换/追加、对象数组；interop 增加 Mixed 三字段 Java 读回；全仓 147 passed | P9-31 |
 | 2026-11-04 | P9-32 完成：`jser-serde` 增加可编译 doctest；design §8/plan §18/requirements §6 全部定案（Java 17、不发布、性能门禁）；CI lint 增加 `cargo doc -D warnings`；全仓 148 passed（含 doctest） | P9-32 |
 | 2026-11-04 | P9-33 完成：新增 `object/44-hybrid-nested.ser`（Map×数组×自定义类、共享 Point、自环，486 B），manifest 37 例/75710 字节；`tests/nesting.rs` 增加解码/共享/环/逐字节回放断言；全仓 149 passed | P9-33 |
+| 2026-11-04 | P9-26 完成：`tests/property.rs` 用固定种子 xorshift（无外部 dev-dep）覆盖字符串/长字符串/数组/Map/重编码稳定/随机字节/截断/变异；全仓 157 passed | P9-26 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；37 个 fixture / 75710 字节；全仓 **149 passed**；37 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；37 个 fixture / 75710 字节；全仓 **157 passed**；37 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-26/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -513,7 +514,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 
 | ID | 目标 | 优先级/复杂度 |
 |---|---|---|
-| P9-26 | property-based 测试（`tests/property.rs`，§12 已列但未实现；离线 dev-dependency 需说明） | 高 / M |
+| P9-26 | property-based 测试——✅ 已实现：`tests/property.rs` 使用无依赖、固定种子的 xorshift（离线缓存无 proptest/quickcheck）；覆盖字符串/长字符串/数组/Map/重编码稳定/随机字节/截断/字段变异 | 高 / M |
 | P9-27 | `AC-02` 逐类覆盖：`Verify.java` 增加 `--read`/`--sequence`/`--primitives`/`--blocks`/`--array`，`emit.rs` 重编码全部 fixture；`interop.sh` 与 `tests/interop.rs` 逐例读回——✅ 已实现（36 例） | 高 / M |
 | P9-28 | CI：MSRV 1.77 job、i686 `cargo check` job、Linux/macOS/Windows test matrix——✅ 已实现（`.github/workflows/ci.yml`） | 中 / M |
 | P9-29 | `cargo-deny`/依赖审计——✅ 已实现：`deny.toml`（licenses/bans/sources/advisories）+ CI `cargo-deny-action` | 中 / S |

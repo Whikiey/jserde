@@ -190,3 +190,4 @@
 | 2026-11-04 | P9-31：新增 `set_map_entry`/`set_array_element`；mutation 覆盖全部标量、Map 替换/追加、对象数组；Java 读回 Mixed 三字段；全仓 147 passed | P9-31 |
 | 2026-11-04 | P9-32：serde crate 增加 doctest；§6/design §8/plan §18 定案（Java 17、不发布、性能门禁）；CI 增加 `cargo doc -D warnings`；全仓 148 passed | P9-32 |
 | 2026-11-04 | P9-33：新增 `object/44`（Map×数组×自定义类、共享引用、自环），manifest 37 例/75710 字节；`tests/nesting.rs` 增加解码/共享/环/回放断言；全仓 149 passed | P9-33 |
+| 2026-11-04 | P9-26：新增无依赖固定种子 property 测试（字符串/长字符串/数组/Map/重编码/随机字节/截断/变异）；全仓 157 passed | P9-26 |

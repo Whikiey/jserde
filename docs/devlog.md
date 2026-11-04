@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-04 16:35 · test: 无依赖 property 测试（P9-26）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `tests/property.rs`：固定种子 xorshift64（无 proptest/quickcheck，离线缓存无这些 crate），8 个属性测试共约 900 组输入。
+  - 覆盖：随机 Unicode 字符串、`TC_LONGSTRING` 边界长度（65534/65535/65536/70000/130000）、`Vec<i32>`、`HashMap<String,i32>`、重编码字节稳定、随机/截断字节不 panic（小 `Limits`）、`Fixtures$Point` 字段随机变异往返。
+  - 文件头说明：非完整 property 框架、无自动 shrinking，但确定可复现且零依赖。
+- **验证**：`cargo test -p jser --test property` 8 passed（0.04s）；全仓 **157 passed**；clippy/fmt 通过。
+
+---
+
 ## 2026-11-04 16:20 · test: 混合嵌套 fixture（P9-33）
 
 - **提交**：本次（hash 见 `git log`）
