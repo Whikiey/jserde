@@ -102,7 +102,8 @@ pub use reader::{
     decode_stream_with_options, decode_with_allowlist, decode_with_limits, Limits, Reader,
 };
 pub use suid::{
-    compute_default_suid, parse_class_file, ClassSignature, FieldSignature, MemberSignature,
+    array_class_suid, compute_default_suid, parse_class_file, ClassSignature, FieldSignature,
+    MemberSignature,
 };
 pub use typed::{decode_typed, decode_typed_with_allowlist, encode_typed, FromJValue, IntoJValue};
 pub use value::{

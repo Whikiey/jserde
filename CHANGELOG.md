@@ -15,6 +15,8 @@
 - Semantic views for `Date`, `BigInteger`, `BigDecimal` and `java.time`
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
+- Custom object arrays in derive (`Vec<Custom>` via `ARRAY_DESCRIPTOR`); array
+  class SUIDs are computed by the default algorithm for any element class.
 - Nested `JavaSerializable` fields (`DESCRIPTOR` const) and `Option<Custom>`
   in derive; recursive `SchemaField::nested` in the serde bridge.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).

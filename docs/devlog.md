@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 12:05 · feat: P9-14 对象数组 Vec<Custom>（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `suid::array_class_suid`：用默认 SUID 算法计算任意数组类（`PUBLIC|FINAL|ABSTRACT`、无接口/成员），用 10 个已知数组 SUID 对拍（`[Z`…`[D`、`String[]`、`Object[]`）全部一致。
+  - `builtin::new_java_array` 去掉固定 SUID 表，改走 `array_class_suid`，支持自定义对象数组类（`[Lcom.example.Foo;`）。
+  - `JavaSerializable::ARRAY_DESCRIPTOR`（derive 由 `class` 生成，`.`→`/`）；derive 支持 `Vec<Custom>`，编码时用子类 `CLASS` 构造数组类名；`Vec<Vec<T>>` 仍拒绝。
+  - 测试：SUID 已知值表 + `Bag{items: Vec<Inner>}` 编解码（空数组/多元素、类名 `[LFixtures$Inner;`）。
+- **验证**：`cargo test --workspace` **128 passed**；clippy/fmt 通过；无新增 Java fixture（自定义数组仅 Rust 往返，Java 读回待 P9-27/interop 扩展）。
+- **TDD**：Red：先加数组 SUID 已知值测试（算法初版不匹配，经暴力枚举定位 JDK 规则）与 `Vec<Custom>` derive 用例；Green：实现 `array_class_suid`/`ARRAY_DESCRIPTOR` 后全绿。
+
+---
+
 ## 2026-11-04 11:45 · feat: P8-3 嵌套 derive/serde（TDD）
 
 - **提交**：本次（hash 见 `git log`）

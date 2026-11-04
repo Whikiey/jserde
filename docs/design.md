@@ -140,7 +140,7 @@ pub trait JavaSerializable: Sized {
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（仅 primitive/String 数组），以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`（`Lcom/example/Foo;`），父类字段引用它。`Vec<Custom>` 与继承仍待 P9-14/P9-15。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
+`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算），以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承仍待 P9-15。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
@@ -203,7 +203,7 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
 5. **类描述符只写一次**：同一类在同一条流里重复出现时，后续用 `TC_REFERENCE` + 句柄回指（`writeClassDesc` 查表）。`classDesc` 的 `classAnnotation` 以 `TC_ENDBLOCKDATA` 收尾，且该标记位于 `superClassDesc` **之前**（`20`：字段后是 `78 70`，再进入 classdata）。
 6. **字段排序规则（已核实）**：`classDesc` 里的字段顺序 = **先基本类型字段（按字段名升序），再对象/数组字段（按字段名升序）**。注意这是"分组内按名字"，不是全局按名字：`Mixed` 里 `a`（int[]）字母序最前，却排在最后。classdata 的写出顺序与描述符顺序严格一致。
 7. **类名两种写法并存**：`classDesc.className` 用点号（`java.util.HashMap`），而对象/数组字段的 `className1` 用 JVM 描述符（`Ljava/lang/String;`、`[I`）。解析器要分别处理，别统一替换。
-8. **数组类名与 SUID**：类名是 `[I`、`[Ljava.lang.String;`（数组用点号，与第 7 条的字段描述符不同）；**数组类的 SUID 不为 0**，是算出来的（`[I` = `0x4DBA602676EAB2A5`），不能假设为 0。基本类型数组按元素宽度连续写裸字节：`B=1, C=2, D=8, F=4, I=4, J=8, S=2, Z=1`。
+8. **数组类名与 SUID**：类名是 `[I`、`[Ljava.lang.String;`（数组用点号，与第 7 条的字段描述符不同）；**数组类的 SUID 不为 0**，是算出来的（`[I` = `0x4DBA602676EAB2A5`），不能假设为 0。自定义元素数组（`[Lcom.example.Foo;`）同样用默认算法按数组类名计算（`PUBLIC|FINAL|ABSTRACT`、无接口/成员，P9-14）。基本类型数组按元素宽度连续写裸字节：`B=1, C=2, D=8, F=4, I=4, J=8, S=2, Z=1`。
 9. **`SC_WRITE_METHOD` 的类**：先按 schema 写字段，再写自定义数据，最后 `TC_ENDBLOCKDATA`。
 10. **`TC_RESET`**：重置 wire 句柄表（对应 Java 的 `ObjectOutputStream.reset()`），reader 必须支持；reset 后类描述符与对象句柄都从 `0x7E0000` 重新分配。内部 arena 不回收（D1），重放时按原顺序重新分配即可保持字节一致。
 11. **`TC_EXCEPTION`**：写出侧异常时产生的元素，MVP 读到即报 `Unsupported`，但要在错误里保留原始类名。
@@ -351,7 +351,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 
 serde 桥额外限制：单根 POJO；字段限标量/String/`Option`/数组/递归嵌套 POJO（`SchemaField::nested`）；不支持 Map/Set 字段、对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
 
-嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段与 `Option<Custom>`；serde 通过递归 `SchemaField::nested` 支持多层 POJO。`Vec<Custom>`/继承仍未支持（P9-14/P9-15）。
+嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>` 与 `Vec<Custom>`；serde 通过递归 `SchemaField::nested` 支持多层 POJO。继承仍未支持（P9-15）。
 
 ## 6. 里程碑与出口条件
 

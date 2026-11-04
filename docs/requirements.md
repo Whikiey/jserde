@@ -174,3 +174,4 @@
 | 2026-11-04 | 暂缓 30 分钟 fuzz：nightly `schedule` 停用、保留手动触发；等功能完成后恢复 | 用户决定 |
 | 2026-11-04 | P8-2：primitive 数组改紧凑 raw bytes 存储（`PrimitiveArray` 视图），`as_array` 仅对象数组；typed/derive/serde 走 raw；25M `int[]` 本地工作集采样约 2.03× | P8-2 |
 | 2026-11-04 | P8-3：`JavaSerializable::DESCRIPTOR`；derive 支持嵌套自定义字段与 `Option<Custom>`；serde 递归 `SchemaField::nested`；`Vec<Custom>`/继承留待 P9-14/15 | P8-3 |
+| 2026-11-04 | P9-14：数组类 SUID 改由默认算法计算（含自定义元素数组），`new_java_array` 支持任意对象数组；`ARRAY_DESCRIPTOR` + derive `Vec<Custom>`；继承留待 P9-15 | P9-14 |

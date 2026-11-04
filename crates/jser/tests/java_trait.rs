@@ -18,6 +18,7 @@ impl JavaSerializable for ManualPoint {
     const CLASS: &'static str = "Fixtures$Point";
     const SUID: i64 = 1;
     const DESCRIPTOR: &'static str = "LFixtures$Point;";
+    const ARRAY_DESCRIPTOR: &'static str = "[LFixtures$Point;";
 
     fn schema() -> &'static [jser::JavaField] {
         &[

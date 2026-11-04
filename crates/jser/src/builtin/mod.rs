@@ -549,19 +549,7 @@ fn matches_primitive(typecode: FieldType, value: &JValue) -> bool {
 }
 
 fn array_suid(class_name: &str) -> Option<i64> {
-    Some(match class_name {
-        "[Z" => 6_309_297_032_502_205_922,
-        "[B" => -5_984_413_125_824_719_648,
-        "[C" => -5_753_798_564_021_173_076,
-        "[S" => -1_188_055_269_542_874_886,
-        "[I" => 5_600_894_804_908_749_477,
-        "[J" => 8_655_923_659_555_304_851,
-        "[F" => 836_686_056_779_680_834,
-        "[D" => 4_514_449_696_888_150_558,
-        "[Ljava.lang.String;" => -5_921_575_005_990_323_385,
-        "[Ljava.lang.Object;" => -8_012_369_246_846_506_644,
-        _ => return None,
-    })
+    crate::suid::array_class_suid(class_name).ok()
 }
 
 fn table_size_for(size: usize) -> Result<i32> {

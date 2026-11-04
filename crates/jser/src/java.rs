@@ -32,6 +32,11 @@ pub trait JavaSerializable: Sized {
     /// derive macro emits it from the `class` attribute.
     const DESCRIPTOR: &'static str;
 
+    /// JVM array descriptor for arrays of this class (`[Lcom/example/Foo;`).
+    ///
+    /// Used by `Vec<Custom>` fields; the derive macro emits it from `class`.
+    const ARRAY_DESCRIPTOR: &'static str;
+
     /// Fields in Java wire order: primitives by name, then objects by name.
     fn schema() -> &'static [JavaField];
 

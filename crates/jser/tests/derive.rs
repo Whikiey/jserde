@@ -197,6 +197,10 @@ fn derive_nests_custom_objects() {
         "Lcom/example/Deep;",
         "dots become slashes in the JVM descriptor"
     );
+    assert_eq!(
+        <Deep as JavaSerializable>::ARRAY_DESCRIPTOR,
+        "[Lcom/example/Deep;"
+    );
 
     let value = Outer {
         inner: Inner {
@@ -244,4 +248,52 @@ fn derive_nests_optional_custom_objects() {
     let bytes = encode_typed(none.clone()).unwrap();
     let decoded: Maybe = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
     assert_eq!(decoded, none);
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Bag", suid = 1)]
+struct Bag {
+    items: Vec<Inner>,
+}
+
+#[test]
+fn derive_supports_custom_object_arrays() {
+    assert_eq!(
+        <Inner as JavaSerializable>::ARRAY_DESCRIPTOR,
+        "[LFixtures$Inner;"
+    );
+    let items_field = Bag::schema()
+        .iter()
+        .find(|field| field.name == "items")
+        .expect("items field");
+    assert_eq!(items_field.class_name1, Some("[LFixtures$Inner;"));
+
+    let value = Bag {
+        items: vec![
+            Inner {
+                label: "a".to_owned(),
+                value: 1,
+            },
+            Inner {
+                label: "b".to_owned(),
+                value: 2,
+            },
+        ],
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: Bag = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    let bag = &graph.items()[0];
+    let items = graph.require_field(bag, "items").unwrap();
+    assert_eq!(graph.class_name(items).unwrap(), "[LFixtures$Inner;");
+    let elements = graph.as_array(items).unwrap().unwrap();
+    assert_eq!(elements.len(), 2);
+    assert_eq!(graph.class_name(&elements[1]).unwrap(), "Fixtures$Inner");
+
+    let empty = Bag { items: Vec::new() };
+    let bytes = encode_typed(empty.clone()).unwrap();
+    let decoded: Bag = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, empty);
 }

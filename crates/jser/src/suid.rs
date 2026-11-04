@@ -135,6 +135,44 @@ pub fn compute_default_suid(signature: &ClassSignature) -> Result<i64> {
     Ok(hash)
 }
 
+/// Compute the default SUID of an array class (`[I`, `[Ljava.lang.String;`).
+///
+/// Array classes report `PUBLIC | FINAL | ABSTRACT` and declare no interfaces,
+/// fields, constructors or methods (the JDK skips the interface list for
+/// arrays), so the normal default-SUID algorithm applies. This reproduces the
+/// JDK values for primitive and `String` arrays and extends to custom element
+/// classes (P9-14).
+pub fn array_class_suid(class_name: &str) -> Result<i64> {
+    if !is_array_class_name(class_name) {
+        return Err(Error::InvalidSchema(format!(
+            "`{class_name}` is not an array class"
+        )));
+    }
+
+    compute_default_suid(&ClassSignature {
+        class_name: class_name.to_owned(),
+        modifiers: PUBLIC | FINAL | ABSTRACT,
+        interfaces: Vec::new(),
+        fields: Vec::new(),
+        has_static_initializer: false,
+        constructors: Vec::new(),
+        methods: Vec::new(),
+    })
+}
+
+fn is_array_class_name(name: &str) -> bool {
+    let Some(rest) = name.strip_prefix('[') else {
+        return false;
+    };
+    if rest.len() == 1 {
+        return b"BCDFIJSZ".contains(&rest.as_bytes()[0]);
+    }
+    if let Some(element) = rest.strip_prefix('L') {
+        return element.len() > 1 && element.ends_with(';');
+    }
+    rest.starts_with('[')
+}
+
 fn write_utf(bytes: &mut Vec<u8>, value: &str) -> Result<()> {
     let encoded = mutf8::encode(value);
     let length = u16::try_from(encoded.len()).map_err(|_| {
