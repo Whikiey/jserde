@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-04 11:15 · feat: P8-2 primitive 数组 raw 存储（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `value`：`Slot::Arr` 改为 `ArrayData`（`Values`/`Primitive`）；新增 `PrimitiveArray`（`len/get/bytes/iter`）、`Graph::as_primitive_array`、`Graph::new_primitive_array`；`as_array` 仅返回对象数组；`Ref::PrimitiveArr`。
+  - `reader`：primitive 数组一次性读 `length*width` 字节；`writer`：raw 字节直写并校验长度/类型；`new_array` 自动压缩 primitive 元素。
+  - `typed`：`FromJValue::from_primitive_element` 默认方法 + 整数/浮点/bool/char/u16/`JValue` 实现；`Vec<T>` 走 raw 快路径。
+  - `builtin::semantic`（BigInteger magnitude）与 `jser-serde` 数组字段改走 raw 视图。
+  - 新增 `tests/primitive_arrays.rs`（7 项）；`object_containers` 使用统一断言；`bench -- array [elements] [repeats]`。
+- **验证**：`cargo test --workspace` **120 passed**；clippy/fmt 通过；`bench -- array 25000000 300` 约 3.6 GB/s、峰值工作集 203,378,688 B ≈ **2.03×**（Windows 采样）；Linux `VmHWM` 复核见 `docs/bench.md`。
+- **TDD**：Red：先加 `tests/primitive_arrays.rs`（`as_primitive_array` 不存在、`as_array` 语义变化导致失败）；Green：实现 `ArrayData`/视图/typed 快路径后全绿；34 例逐字节回放门禁保持通过。
+
+---
+
 ## 2026-11-04 11:00 · chore: 暂缓 fuzz（P8-1），停用 nightly schedule
 
 - **提交**：本次（hash 见 `git log`）

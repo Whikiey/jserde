@@ -70,7 +70,7 @@ pub struct Graph {
 pub enum Slot {
     Desc(ClassDesc),                         // classDesc 也占句柄（wire 表里同样占）
     Str { value: String, long: bool },        // long = 原流用 TC_LONGSTRING 头
-    Arr { desc: Handle, elems: Vec<JValue> },
+    Arr { desc: Handle, data: ArrayData },     // 对象数组 = Vec<JValue>；primitive = wire 大端字节
     Obj(JObject),
     Enum { desc: Handle, constant: Handle },     // constant → Slot::Str（枚举名是 TC_STRING，占句柄）
 }
@@ -112,6 +112,7 @@ pub struct BlockData { pub bytes: Vec<u8>, pub long: bool }  // long = 用 TC_BL
 - **先占位、后填充**：对象在读完 `classDesc` 后、读 classdata 前分配句柄（`34` 中 `b.next` 先回指 `a`）；数组同样先分配句柄再读元素。
 - **块边界保留**：`11` 是 `LONG 1024 + LONG 976`（976 > 255，仍用 long 头），`23` 是单块 `77 0C`；重放必须逐块写回。
 - **顶层是多元素流**：`08`、`09`、`10`、`11`、`33`、`35` 都不是单根；`Reset` 作为流元素出现，编码时原样重放（`writeObject` 内部调用 `reset()` 时也可能出现在自定义段）。
+- **primitive 数组用 raw bytes（P8-2）**：`int[]` 等按 wire 大端字节存 `ArrayData::Primitive`；`Graph::as_array` 只返回对象数组，primitive 用 `Graph::as_primitive_array` → `PrimitiveArray`（`len/get/bytes/iter`）。25M `int[]` 从 `JValue` 32 B/元素（约 800 MB）降到 4 B/元素（约 100 MB）；typed/derive/serde 走 raw 路径，回放仍逐字节一致。
 
 - **为何不用 `Rc<RefCell<..>>` 直接建环**：`Rc` 环会泄漏，`RefCell` 与后续 serde 桥、并发使用都冲突；`Handle(u32)` + arena 让"先创建再填充"的合法做法（Java 流正是这样写的）变成自然实现。
 - **代价**：所有访问都要过 arena，构造值要先 `Graph::insert_*`。对外提供 `Graph::resolve` 与 `as_str/as_map/as_list/as_object` 等视图降低使用成本。
@@ -279,6 +280,11 @@ for item in stream.items() {
             if let Some(map) = stream.graph().as_map(v)? { /* ... */ }
         }
     }
+}
+
+// 读：primitive 数组用紧凑视图（不展开 Vec<JValue>）
+if let Some(array) = stream.graph().as_primitive_array(v)? {
+    assert_eq!(array.get(0), Some(JValue::Int(1)));
 }
 
 // 读：单元素便捷（多元素流会报错，提示用 decode_stream）

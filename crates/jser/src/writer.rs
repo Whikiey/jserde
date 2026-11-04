@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use crate::error::{Error, Result};
-use crate::value::{BlockData, FieldType, Graph, Handle, JValue};
+use crate::value::{ArrayData, BlockData, FieldType, Graph, Handle, JValue};
 use crate::wire::handle::BASE_WIRE_HANDLE;
 use crate::wire::mutf8;
 use crate::wire::writer::StreamWriter;
@@ -277,24 +277,69 @@ impl<'a> Encoder<'a> {
             return Ok(());
         }
 
-        let (desc, elems) = {
-            let (desc, elems) = self.graph.array_parts(handle)?;
-            (desc, elems.to_vec())
-        };
-        let name = self.graph.descriptor(desc)?.name.clone();
+        let graph = self.graph;
+        let (desc, data) = graph.array_parts(handle)?;
+        let name = graph.descriptor(desc)?.name.clone();
         let element = array_element(&name)?;
+
+        let length = match (element, data) {
+            (
+                ArrayElement::Primitive(typecode),
+                ArrayData::Primitive {
+                    typecode: stored,
+                    bytes,
+                },
+            ) => {
+                if *stored != typecode {
+                    return Err(Error::FieldMismatch {
+                        message: format!(
+                            "array `{name}` stores {stored:?} elements but declares {typecode:?}"
+                        ),
+                    });
+                }
+                let width = typecode
+                    .primitive_width()
+                    .ok_or_else(|| Error::FieldMismatch {
+                        message: format!("`{name}` is not a primitive array"),
+                    })?;
+                if bytes.len() % width != 0 {
+                    return Err(Error::FieldMismatch {
+                        message: format!(
+                            "array `{name}` has {} bytes, not a multiple of {width}",
+                            bytes.len()
+                        ),
+                    });
+                }
+                bytes.len() / width
+            }
+            (ArrayElement::Object, ArrayData::Values(elems)) => elems.len(),
+            _ => {
+                return Err(Error::FieldMismatch {
+                    message: format!("array `{name}` storage does not match its descriptor"),
+                })
+            }
+        };
 
         self.out.write_u8(TC_ARRAY);
         self.write_class_desc(desc)?;
         self.assign(handle);
-        let length = i32::try_from(elems.len())
+        let length = i32::try_from(length)
             .map_err(|_| Error::InvalidSchema(format!("array `{name}` has too many elements")))?;
         self.out.write_i32(length);
 
-        for value in &elems {
-            match element {
-                ArrayElement::Primitive(typecode) => self.write_primitive(typecode, value)?,
-                ArrayElement::Object => self.write_value(value)?,
+        match (element, data) {
+            (ArrayElement::Primitive(_), ArrayData::Primitive { bytes, .. }) => {
+                self.out.write_bytes(bytes);
+            }
+            (ArrayElement::Object, ArrayData::Values(elems)) => {
+                for value in elems {
+                    self.write_value(value)?;
+                }
+            }
+            _ => {
+                return Err(Error::FieldMismatch {
+                    message: format!("array `{name}` storage does not match its descriptor"),
+                })
             }
         }
 

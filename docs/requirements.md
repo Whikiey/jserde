@@ -111,7 +111,7 @@
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
 | AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
-| AC-06 | ◐ | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；真实 2500 万元素 `int[]` 因 `JValue` 32 B/元素尚未达标 |
+| AC-06 | ✅（本地实测） | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；25M `int[]` 改 raw 存储后本地工作集采样约 **2.03×**（Windows；Linux `bench -- array` 的 `VmHWM` 可复核） |
 
 > 剩余缺口与处理优先级见 `implementation-plan.md` §20。
 
@@ -172,3 +172,4 @@
 | 2026-11-04 | P7 加固：panic 审计（核心库禁 unwrap/expect）、fuzz 目标与离线冒烟、100 MB 合成块 bench（约 4.7 GB/s、2.0× RSS）、README/SECURITY/CHANGELOG；AC-06 合成负载通过，AC-04 的 30 分钟 fuzz 待夜间执行 | P7 |
 | 2026-11-04 | P8-1：新增 nightly fuzz workflow（decode 1800s、roundtrip/mutf8 300s、corpus 取 fixture、失败上传 artifacts）；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | 暂缓 30 分钟 fuzz：nightly `schedule` 停用、保留手动触发；等功能完成后恢复 | 用户决定 |
+| 2026-11-04 | P8-2：primitive 数组改紧凑 raw bytes 存储（`PrimitiveArray` 视图），`as_array` 仅对象数组；typed/derive/serde 走 raw；25M `int[]` 本地工作集采样约 2.03× | P8-2 |

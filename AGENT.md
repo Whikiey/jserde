@@ -13,7 +13,7 @@
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P7；P8 缺口见计划 §20 |
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成；P7-1 的 30 分钟 fuzz workflow 已接入但暂缓，等功能完成后执行；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：34 个用例、74947 字节（P6/P7 新增 object/40/41），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；113 项测试全绿 |
+| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 完成 primitive raw 数组；120 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
 所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20（近期优先）与 §21（全部纯 Rust 可实现的扩展候选）：P7-1 的 30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI 等。
@@ -114,6 +114,7 @@ cargo test -p jser --test nested      # 三层嵌套对象
 cargo test -p jser --test fuzz_smoke  # 离线 fuzz 冒烟
 cargo +nightly fuzz run decode -- -max_total_time=1800  # 30 分钟 fuzz（需 cargo-fuzz；nightly CI 自动执行）
 cargo run --release -p jser --example bench -- 100 # 100MB 级 bench
+cargo run --release -p jser --example bench -- array 25000000  # 25M int[] 内存/吞吐（AC-06）
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
@@ -152,7 +153,7 @@ jser/
 
 设计约束：
 
-- 核心数据模型是**句柄化动态图 + arena 句柄表**（`JValue` + `Handle(u32)` + `Graph`）：引用型值（`String`/数组/对象/enum）统一走 `Handle`，`classDesc` 也占句柄；内部 `Handle` 单调递增，`TC_RESET` 只清 wire 映射。不要用 `Rc<RefCell<..>>` 建环（泄漏且与 serde/并发冲突）。
+- 核心数据模型是**句柄化动态图 + arena 句柄表**（`JValue` + `Handle(u32)` + `Graph`）：引用型值（`String`/数组/对象/enum）统一走 `Handle`，`classDesc` 也占句柄；primitive 数组按 wire 大端字节存 raw（`PrimitiveArray`），`as_array` 只返回对象数组；内部 `Handle` 单调递增，`TC_RESET` 只清 wire 映射。不要用 `Rc<RefCell<..>>` 建环（泄漏且与 serde/并发冲突）。
 - 写出走 `JavaSerializable` trait + `JavaSchema`，**不要**试图只用 serde derive 表达 `serialVersionUID` / 字段类型码 / `classDescFlags` / 集合头部。
 - serde 只做单根、无环、无回指、已知 POJO 的便利层；遇到 `TC_REFERENCE`、`Reset`、多元素流或未知类直接报错，不做半成品支持。
 - 已知类走注册表 + 特例 codec；未知类在 allowlist 放行时降级为 `JValue::Obj` 并支持原样回写。
@@ -185,6 +186,7 @@ jser/
 | 16 | `TC_CLASSDESC` 的句柄在写字段描述符（`className1` 字符串）**之前**分配，故 `34` 的 Node 描述符是 `0x7E0000`，两个 `className1` 是 `0x7E0001/2`，对象是 `0x7E0003`。 | `34` |
 | 17 | classdata 按**父 → 子**顺序；每层字段后紧跟该层自定义块（`LinkedHashMap.accessOrder` 在 HashMap entries 块之后）。 | `22`、`30` |
 | 18 | 字段的 `className1` 本身占 wire 句柄；重放必须沿用解码时的字符串句柄（`FieldDesc.class_name_handle`），否则句柄编号漂移。 | `21`、`34` |
+| 19 | primitive 数组按 wire 大端字节存储（4 B/`int`），`as_array` 只返回对象数组；`as_primitive_array` 提供 `PrimitiveArray` 视图，typed/derive/serde 走 raw 路径。 | `25`、`27` |
 
 `TC_EXCEPTION` 读到即报 `Unsupported`，但错误里保留原始类名。深度/长度上限始终生效。
 

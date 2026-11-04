@@ -107,6 +107,6 @@ pub use suid::{
 pub use typed::{decode_typed, decode_typed_with_allowlist, encode_typed, FromJValue, IntoJValue};
 pub use value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
-    Ref, Scalar,
+    PrimitiveArray, Ref, Scalar,
 };
 pub use writer::{encode, encode_stream};

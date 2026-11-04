@@ -7,7 +7,7 @@
 use std::fmt;
 
 use crate::error::{Error, Result};
-use crate::value::{Graph, JValue};
+use crate::value::{FieldType, Graph, JValue};
 use crate::wire::mutf8;
 use crate::wire::reader::StreamReader;
 
@@ -201,23 +201,25 @@ fn decode_date(graph: &Graph, value: &JValue) -> Result<JavaDate> {
 
 fn decode_big_integer(graph: &Graph, value: &JValue) -> Result<BigInteger> {
     let signum = int_field(graph, value, "signum")?;
-    let magnitude = graph
-        .require_field(value, "magnitude")
-        .and_then(|value| {
-            graph.as_array(value)?.ok_or_else(|| Error::FieldMismatch {
-                message: "BigInteger.magnitude is not an array".to_owned(),
-            })
-        })?
-        .iter()
-        .map(|value| match value {
-            JValue::Byte(byte) => Ok(*byte as u8),
-            other => Err(Error::FieldMismatch {
-                message: format!("BigInteger.magnitude contains {other:?}"),
-            }),
-        })
-        .collect::<Result<Vec<u8>>>()?;
+    let magnitude = graph.require_field(value, "magnitude")?;
+    let array = graph
+        .as_primitive_array(magnitude)?
+        .ok_or_else(|| Error::FieldMismatch {
+            message: "BigInteger.magnitude is not a primitive array".to_owned(),
+        })?;
+    if array.typecode() != FieldType::Byte {
+        return Err(Error::FieldMismatch {
+            message: format!(
+                "BigInteger.magnitude has {:?} elements, expected byte",
+                array.typecode()
+            ),
+        });
+    }
 
-    Ok(BigInteger { signum, magnitude })
+    Ok(BigInteger {
+        signum,
+        magnitude: array.bytes().to_vec(),
+    })
 }
 
 fn decode_big_decimal(graph: &Graph, value: &JValue) -> Result<BigDecimal> {

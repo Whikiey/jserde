@@ -232,8 +232,28 @@ fn jvalue_to_json(
             let class = class_name1.ok_or_else(|| Error::FieldMismatch {
                 message: "array field has no className1".to_owned(),
             })?;
-            let elements = graph.as_array(value)?.ok_or_else(|| type_error("array"))?;
             let element = array_element_descriptor(class)?;
+
+            if element.typecode.is_primitive() {
+                let array = graph
+                    .as_primitive_array(value)?
+                    .ok_or_else(|| type_error("primitive array"))?;
+                let mut json = Vec::with_capacity(array.len());
+                for index in 0..array.len() {
+                    let element_value = array
+                        .get(index)
+                        .ok_or_else(|| type_error("primitive element"))?;
+                    json.push(jvalue_to_json(
+                        graph,
+                        &element_value,
+                        element.typecode,
+                        element.class_name1,
+                    )?);
+                }
+                return Ok(Value::Array(json));
+            }
+
+            let elements = graph.as_array(value)?.ok_or_else(|| type_error("array"))?;
             let mut json = Vec::with_capacity(elements.len());
             for value in elements {
                 json.push(jvalue_to_json(

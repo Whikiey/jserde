@@ -77,6 +77,17 @@ impl FieldType {
     pub fn is_primitive(self) -> bool {
         !matches!(self, Self::Object | Self::Array)
     }
+
+    /// Wire width in bytes for a primitive type; `None` for object arrays.
+    pub fn primitive_width(self) -> Option<usize> {
+        match self {
+            Self::Byte | Self::Boolean => Some(1),
+            Self::Char | Self::Short => Some(2),
+            Self::Int | Self::Float => Some(4),
+            Self::Long | Self::Double => Some(8),
+            Self::Object | Self::Array => None,
+        }
+    }
 }
 
 /// One field in a class descriptor, in descriptor order.
@@ -192,6 +203,11 @@ pub enum Ref<'a> {
     Desc(&'a ClassDesc),
     Str(&'a str),
     Arr(&'a [JValue]),
+    /// A compact primitive array; use `Graph::as_primitive_array` for typed access.
+    PrimitiveArr {
+        typecode: FieldType,
+        bytes: &'a [u8],
+    },
     Obj(&'a JObject),
     Enum(&'a str),
 }
@@ -220,6 +236,84 @@ pub struct MapView<'a> {
     pub ordered: bool,
 }
 
+/// Borrowed view of a compact primitive array.
+///
+/// Elements are stored as their big-endian wire bytes (the same bytes Java
+/// wrote), so a 25M-element `int[]` costs 100 MB rather than 32 bytes per
+/// [`JValue`]. Use [`Graph::as_primitive_array`] to obtain one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PrimitiveArray<'a> {
+    typecode: FieldType,
+    bytes: &'a [u8],
+}
+
+impl<'a> PrimitiveArray<'a> {
+    /// Element type (`FieldType::Int` for `int[]`, ...).
+    pub fn typecode(&self) -> FieldType {
+        self.typecode
+    }
+
+    /// Number of elements.
+    pub fn len(&self) -> usize {
+        self.typecode
+            .primitive_width()
+            .map(|width| self.bytes.len() / width)
+            .unwrap_or(0)
+    }
+
+    /// Whether the array is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Raw wire bytes (big-endian, header excluded).
+    pub fn bytes(&self) -> &'a [u8] {
+        self.bytes
+    }
+
+    /// Materialize one element as a [`JValue`].
+    pub fn get(&self, index: usize) -> Option<JValue> {
+        let width = self.typecode.primitive_width()?;
+        let start = index.checked_mul(width)?;
+        let end = start.checked_add(width)?;
+        let bytes = self.bytes.get(start..end)?;
+
+        Some(match self.typecode {
+            FieldType::Byte => JValue::Byte(bytes[0] as i8),
+            FieldType::Boolean => JValue::Bool(bytes[0] != 0),
+            FieldType::Char => JValue::Char(u16::from_be_bytes([bytes[0], bytes[1]])),
+            FieldType::Short => JValue::Short(i16::from_be_bytes([bytes[0], bytes[1]])),
+            FieldType::Int => {
+                JValue::Int(i32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+            }
+            FieldType::Long => JValue::Long(i64::from_be_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            ])),
+            FieldType::Float => JValue::Float(f32::from_bits(u32::from_be_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3],
+            ]))),
+            FieldType::Double => JValue::Double(f64::from_bits(u64::from_be_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            ]))),
+            FieldType::Object | FieldType::Array => return None,
+        })
+    }
+
+    /// Iterate elements, materializing one [`JValue`] at a time.
+    pub fn iter(&self) -> impl Iterator<Item = JValue> + '_ {
+        (0..self.len()).filter_map(|index| self.get(index))
+    }
+}
+
+/// Element storage for arrays.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum ArrayData {
+    /// Object arrays keep one arena value per element.
+    Values(Vec<JValue>),
+    /// Primitive arrays keep their wire-order big-endian bytes.
+    Primitive { typecode: FieldType, bytes: Vec<u8> },
+}
+
 #[derive(Debug)]
 enum Slot {
     Desc(ClassDesc),
@@ -229,7 +323,7 @@ enum Slot {
     },
     Arr {
         desc: Handle,
-        elems: Vec<JValue>,
+        data: ArrayData,
     },
     Obj(JObject),
     Enum {
@@ -301,10 +395,55 @@ impl Graph {
     }
 
     /// Add a caller-built array.
+    ///
+    /// Primitive arrays are compacted to their wire bytes so decoding and
+    /// re-encoding large primitive arrays stays at one byte per byte.
     pub fn new_array(&mut self, desc: Handle, elems: Vec<JValue>) -> Result<Handle> {
         self.expect_desc(desc)?;
+        let name = self.descriptor(desc)?.name.clone();
+        let data = match primitive_array_typecode(&name) {
+            Some(typecode) => ArrayData::Primitive {
+                typecode,
+                bytes: primitive_bytes(typecode, &elems)?,
+            },
+            None => ArrayData::Values(elems),
+        };
         let handle = self.insert_array_placeholder(desc);
-        self.set_array_elements(handle, elems)?;
+        self.set_array_data(handle, data)?;
+        Ok(handle)
+    }
+
+    /// Add a caller-built primitive array from raw big-endian wire bytes.
+    ///
+    /// `typecode` must match the descriptor class name (`[I`, `[B`, ...) and
+    /// `bytes.len()` must be a multiple of the element width.
+    pub fn new_primitive_array(
+        &mut self,
+        desc: Handle,
+        typecode: FieldType,
+        bytes: Vec<u8>,
+    ) -> Result<Handle> {
+        self.expect_desc(desc)?;
+        let width = typecode.primitive_width().ok_or_else(|| {
+            Error::InvalidSchema(format!("{typecode:?} is not a primitive array type"))
+        })?;
+        if bytes.len() % width != 0 {
+            return Err(Error::FieldMismatch {
+                message: format!(
+                    "primitive array of {typecode:?} needs a multiple of {width} bytes, got {}",
+                    bytes.len()
+                ),
+            });
+        }
+        let expected = format!("[{}", char::from(typecode.code()));
+        if self.descriptor(desc)?.name != expected {
+            return Err(Error::InvalidSchema(format!(
+                "class `{}` does not match primitive array type {typecode:?}",
+                self.descriptor(desc)?.name
+            )));
+        }
+        let handle = self.insert_array_placeholder(desc);
+        self.set_array_data(handle, ArrayData::Primitive { typecode, bytes })?;
         Ok(handle)
     }
 
@@ -446,7 +585,17 @@ impl Graph {
         match self.slot(handle)? {
             Slot::Desc(desc) => Ok(Ref::Desc(desc)),
             Slot::Str { value, .. } => Ok(Ref::Str(value)),
-            Slot::Arr { elems, .. } => Ok(Ref::Arr(elems)),
+            Slot::Arr {
+                data: ArrayData::Values(elems),
+                ..
+            } => Ok(Ref::Arr(elems)),
+            Slot::Arr {
+                data: ArrayData::Primitive { typecode, bytes },
+                ..
+            } => Ok(Ref::PrimitiveArr {
+                typecode: *typecode,
+                bytes: bytes.as_slice(),
+            }),
             Slot::Obj(object) => Ok(Ref::Obj(object)),
             Slot::Enum {
                 constant: Some(constant),
@@ -470,14 +619,41 @@ impl Graph {
         }
     }
 
-    /// The elements of an `Arr` value, or `None` for other value kinds.
+    /// Element values of an object array, or `None` for other value kinds.
+    ///
+    /// Primitive arrays are stored compactly and return `None` here; use
+    /// [`Graph::as_primitive_array`] for them.
     pub fn as_array(&self, value: &JValue) -> Result<Option<&[JValue]>> {
         let JValue::Arr(handle) = value else {
             return Ok(None);
         };
 
         match self.slot(*handle)? {
-            Slot::Arr { elems, .. } => Ok(Some(elems)),
+            Slot::Arr {
+                data: ArrayData::Values(elems),
+                ..
+            } => Ok(Some(elems)),
+            Slot::Arr { .. } => Ok(None),
+            _ => Err(Error::BadHandle(handle.0)),
+        }
+    }
+
+    /// Compact view of a primitive array, or `None` for object arrays and
+    /// non-array values.
+    pub fn as_primitive_array<'a>(&'a self, value: &JValue) -> Result<Option<PrimitiveArray<'a>>> {
+        let JValue::Arr(handle) = value else {
+            return Ok(None);
+        };
+
+        match self.slot(*handle)? {
+            Slot::Arr {
+                data: ArrayData::Primitive { typecode, bytes },
+                ..
+            } => Ok(Some(PrimitiveArray {
+                typecode: *typecode,
+                bytes,
+            })),
+            Slot::Arr { .. } => Ok(None),
             _ => Err(Error::BadHandle(handle.0)),
         }
     }
@@ -806,18 +982,31 @@ impl Graph {
     pub(crate) fn insert_array_placeholder(&mut self, desc: Handle) -> Handle {
         self.push_slot(Slot::Arr {
             desc,
-            elems: Vec::new(),
+            data: ArrayData::Values(Vec::new()),
         })
     }
 
-    pub(crate) fn set_array_elements(&mut self, handle: Handle, elems: Vec<JValue>) -> Result<()> {
+    pub(crate) fn set_array_data(&mut self, handle: Handle, data: ArrayData) -> Result<()> {
         match self.slots.get_mut(handle.0 as usize) {
-            Some(Slot::Arr { elems: target, .. }) => {
-                *target = elems;
+            Some(Slot::Arr { data: target, .. }) => {
+                *target = data;
                 Ok(())
             }
             _ => Err(Error::BadHandle(handle.0)),
         }
+    }
+
+    pub(crate) fn set_array_elements(&mut self, handle: Handle, elems: Vec<JValue>) -> Result<()> {
+        self.set_array_data(handle, ArrayData::Values(elems))
+    }
+
+    pub(crate) fn set_array_primitive(
+        &mut self,
+        handle: Handle,
+        typecode: FieldType,
+        bytes: Vec<u8>,
+    ) -> Result<()> {
+        self.set_array_data(handle, ArrayData::Primitive { typecode, bytes })
     }
 
     pub(crate) fn insert_object_placeholder(&mut self) -> Handle {
@@ -880,9 +1069,9 @@ impl Graph {
         }
     }
 
-    pub(crate) fn array_parts(&self, handle: Handle) -> Result<(Handle, &[JValue])> {
+    pub(crate) fn array_parts(&self, handle: Handle) -> Result<(Handle, &ArrayData)> {
         match self.slots.get(handle.0 as usize) {
-            Some(Slot::Arr { desc, elems }) => Ok((*desc, elems)),
+            Some(Slot::Arr { desc, data }) => Ok((*desc, data)),
             _ => Err(Error::BadHandle(handle.0)),
         }
     }
@@ -925,4 +1114,50 @@ impl Graph {
             _ => Err(Error::BadHandle(handle.0)),
         }
     }
+}
+
+fn primitive_array_typecode(name: &str) -> Option<FieldType> {
+    let bytes = name.as_bytes();
+    if bytes.len() != 2 || bytes[0] != b'[' {
+        return None;
+    }
+    let typecode = FieldType::from_code(bytes[1])?;
+    typecode.is_primitive().then_some(typecode)
+}
+
+fn primitive_bytes(typecode: FieldType, elems: &[JValue]) -> Result<Vec<u8>> {
+    let width = typecode.primitive_width().ok_or_else(|| {
+        Error::InvalidSchema(format!("{typecode:?} is not a primitive array type"))
+    })?;
+    let capacity = elems
+        .len()
+        .checked_mul(width)
+        .ok_or_else(|| Error::InvalidSchema("primitive array size overflows".to_owned()))?;
+    let mut bytes = Vec::with_capacity(capacity);
+
+    for elem in elems {
+        match (typecode, elem) {
+            (FieldType::Byte, JValue::Byte(value)) => bytes.push(*value as u8),
+            (FieldType::Boolean, JValue::Bool(value)) => bytes.push(u8::from(*value)),
+            (FieldType::Char, JValue::Char(value)) => bytes.extend_from_slice(&value.to_be_bytes()),
+            (FieldType::Short, JValue::Short(value)) => {
+                bytes.extend_from_slice(&value.to_be_bytes())
+            }
+            (FieldType::Int, JValue::Int(value)) => bytes.extend_from_slice(&value.to_be_bytes()),
+            (FieldType::Long, JValue::Long(value)) => bytes.extend_from_slice(&value.to_be_bytes()),
+            (FieldType::Float, JValue::Float(value)) => {
+                bytes.extend_from_slice(&value.to_bits().to_be_bytes())
+            }
+            (FieldType::Double, JValue::Double(value)) => {
+                bytes.extend_from_slice(&value.to_bits().to_be_bytes())
+            }
+            (typecode, value) => {
+                return Err(Error::FieldMismatch {
+                    message: format!("array of {typecode:?} cannot hold {value:?}"),
+                })
+            }
+        }
+    }
+
+    Ok(bytes)
 }

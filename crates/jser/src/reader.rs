@@ -480,20 +480,31 @@ impl<'a> Reader<'a> {
 
         let name = self.graph.descriptor(desc)?.name.clone();
         let element = array_element(&name)?;
-        let mut elems = Vec::with_capacity(length.min(4096));
 
-        for _ in 0..length {
-            let value = match element {
-                ArrayElement::Primitive(typecode) => self.read_primitive(typecode)?,
-                ArrayElement::Object => {
+        match element {
+            ArrayElement::Primitive(typecode) => {
+                let width = typecode
+                    .primitive_width()
+                    .ok_or_else(|| Error::FieldMismatch {
+                        message: format!("`{name}` is not a primitive array"),
+                    })?;
+                let total = length.checked_mul(width).ok_or(Error::InvalidLength {
+                    kind: "array",
+                    value: length as u64,
+                })?;
+                let bytes = self.input.read_exact(total)?.to_vec();
+                self.graph.set_array_primitive(handle, typecode, bytes)?;
+            }
+            ArrayElement::Object => {
+                let mut elems = Vec::with_capacity(length.min(4096));
+                for _ in 0..length {
                     let tag = self.input.read_u8()?;
-                    self.read_content(tag, depth + 1)?
+                    elems.push(self.read_content(tag, depth + 1)?);
                 }
-            };
-            elems.push(value);
+                self.graph.set_array_elements(handle, elems)?;
+            }
         }
 
-        self.graph.set_array_elements(handle, elems)?;
         Ok(JValue::Arr(handle))
     }
 

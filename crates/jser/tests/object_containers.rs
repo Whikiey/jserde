@@ -70,13 +70,23 @@ fn assert_json(graph: &Graph, value: &JValue, expected: &serde_json::Value, cont
             }
         }
         serde_json::Value::Array(expected) => {
-            let actual = graph
-                .as_array(value)
-                .unwrap()
-                .unwrap_or_else(|| panic!("{context}: expected an array, got {value:?}"));
-            assert_eq!(actual.len(), expected.len(), "{context}: array length");
-            for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
-                assert_json(graph, actual, expected, &format!("{context}[{index}]"));
+            if let Some(array) = graph.as_primitive_array(value).unwrap() {
+                assert_eq!(array.len(), expected.len(), "{context}: array length");
+                for (index, expected) in expected.iter().enumerate() {
+                    let actual = array
+                        .get(index)
+                        .unwrap_or_else(|| panic!("{context}[{index}]: missing element"));
+                    assert_json(graph, &actual, expected, &format!("{context}[{index}]"));
+                }
+            } else {
+                let actual = graph
+                    .as_array(value)
+                    .unwrap()
+                    .unwrap_or_else(|| panic!("{context}: expected an array, got {value:?}"));
+                assert_eq!(actual.len(), expected.len(), "{context}: array length");
+                for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+                    assert_json(graph, actual, expected, &format!("{context}[{index}]"));
+                }
             }
         }
         serde_json::Value::Object(_) => panic!("{context}: nested object needs assert_map"),
@@ -233,12 +243,7 @@ fn decodes_primitive_and_nested_arrays() {
         let expected = expect(id);
 
         assert_eq!(graph.class_name(value).unwrap(), name);
-        let values = graph.as_array(value).unwrap().unwrap();
-        let expected_values = expected["values"].as_array().unwrap();
-        assert_eq!(values.len(), expected_values.len());
-        for (index, (actual, expected)) in values.iter().zip(expected_values).enumerate() {
-            assert_json(&graph, actual, expected, &format!("{id}[{index}]"));
-        }
+        assert_json(&graph, value, &expected["values"], id);
     }
 
     let graph = graph("object/27");

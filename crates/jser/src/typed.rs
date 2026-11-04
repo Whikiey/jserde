@@ -13,12 +13,19 @@ use std::hash::Hash;
 
 use crate::builtin::{new_array_list, new_hash_map_entries, new_hash_set};
 use crate::error::{Error, Result};
-use crate::value::{Graph, JValue};
+use crate::value::{Graph, JValue, PrimitiveArray};
 
 /// Convert a decoded [`JValue`] into a Rust value.
 pub trait FromJValue: Sized {
     /// Convert `value` using `graph` for reference resolution.
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self>;
+
+    /// Decode one element of a compact primitive array, if this type supports
+    /// it. The default returns `None`; primitive types and [`JValue`] override
+    /// it so `Vec<T>` can read primitive arrays without materializing values.
+    fn from_primitive_element(_array: &PrimitiveArray<'_>, _index: usize) -> Result<Option<Self>> {
+        Ok(None)
+    }
 }
 
 /// Convert a Rust value into a [`JValue`], allocating reference values in `graph`.
@@ -62,6 +69,10 @@ impl FromJValue for JValue {
     fn from_jvalue(value: &JValue, _graph: &Graph) -> Result<Self> {
         Ok(value.clone())
     }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        Ok(array.get(index))
+    }
 }
 
 impl IntoJValue for JValue {
@@ -92,6 +103,13 @@ impl FromJValue for bool {
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
         graph.as_bool(value)
     }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        match array.get(index) {
+            Some(JValue::Bool(value)) => Ok(Some(value)),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl IntoJValue for bool {
@@ -105,6 +123,17 @@ impl FromJValue for char {
         let unit = graph.as_char(value)?;
         char::from_u32(u32::from(unit)).ok_or_else(|| mismatch("unpaired UTF-16 surrogate in char"))
     }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        match array.get(index) {
+            Some(JValue::Char(unit)) => {
+                Ok(Some(char::from_u32(u32::from(unit)).ok_or_else(|| {
+                    mismatch("unpaired UTF-16 surrogate in char")
+                })?))
+            }
+            _ => Ok(None),
+        }
+    }
 }
 
 impl IntoJValue for char {
@@ -117,6 +146,13 @@ impl FromJValue for u16 {
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
         graph.as_char(value)
     }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        match array.get(index) {
+            Some(JValue::Char(value)) => Ok(Some(value)),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl IntoJValue for u16 {
@@ -126,7 +162,7 @@ impl IntoJValue for u16 {
 }
 
 macro_rules! from_integer {
-    ($($ty:ty),* $(,)?) => {
+    ($($ty:ty => $variant:ident),* $(,)?) => {
         $(
             impl FromJValue for $ty {
                 fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
@@ -138,12 +174,22 @@ macro_rules! from_integer {
                         ))
                     })
                 }
+
+                fn from_primitive_element(
+                    array: &PrimitiveArray<'_>,
+                    index: usize,
+                ) -> Result<Option<Self>> {
+                    match array.get(index) {
+                        Some(JValue::$variant(value)) => Ok(Some(value as $ty)),
+                        _ => Ok(None),
+                    }
+                }
             }
         )*
     };
 }
 
-from_integer!(i8, i16, i32, i64);
+from_integer!(i8 => Byte, i16 => Short, i32 => Int, i64 => Long);
 
 macro_rules! into_integer {
     ($($ty:ty => $variant:ident),* $(,)?) => {
@@ -168,11 +214,25 @@ impl FromJValue for f32 {
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
         Ok(graph.as_f64(value)? as f32)
     }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        match array.get(index) {
+            Some(JValue::Float(value)) => Ok(Some(value)),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl FromJValue for f64 {
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
         graph.as_f64(value)
+    }
+
+    fn from_primitive_element(array: &PrimitiveArray<'_>, index: usize) -> Result<Option<Self>> {
+        match array.get(index) {
+            Some(JValue::Double(value)) => Ok(Some(value)),
+            _ => Ok(None),
+        }
     }
 }
 
@@ -220,6 +280,21 @@ impl<T: IntoJValue> IntoJValue for Box<T> {
 
 impl<T: FromJValue> FromJValue for Vec<T> {
     fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
+        if let Some(array) = graph.as_primitive_array(value)? {
+            let mut values = Vec::with_capacity(array.len());
+            for index in 0..array.len() {
+                let Some(element) = T::from_primitive_element(&array, index)? else {
+                    return Err(mismatch(format!(
+                        "cannot decode {:?}[] into Vec<{}>",
+                        array.typecode(),
+                        std::any::type_name::<T>()
+                    )));
+                };
+                values.push(element);
+            }
+            return Ok(values);
+        }
+
         let values: Vec<&JValue> = if let Some(array) = graph.as_array(value)? {
             array.iter().collect()
         } else if let Some(list) = graph.as_list(value)? {

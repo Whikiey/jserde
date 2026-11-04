@@ -3,11 +3,12 @@
 Java deserialization is a well-known attack surface. `jser` is a decoder of an
 untrusted-on-the-wire format; it is **not** a sandbox.
 
-Current implementation: v0.1.0, P0–P7 code line, strict allowlist by default,
-113 tests. The remaining security-relevant gaps are listed in
+Current implementation: v0.1.0, P0–P7 code line plus P8-2, strict allowlist by
+default, 120 tests. The remaining security-relevant gaps are listed in
 `docs/implementation-plan.md` §20 (notably: allowlist is not a gadget sandbox,
 the 30-minute fuzz workflow is in place but deferred until feature work is
-complete, and real 100 MB primitive arrays exceed the memory target).
+complete). Primitive arrays now use compact raw-byte storage, so the previous
+memory caveat for 100 MB `int[]` inputs no longer applies.
 
 ## Default policy
 

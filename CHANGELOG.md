@@ -16,6 +16,8 @@
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
 - Schema-driven `jser-serde` bridge (single-root flat POJO).
+- Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
+  a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
 - 34 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
   SUID comparison, deterministic fuzz smoke and a benchmark example.
 - Three-level nested POJO fixture (`object/41`) and regression tests.
@@ -32,5 +34,5 @@
 - Allowlist is not a gadget sandbox.
 - AC-04: the 30-minute decode fuzz workflow is in place but deferred until
   feature work is complete. The offline smoke test is always on.
-- AC-06: synthetic 100 MB block stream passes; a real 25M-element `int[]`
-  currently exceeds the 3× memory target because primitive arrays use `JValue`.
+- AC-06: the synthetic 100 MB block stream and a real 25M-element `int[]`
+  both stay under the 3× memory target with compact primitive arrays.
