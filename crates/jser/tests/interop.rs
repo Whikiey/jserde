@@ -10,7 +10,7 @@ use std::path::Path;
 use std::process::Command;
 
 use common::{decode_fixture, load_manifest, read_fixture, testdata_dir};
-use jser::builtin::new_hash_map;
+use jser::builtin::{new_hash_map, new_tree_map, new_vector};
 use jser::{
     encode_stream, encode_typed, ClassData, ClassDesc, FieldDesc, FieldType, Graph, JValue,
 };
@@ -254,6 +254,35 @@ fn java_can_read_rust_written_streams() {
         encode_stream(&constructed_map).unwrap(),
     )
     .unwrap();
+
+    let mut vector_graph = Graph::new();
+    let v1 = vector_graph.new_string("v1");
+    let v2 = vector_graph.new_string("v2");
+    let vector = new_vector(&mut vector_graph, vec![JValue::Str(v1), JValue::Str(v2)]).unwrap();
+    vector_graph.add_item(JValue::Obj(vector));
+    fs::write(
+        classes.join("vector-constructed.ser"),
+        encode_stream(&vector_graph).unwrap(),
+    )
+    .unwrap();
+
+    let mut tree_map_graph = Graph::new();
+    let key_a = tree_map_graph.new_string("a");
+    let key_b = tree_map_graph.new_string("b");
+    let tree_map = new_tree_map(
+        &mut tree_map_graph,
+        vec![
+            (JValue::Str(key_a), JValue::Int(1)),
+            (JValue::Str(key_b), JValue::Int(2)),
+        ],
+    )
+    .unwrap();
+    tree_map_graph.add_item(JValue::Obj(tree_map));
+    fs::write(
+        classes.join("tree-map-constructed.ser"),
+        encode_stream(&tree_map_graph).unwrap(),
+    )
+    .unwrap();
     let typed_map: HashMap<String, i32> = [("alpha".to_owned(), 1), ("beta".to_owned(), 2)]
         .into_iter()
         .collect();
@@ -309,6 +338,18 @@ fn java_can_read_rust_written_streams() {
         &classes.join("map-constructed.ser"),
         "java.util.HashMap",
         &["alpha=one", "beta=two"],
+    );
+    run_java(
+        &classes,
+        &classes.join("vector-constructed.ser"),
+        "java.util.Vector",
+        &["0=v1", "1=v2"],
+    );
+    run_java(
+        &classes,
+        &classes.join("tree-map-constructed.ser"),
+        "java.util.TreeMap",
+        &["a=1", "b=2"],
     );
     run_java(
         &classes,

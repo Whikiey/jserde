@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 38,
-  "total_bytes": 76637,
+  "case_count": 39,
+  "total_bytes": 78106,
   "cases": [
     {
       "id": "codec/01",
@@ -944,6 +944,75 @@
       },
       "size": 927,
       "sha256": "c6729b5807ea84eeb57c87d00388a7e3d913a418b123e4a7e07481ee0b9fdf79"
+    },
+    {
+      "id": "object/46",
+      "file": "fixtures/object/46-containers.ser",
+      "case": "Object[]{LinkedHashSet, TreeMap, TreeSet, ArrayDeque, PriorityQueue, Vector, Stack, Hashtable, Properties, UnmodifiableList, SynchronizedList, Arrays$ArrayList}",
+      "features": [
+        "更多容器布局",
+        "TreeMap/TreeSet 自定义数据",
+        "Hashtable/Properties",
+        "Vector/Stack 字段",
+        "Collections 包装",
+        "Arrays$ArrayList"
+      ],
+      "expect": {
+        "kind": "array",
+        "type": "java.lang.Object",
+        "values": [
+          {
+            "type": "java.util.LinkedHashSet",
+            "size": 2
+          },
+          {
+            "type": "java.util.TreeMap",
+            "size": 2
+          },
+          {
+            "type": "java.util.TreeSet",
+            "size": 2
+          },
+          {
+            "type": "java.util.ArrayDeque",
+            "size": 2
+          },
+          {
+            "type": "java.util.PriorityQueue",
+            "size": 3
+          },
+          {
+            "type": "java.util.Vector",
+            "size": 2
+          },
+          {
+            "type": "java.util.Stack",
+            "size": 2
+          },
+          {
+            "type": "java.util.Hashtable",
+            "size": 2
+          },
+          {
+            "type": "java.util.Properties",
+            "size": 1
+          },
+          {
+            "type": "java.util.Collections$UnmodifiableList",
+            "size": 2
+          },
+          {
+            "type": "java.util.Collections$SynchronizedList",
+            "size": 2
+          },
+          {
+            "type": "java.util.Arrays$ArrayList",
+            "size": 2
+          }
+        ]
+      },
+      "size": 1469,
+      "sha256": "b8286f1f3210fe89ff47d4193489e6ca7f70a24cb7e984428d82d048ad015f83"
     }
   ]
 }

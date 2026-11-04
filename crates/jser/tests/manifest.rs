@@ -9,11 +9,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[test]
-fn manifest_declares_38_fixture_cases() {
+fn manifest_declares_39_fixture_cases() {
     let manifest = load_manifest();
 
     assert_eq!(manifest.schema, "jser-fixtures/1");
-    assert_eq!(manifest.case_count, 38);
+    assert_eq!(manifest.case_count, 39);
     assert_eq!(manifest.cases.len(), manifest.case_count);
     assert!(!manifest.jdk.is_empty());
     assert!(!manifest.generator.is_empty());

@@ -27,6 +27,18 @@ pub const LINKED_LIST: &str = "java.util.LinkedList";
 pub const HASH_MAP: &str = "java.util.HashMap";
 pub const LINKED_HASH_MAP: &str = "java.util.LinkedHashMap";
 pub const HASH_SET: &str = "java.util.HashSet";
+pub const LINKED_HASH_SET: &str = "java.util.LinkedHashSet";
+pub const TREE_MAP: &str = "java.util.TreeMap";
+pub const TREE_SET: &str = "java.util.TreeSet";
+pub const ARRAY_DEQUE: &str = "java.util.ArrayDeque";
+pub const PRIORITY_QUEUE: &str = "java.util.PriorityQueue";
+pub const VECTOR: &str = "java.util.Vector";
+pub const STACK: &str = "java.util.Stack";
+pub const HASHTABLE: &str = "java.util.Hashtable";
+pub const PROPERTIES: &str = "java.util.Properties";
+pub const ARRAYS_ARRAY_LIST: &str = "java.util.Arrays$ArrayList";
+pub const UNMODIFIABLE_LIST: &str = "java.util.Collections$UnmodifiableList";
+pub const SYNCHRONIZED_LIST: &str = "java.util.Collections$SynchronizedList";
 
 fn layer<'a>(graph: &Graph, object: &'a JObject, name: &str) -> Result<Option<&'a ClassData>> {
     for class in &object.classes {
@@ -89,97 +101,222 @@ fn check_length(contents: &[JValue], size: usize, header: usize, class_name: &st
     Ok(())
 }
 
-/// Map view for `HashMap`/`LinkedHashMap`.
+/// Map view for `HashMap`/`LinkedHashMap`, `TreeMap` and `Hashtable`/`Properties`.
 pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapView<'a>>> {
     let Some(object) = graph.as_object(value)? else {
         return Ok(None);
     };
-    let Some(hash_map) = layer(graph, object, HASH_MAP)? else {
-        return Ok(None);
-    };
+    if let Some(hash_map) = layer(graph, object, HASH_MAP)? {
+        let load_factor = match layer_field(hash_map, "loadFactor") {
+            Some(JValue::Float(load_factor)) => *load_factor,
+            _ => {
+                return Err(Error::FieldMismatch {
+                    message: "`java.util.HashMap` has no float `loadFactor` field".to_owned(),
+                })
+            }
+        };
 
-    let load_factor = match layer_field(hash_map, "loadFactor") {
-        Some(JValue::Float(load_factor)) => *load_factor,
-        _ => {
-            return Err(Error::FieldMismatch {
-                message: "`java.util.HashMap` has no float `loadFactor` field".to_owned(),
-            })
-        }
-    };
+        let contents = custom_contents(hash_map, HASH_MAP)?;
+        let header = header_block(contents, HASH_MAP, 8)?;
+        let mut reader = StreamReader::new(header);
+        let capacity = reader.read_i32()?;
+        let size = collection_size(reader.read_i32()?, HASH_MAP)?;
+        debug_assert!(reader.is_empty());
 
-    let contents = custom_contents(hash_map, HASH_MAP)?;
-    let header = header_block(contents, HASH_MAP, 8)?;
-    let mut reader = StreamReader::new(header);
-    let capacity = reader.read_i32()?;
-    let size = collection_size(reader.read_i32()?, HASH_MAP)?;
-    debug_assert!(reader.is_empty());
+        let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
+            message: "`java.util.HashMap` entry count overflows".to_owned(),
+        })?;
+        check_length(contents, entry_count, 1, HASH_MAP)?;
 
-    let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
-        message: "`java.util.HashMap` entry count overflows".to_owned(),
-    })?;
-    check_length(contents, entry_count, 1, HASH_MAP)?;
+        let entries = pair_entries(&contents[1..], size, HASH_MAP)?;
+        return Ok(Some(MapView {
+            entries,
+            load_factor,
+            capacity,
+            ordered: layer(graph, object, LINKED_HASH_MAP)?.is_some(),
+        }));
+    }
+    if let Some(tree_map) = layer(graph, object, TREE_MAP)? {
+        let contents = custom_contents(tree_map, TREE_MAP)?;
+        let header = header_block(contents, TREE_MAP, 4)?;
+        let mut reader = StreamReader::new(header);
+        let size = collection_size(reader.read_i32()?, TREE_MAP)?;
+        let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
+            message: "`java.util.TreeMap` entry count overflows".to_owned(),
+        })?;
+        check_length(contents, entry_count, 1, TREE_MAP)?;
+        return Ok(Some(MapView {
+            entries: pair_entries(&contents[1..], size, TREE_MAP)?,
+            load_factor: 0.0,
+            capacity: i32::try_from(size).unwrap_or(i32::MAX),
+            ordered: true,
+        }));
+    }
+    if let Some(table) = layer(graph, object, HASHTABLE)? {
+        let contents = custom_contents(table, HASHTABLE)?;
+        let header = header_block(contents, HASHTABLE, 8)?;
+        let mut reader = StreamReader::new(header);
+        let capacity = reader.read_i32()?;
+        let size = collection_size(reader.read_i32()?, HASHTABLE)?;
+        let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
+            message: "`java.util.Hashtable` entry count overflows".to_owned(),
+        })?;
+        check_length(contents, entry_count, 1, HASHTABLE)?;
+        let load_factor = match layer_field(table, "loadFactor") {
+            Some(JValue::Float(load_factor)) => *load_factor,
+            _ => 0.75,
+        };
+        return Ok(Some(MapView {
+            entries: pair_entries(&contents[1..], size, HASHTABLE)?,
+            load_factor,
+            capacity,
+            ordered: false,
+        }));
+    }
 
+    Ok(None)
+}
+
+fn pair_entries<'a>(
+    items: &'a [JValue],
+    size: usize,
+    name: &str,
+) -> Result<Vec<(&'a JValue, &'a JValue)>> {
     let mut entries = Vec::with_capacity(size);
-    let mut items = contents[1..].iter();
+    let mut items = items.iter();
     for _ in 0..size {
         let key = items.next().ok_or_else(|| Error::FieldMismatch {
-            message: "java.util.HashMap entry count is inconsistent".to_owned(),
+            message: format!("{name} entry count is inconsistent"),
         })?;
         let value = items.next().ok_or_else(|| Error::FieldMismatch {
-            message: "java.util.HashMap entry count is inconsistent".to_owned(),
+            message: format!("{name} entry count is inconsistent"),
         })?;
         entries.push((key, value));
     }
-
-    Ok(Some(MapView {
-        entries,
-        load_factor,
-        capacity,
-        ordered: layer(graph, object, LINKED_HASH_MAP)?.is_some(),
-    }))
+    Ok(entries)
 }
 
-/// List view for `ArrayList`/`LinkedList`.
+/// List view for `ArrayList`/`LinkedList`, `Vector`/`Stack`, `ArrayDeque`,
+/// `PriorityQueue`, `Arrays$ArrayList` and the unmodifiable/synchronized list
+/// wrappers.
 pub fn list_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<Vec<&'a JValue>>> {
     let Some(object) = graph.as_object(value)? else {
         return Ok(None);
     };
 
-    let (class, name) = if let Some(class) = layer(graph, object, ARRAY_LIST)? {
-        (class, ARRAY_LIST)
-    } else if let Some(class) = layer(graph, object, LINKED_LIST)? {
-        (class, LINKED_LIST)
-    } else {
-        return Ok(None);
-    };
+    if let Some(class) = layer(graph, object, ARRAY_LIST)? {
+        return custom_elements(class, ARRAY_LIST, 4);
+    }
+    if let Some(class) = layer(graph, object, LINKED_LIST)? {
+        return custom_elements(class, LINKED_LIST, 4);
+    }
+    if let Some(class) = layer(graph, object, ARRAY_DEQUE)? {
+        return custom_elements(class, ARRAY_DEQUE, 4);
+    }
+    if let Some(class) = layer(graph, object, PRIORITY_QUEUE)? {
+        let contents = custom_contents(class, PRIORITY_QUEUE)?;
+        let header = header_block(contents, PRIORITY_QUEUE, 4)?;
+        let mut reader = StreamReader::new(header);
+        let _capacity = reader.read_i32()?;
+        let size =
+            graph.as_i32(
+                layer_field(class, "size").ok_or_else(|| Error::FieldMismatch {
+                    message: "java.util.PriorityQueue has no size field".to_owned(),
+                })?,
+            )?;
+        let size = collection_size(size, PRIORITY_QUEUE)?;
+        check_length(contents, size, 1, PRIORITY_QUEUE)?;
+        return Ok(Some(contents[1..].iter().collect()));
+    }
+    if let Some(class) = layer(graph, object, VECTOR)? {
+        let count = graph.as_i32(layer_field(class, "elementCount").ok_or_else(|| {
+            Error::FieldMismatch {
+                message: "java.util.Vector has no elementCount field".to_owned(),
+            }
+        })?)?;
+        let count = collection_size(count, VECTOR)?;
+        let data = layer_field(class, "elementData").ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.Vector has no elementData field".to_owned(),
+        })?;
+        let elements = graph.as_array(data)?.ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.Vector elementData is not an object array".to_owned(),
+        })?;
+        if count > elements.len() {
+            return Err(Error::FieldMismatch {
+                message: format!("java.util.Vector elementCount {count} exceeds capacity"),
+            });
+        }
+        return Ok(Some(elements[..count].iter().collect()));
+    }
+    if let Some(class) = layer(graph, object, ARRAYS_ARRAY_LIST)? {
+        let data = layer_field(class, "a").ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.Arrays$ArrayList has no `a` field".to_owned(),
+        })?;
+        let elements = graph.as_array(data)?.ok_or_else(|| Error::FieldMismatch {
+            message: "java.util.Arrays$ArrayList `a` is not an object array".to_owned(),
+        })?;
+        return Ok(Some(elements.iter().collect()));
+    }
+    for wrapper in [UNMODIFIABLE_LIST, SYNCHRONIZED_LIST] {
+        if let Some(class) = layer(graph, object, wrapper)? {
+            let backing = layer_field(class, "list").ok_or_else(|| Error::FieldMismatch {
+                message: format!("{wrapper} has no `list` field"),
+            })?;
+            return list_view(graph, backing);
+        }
+    }
 
-    let contents = custom_contents(class, name)?;
-    let header = header_block(contents, name, 4)?;
+    Ok(None)
+}
+
+fn custom_elements<'a>(
+    class: &'a ClassData,
+    name: &str,
+    header_width: usize,
+) -> Result<Option<Vec<&'a JValue>>> {
+    let contents = class
+        .custom
+        .as_deref()
+        .ok_or_else(|| Error::FieldMismatch {
+            message: format!("`{name}` has no custom data"),
+        })?;
+    let header = header_block(contents, name, header_width)?;
     let mut reader = StreamReader::new(header);
     let size = collection_size(reader.read_i32()?, name)?;
     check_length(contents, size, 1, name)?;
-
     Ok(Some(contents[1..].iter().collect()))
 }
 
-/// Set view for `HashSet`.
+/// Set view for `HashSet`/`LinkedHashSet` and `TreeSet`.
 pub fn set_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<Vec<&'a JValue>>> {
     let Some(object) = graph.as_object(value)? else {
         return Ok(None);
     };
-    let Some(set) = layer(graph, object, HASH_SET)? else {
-        return Ok(None);
-    };
+    if let Some(set) = layer(graph, object, HASH_SET)? {
+        let contents = custom_contents(set, HASH_SET)?;
+        let header = header_block(contents, HASH_SET, 12)?;
+        let mut reader = StreamReader::new(header);
+        let _capacity = reader.read_i32()?;
+        let _load_factor = reader.read_f32()?;
+        let size = collection_size(reader.read_i32()?, HASH_SET)?;
+        check_length(contents, size, 1, HASH_SET)?;
+        return Ok(Some(contents[1..].iter().collect()));
+    }
+    if let Some(set) = layer(graph, object, TREE_SET)? {
+        let contents = custom_contents(set, TREE_SET)?;
+        if contents.len() < 2 || !matches!(contents[0], JValue::Null) {
+            return Err(Error::FieldMismatch {
+                message: "java.util.TreeSet comparator is not null".to_owned(),
+            });
+        }
+        let header = header_block(&contents[1..], TREE_SET, 4)?;
+        let mut reader = StreamReader::new(header);
+        let size = collection_size(reader.read_i32()?, TREE_SET)?;
+        check_length(contents, size, 2, TREE_SET)?;
+        return Ok(Some(contents[2..].iter().collect()));
+    }
 
-    let contents = custom_contents(set, HASH_SET)?;
-    let header = header_block(contents, HASH_SET, 12)?;
-    let mut reader = StreamReader::new(header);
-    let _capacity = reader.read_i32()?;
-    let _load_factor = reader.read_f32()?;
-    let size = collection_size(reader.read_i32()?, HASH_SET)?;
-    check_length(contents, size, 1, HASH_SET)?;
-
-    Ok(Some(contents[1..].iter().collect()))
+    Ok(None)
 }
 
 /// Build a `java.util.HashMap` from string-to-string entries.
@@ -417,6 +554,439 @@ pub fn new_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> 
         fields: Vec::new(),
         custom: Some(custom),
     }])
+}
+
+/// Build a `java.util.LinkedHashSet` from object elements.
+pub fn new_linked_hash_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "LinkedHashSet element")?;
+    }
+    let hash_set = graph.add_class_desc(ClassDesc {
+        name: HASH_SET.to_owned(),
+        suid: -5_024_744_406_713_321_676,
+        flags: 0x03,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let linked = graph.add_class_desc(ClassDesc {
+        name: LINKED_HASH_SET.to_owned(),
+        suid: -2_851_667_679_971_038_690,
+        flags: 0x02,
+        fields: Vec::new(),
+        super_desc: Some(hash_set),
+        annotations: Vec::new(),
+    })?;
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("LinkedHashSet has too many elements".to_owned()))?;
+    let capacity = table_size_for(elements.len())?;
+    let mut header = Vec::with_capacity(12);
+    header.extend_from_slice(&capacity.to_be_bytes());
+    header.extend_from_slice(&0.75f32.to_bits().to_be_bytes());
+    header.extend_from_slice(&size.to_be_bytes());
+    let mut custom = Vec::with_capacity(1 + elements.len());
+    custom.push(JValue::Block(BlockData {
+        bytes: header,
+        long: false,
+    }));
+    custom.extend(elements);
+    graph.new_object(vec![
+        ClassData {
+            desc: hash_set,
+            fields: Vec::new(),
+            custom: Some(custom),
+        },
+        ClassData {
+            desc: linked,
+            fields: Vec::new(),
+            custom: None,
+        },
+    ])
+}
+
+/// Build a `java.util.TreeMap` from object entries (natural ordering).
+pub fn new_tree_map(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result<Handle> {
+    let mut entries = entries;
+    for (key, value) in &mut entries {
+        *key = box_primitive(graph, key.clone())?;
+        *value = box_primitive(graph, value.clone())?;
+        check_collection_value(key, "TreeMap key")?;
+        check_collection_value(value, "TreeMap value")?;
+    }
+    let size = i32::try_from(entries.len())
+        .map_err(|_| Error::InvalidSchema("TreeMap has too many entries".to_owned()))?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: TREE_MAP.to_owned(),
+        suid: 919_286_545_866_124_006,
+        flags: 0x03,
+        fields: vec![FieldDesc {
+            name: "comparator".to_owned(),
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/util/Comparator;".to_owned()),
+            class_name_handle: None,
+        }],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut custom = Vec::with_capacity(1 + entries.len() * 2);
+    custom.push(JValue::Block(BlockData {
+        bytes: size.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    for (key, value) in entries {
+        custom.push(key);
+        custom.push(value);
+    }
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![("comparator".to_owned(), JValue::Null)],
+        custom: Some(custom),
+    }])
+}
+
+/// Build a `java.util.TreeSet` from object elements (natural ordering).
+pub fn new_tree_set(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "TreeSet element")?;
+    }
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("TreeSet has too many elements".to_owned()))?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: TREE_SET.to_owned(),
+        suid: -2_479_143_000_061_671_589,
+        flags: 0x03,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut custom = Vec::with_capacity(2 + elements.len());
+    custom.push(JValue::Null);
+    custom.push(JValue::Block(BlockData {
+        bytes: size.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    custom.extend(elements);
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: Vec::new(),
+        custom: Some(custom),
+    }])
+}
+
+/// Build a `java.util.ArrayDeque` from object elements.
+pub fn new_array_deque(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "ArrayDeque element")?;
+    }
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("ArrayDeque has too many elements".to_owned()))?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: ARRAY_DEQUE.to_owned(),
+        suid: 2_340_985_798_034_038_923,
+        flags: 0x03,
+        fields: Vec::new(),
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut custom = Vec::with_capacity(1 + elements.len());
+    custom.push(JValue::Block(BlockData {
+        bytes: size.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    custom.extend(elements);
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: Vec::new(),
+        custom: Some(custom),
+    }])
+}
+
+/// Build a `java.util.PriorityQueue` (natural ordering) from object elements.
+pub fn new_priority_queue(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "PriorityQueue element")?;
+    }
+    let size = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("PriorityQueue has too many elements".to_owned()))?;
+    let capacity = size.max(1);
+    let desc = graph.add_class_desc(ClassDesc {
+        name: PRIORITY_QUEUE.to_owned(),
+        suid: -7_720_805_057_305_804_111,
+        flags: 0x03,
+        fields: vec![
+            FieldDesc {
+                name: "size".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "comparator".to_owned(),
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/util/Comparator;".to_owned()),
+                class_name_handle: None,
+            },
+        ],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut custom = Vec::with_capacity(1 + elements.len());
+    custom.push(JValue::Block(BlockData {
+        bytes: capacity.to_be_bytes().to_vec(),
+        long: false,
+    }));
+    custom.extend(elements);
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![
+            ("size".to_owned(), JValue::Int(size)),
+            ("comparator".to_owned(), JValue::Null),
+        ],
+        custom: Some(custom),
+    }])
+}
+
+/// Build a `java.util.Vector` from object elements (capacity = size).
+pub fn new_vector(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    new_vector_like(graph, elements, false)
+}
+
+/// Build a `java.util.Stack` from object elements (capacity = max(10, size)).
+pub fn new_stack(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    new_vector_like(graph, elements, true)
+}
+
+fn new_vector_like(graph: &mut Graph, elements: Vec<JValue>, stack: bool) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "Vector element")?;
+    }
+    let count = i32::try_from(elements.len())
+        .map_err(|_| Error::InvalidSchema("Vector has too many elements".to_owned()))?;
+    let capacity = if stack {
+        elements.len().max(10)
+    } else {
+        elements.len()
+    };
+    let mut data = elements;
+    data.resize(capacity, JValue::Null);
+    let array = new_java_array(graph, "[Ljava.lang.Object;", data)?;
+    let vector = graph.add_class_desc(ClassDesc {
+        name: VECTOR.to_owned(),
+        suid: -2_767_605_614_048_989_439,
+        flags: 0x03,
+        fields: vec![
+            FieldDesc {
+                name: "capacityIncrement".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "elementCount".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "elementData".to_owned(),
+                typecode: FieldType::Object,
+                class_name1: Some("[Ljava.lang.Object;".to_owned()),
+                class_name_handle: None,
+            },
+        ],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut classes = vec![ClassData {
+        desc: vector,
+        fields: vec![
+            ("capacityIncrement".to_owned(), JValue::Int(0)),
+            ("elementCount".to_owned(), JValue::Int(count)),
+            ("elementData".to_owned(), JValue::Arr(array)),
+        ],
+        custom: Some(Vec::new()),
+    }];
+    if stack {
+        let stack_desc = graph.add_class_desc(ClassDesc {
+            name: STACK.to_owned(),
+            suid: 1_224_463_164_541_339_165,
+            flags: 0x02,
+            fields: Vec::new(),
+            super_desc: Some(vector),
+            annotations: Vec::new(),
+        })?;
+        classes.push(ClassData {
+            desc: stack_desc,
+            fields: Vec::new(),
+            custom: None,
+        });
+    }
+    graph.new_object(classes)
+}
+
+/// Build a `java.util.Hashtable` from object entries.
+pub fn new_hashtable(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result<Handle> {
+    new_hashtable_like(graph, entries, false)
+}
+
+/// Build a `java.util.Properties` from object entries (defaults = null).
+pub fn new_properties(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result<Handle> {
+    new_hashtable_like(graph, entries, true)
+}
+
+fn new_hashtable_like(
+    graph: &mut Graph,
+    entries: Vec<(JValue, JValue)>,
+    properties: bool,
+) -> Result<Handle> {
+    let mut entries = entries;
+    for (key, value) in &mut entries {
+        *key = box_primitive(graph, key.clone())?;
+        *value = box_primitive(graph, value.clone())?;
+        check_collection_value(key, "Hashtable key")?;
+        check_collection_value(value, "Hashtable value")?;
+    }
+    let size = i32::try_from(entries.len())
+        .map_err(|_| Error::InvalidSchema("Hashtable has too many entries".to_owned()))?;
+    let capacity = 11i32.max(size.saturating_mul(2));
+    let threshold = (capacity as f32 * 0.75) as i32;
+    let table = graph.add_class_desc(ClassDesc {
+        name: HASHTABLE.to_owned(),
+        suid: 1_421_746_759_512_286_392,
+        flags: 0x03,
+        fields: vec![
+            FieldDesc {
+                name: "loadFactor".to_owned(),
+                typecode: FieldType::Float,
+                class_name1: None,
+                class_name_handle: None,
+            },
+            FieldDesc {
+                name: "threshold".to_owned(),
+                typecode: FieldType::Int,
+                class_name1: None,
+                class_name_handle: None,
+            },
+        ],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let mut header = Vec::with_capacity(8);
+    header.extend_from_slice(&capacity.to_be_bytes());
+    header.extend_from_slice(&size.to_be_bytes());
+    let mut custom = Vec::with_capacity(1 + entries.len() * 2);
+    custom.push(JValue::Block(BlockData {
+        bytes: header,
+        long: false,
+    }));
+    for (key, value) in entries {
+        custom.push(key);
+        custom.push(value);
+    }
+    let mut classes = vec![ClassData {
+        desc: table,
+        fields: vec![
+            ("loadFactor".to_owned(), JValue::Float(0.75)),
+            ("threshold".to_owned(), JValue::Int(threshold)),
+        ],
+        custom: Some(custom),
+    }];
+    if properties {
+        let properties_desc = graph.add_class_desc(ClassDesc {
+            name: PROPERTIES.to_owned(),
+            suid: 4_112_578_634_029_874_840,
+            flags: 0x02,
+            fields: vec![FieldDesc {
+                name: "defaults".to_owned(),
+                typecode: FieldType::Object,
+                class_name1: Some("Ljava/util/Properties;".to_owned()),
+                class_name_handle: None,
+            }],
+            super_desc: Some(table),
+            annotations: Vec::new(),
+        })?;
+        classes.push(ClassData {
+            desc: properties_desc,
+            fields: vec![("defaults".to_owned(), JValue::Null)],
+            custom: None,
+        });
+    }
+    graph.new_object(classes)
+}
+
+/// Build a `java.util.Arrays$ArrayList` backed by an object array.
+pub fn new_arrays_array_list(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let elements = box_elements(graph, elements)?;
+    for element in &elements {
+        check_collection_value(element, "Arrays$ArrayList element")?;
+    }
+    let array = new_java_array(graph, "[Ljava.lang.Object;", elements)?;
+    let desc = graph.add_class_desc(ClassDesc {
+        name: ARRAYS_ARRAY_LIST.to_owned(),
+        suid: -2_764_017_481_108_945_198,
+        flags: 0x02,
+        fields: vec![FieldDesc {
+            name: "a".to_owned(),
+            typecode: FieldType::Object,
+            class_name1: Some("[Ljava.lang.Object;".to_owned()),
+            class_name_handle: None,
+        }],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    graph.new_object(vec![ClassData {
+        desc,
+        fields: vec![("a".to_owned(), JValue::Arr(array))],
+        custom: None,
+    }])
+}
+
+/// Build a `Collections.unmodifiableList` around a new `ArrayList`.
+pub fn new_unmodifiable_list(graph: &mut Graph, elements: Vec<JValue>) -> Result<Handle> {
+    let backing = new_array_list(graph, elements)?;
+    let collection = graph.add_class_desc(ClassDesc {
+        name: "java.util.Collections$UnmodifiableCollection".to_owned(),
+        suid: 1_820_017_752_578_914_078,
+        flags: 0x02,
+        fields: vec![FieldDesc {
+            name: "c".to_owned(),
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/util/Collection;".to_owned()),
+            class_name_handle: None,
+        }],
+        super_desc: None,
+        annotations: Vec::new(),
+    })?;
+    let list = graph.add_class_desc(ClassDesc {
+        name: UNMODIFIABLE_LIST.to_owned(),
+        suid: -283_967_356_065_247_728,
+        flags: 0x02,
+        fields: vec![FieldDesc {
+            name: "list".to_owned(),
+            typecode: FieldType::Object,
+            class_name1: Some("Ljava/util/List;".to_owned()),
+            class_name_handle: None,
+        }],
+        super_desc: Some(collection),
+        annotations: Vec::new(),
+    })?;
+    graph.new_object(vec![
+        ClassData {
+            desc: collection,
+            fields: vec![("c".to_owned(), JValue::Obj(backing))],
+            custom: None,
+        },
+        ClassData {
+            desc: list,
+            fields: vec![("list".to_owned(), JValue::Obj(backing))],
+            custom: None,
+        },
+    ])
 }
 
 fn check_collection_value(value: &JValue, what: &str) -> Result<()> {

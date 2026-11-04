@@ -48,6 +48,9 @@
   throughput threshold and `int[]` RSS ratio).
 - CI matrix (Linux/macOS/Windows), MSRV 1.77 check, i686 check and
   `cargo-deny` (licenses/bans/sources/advisories) audit.
+- Extended container views (`as_list`/`as_set`/`as_map`) for LinkedHashSet,
+  TreeMap/TreeSet, ArrayDeque, PriorityQueue, Vector/Stack, Hashtable, Properties,
+  Collections wrappers and Arrays$ArrayList, plus 11 write-side constructors.
 - Semantic views for common value classes: UUID, Currency, Locale, BitSet,
   StringBuilder/StringBuffer, Pattern and java.sql.Date/Time/Timestamp.
 - Dependency-free seeded property tests (`tests/property.rs`): strings, long

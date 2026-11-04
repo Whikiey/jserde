@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 18:00 · feat: 扩展容器视图与构造器（P9-23/24/25）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `object/46-containers.ser`（12 种容器：LinkedHashSet/TreeMap/TreeSet/ArrayDeque/PriorityQueue/Vector/Stack/Hashtable/Properties/UnmodifiableList/SynchronizedList/Arrays$ArrayList）；EnumSet/EnumMap 因 `TC_CLASS`（P9-1）暂排除。
+  - `as_list` 扩展 Vector/Stack/ArrayDeque/PriorityQueue/Arrays$ArrayList/unmodifiable·synchronized 包装；`as_set` 扩展 LinkedHashSet、TreeSet；`as_map` 扩展 TreeMap、Hashtable/Properties。
+  - 新增 11 个写侧构造器：`new_linked_hash_set`/`new_tree_map`/`new_tree_set`/`new_array_deque`/`new_priority_queue`/`new_vector`/`new_stack`/`new_hashtable`/`new_properties`/`new_arrays_array_list`/`new_unmodifiable_list`。
+  - `tests/containers.rs` 覆盖 fixture 46 解码视图与全部构造器往返；interop 增加构造的 Vector/TreeMap Java 读回。
+- **验证**：containers 2 passed；全仓 **160 passed**；clippy/fmt 通过；manifest 39 例/78106 字节。
+
+---
+
 ## 2026-11-04 17:20 · feat: 常见值类语义（P9-22）
 
 - **提交**：本次（hash 见 `git log`）

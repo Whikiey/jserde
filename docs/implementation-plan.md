@@ -439,11 +439,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | P9-33 完成：新增 `object/44-hybrid-nested.ser`（Map×数组×自定义类、共享 Point、自环，486 B），manifest 37 例/75710 字节；`tests/nesting.rs` 增加解码/共享/环/逐字节回放断言；全仓 149 passed | P9-33 |
 | 2026-11-04 | P9-26 完成：`tests/property.rs` 用固定种子 xorshift（无外部 dev-dep）覆盖字符串/长字符串/数组/Map/重编码稳定/随机字节/截断/变异；全仓 157 passed | P9-26 |
 | 2026-11-04 | P9-22 完成：新增 `object/45`（UUID/Currency/Locale/BitSet/StringBuilder/StringBuffer/Pattern/java.sql 日期时间）与 10 种语义；manifest 38 例/76637 字节；全仓 158 passed | P9-22 |
+| 2026-11-04 | P9-23/24/25 完成：新增 `object/46`（12 种容器，EnumSet/EnumMap 因 TC_CLASS 排除）；`as_list`/`as_set`/`as_map` 扩展 + 11 个写侧构造器；`tests/containers.rs` 解码/构造往返；Java 读回构造的 Vector/TreeMap；manifest 39 例/78106 字节；全仓 160 passed | P9-23/24/25 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；38 个 fixture / 76637 字节；全仓 **158 passed**；38 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-22/P9-26/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；39 个 fixture / 78106 字节；全仓 **160 passed**；39 例 Java 读回 + SUID 对拍；P8-2/P8-3/P8-5/P9-7/P9-8/P9-9/P9-10/P9-11/P9-13/P9-14/P9-15/P9-16/P9-21/P9-22/P9-23/P9-24/P9-25/P9-26/P9-27/P9-28/P9-29/P9-30/P9-31/P9-32/P9-33 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -507,9 +508,9 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 |---|---|---|
 | P9-21 | java.time 余项：`ZoneId`/`ZoneOffset`/`OffsetTime`/`OffsetDateTime`——✅ 已实现：新增 `object/43` 与四种 `BuiltinValue` | 中 / M |
 | P9-22 | 常见值类：`UUID`、`Currency`、`Locale`、`BitSet`、`StringBuilder`/`StringBuffer`、`Pattern`、`java.sql.Date/Time/Timestamp`——✅ 已实现：`object/45` + 10 种 `BuiltinValue` | 中 / M |
-| P9-23 | 容器：`LinkedHashSet`、`TreeMap`、`TreeSet`、`ArrayDeque`、`PriorityQueue`、`Vector`、`Stack`、`Hashtable`、`Properties`、`EnumSet`/`EnumMap`、`Collections.unmodifiable*/synchronized*` 包装、`Arrays$ArrayList` | 中 / L |
-| P9-24 | 对应写侧构造器：`new_linked_hash_map`/`new_linked_hash_set`/`new_tree_map`/`new_array_deque` 等 | 中 / M |
-| P9-25 | `Registry`/`BuiltinValue` 语义视图扩展到上述类型（`JValue::Obj` 回放保持不变） | 中 / M |
+| P9-23 | 容器：`LinkedHashSet`、`TreeMap`/`TreeSet`、`ArrayDeque`、`PriorityQueue`、`Vector`/`Stack`、`Hashtable`、`Properties`、`Arrays$ArrayList`、unmodifiable/synchronized 包装——✅ 已实现解码视图；EnumSet/EnumMap 依赖 `TC_CLASS`（P9-1）暂不支持 | 中 / L |
+| P9-24 | 对应写侧构造器：`new_linked_hash_set`/`new_tree_map`/`new_tree_set`/`new_array_deque`/`new_priority_queue`/`new_vector`/`new_stack`/`new_hashtable`/`new_properties`/`new_arrays_array_list`/`new_unmodifiable_list`——✅ 已实现（EnumSet/EnumMap 除外） | 中 / M |
+| P9-25 | `Registry`/`BuiltinValue` 语义视图扩展到上述类型（`JValue::Obj` 回放保持不变）——✅ 集合视图经 `as_list`/`as_set`/`as_map` 覆盖（EnumSet/EnumMap 待 TC_CLASS） | 中 / M |
 
 ### 21.5 工程、测试与 CI
 

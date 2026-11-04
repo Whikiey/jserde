@@ -332,6 +332,26 @@ CASES = [
             {"type": "java.sql.Timestamp", "epoch_millis": 0, "nanos": 123456789},
         ]},
     ),
+    dict(
+        id="object/46", file="fixtures/object/46-containers.ser",
+        case="Object[]{LinkedHashSet, TreeMap, TreeSet, ArrayDeque, PriorityQueue, Vector, Stack, Hashtable, Properties, UnmodifiableList, SynchronizedList, Arrays$ArrayList}",
+        features=["更多容器布局", "TreeMap/TreeSet 自定义数据", "Hashtable/Properties",
+                  "Vector/Stack 字段", "Collections 包装", "Arrays$ArrayList"],
+        expect={"kind": "array", "type": "java.lang.Object", "values": [
+            {"type": "java.util.LinkedHashSet", "size": 2},
+            {"type": "java.util.TreeMap", "size": 2},
+            {"type": "java.util.TreeSet", "size": 2},
+            {"type": "java.util.ArrayDeque", "size": 2},
+            {"type": "java.util.PriorityQueue", "size": 3},
+            {"type": "java.util.Vector", "size": 2},
+            {"type": "java.util.Stack", "size": 2},
+            {"type": "java.util.Hashtable", "size": 2},
+            {"type": "java.util.Properties", "size": 1},
+            {"type": "java.util.Collections$UnmodifiableList", "size": 2},
+            {"type": "java.util.Collections$SynchronizedList", "size": 2},
+            {"type": "java.util.Arrays$ArrayList", "size": 2},
+        ]},
+    ),
 ]
 
 
