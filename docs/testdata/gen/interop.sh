@@ -22,7 +22,7 @@ command -v javac >/dev/null 2>&1 || {
 mkdir -p build/rust
 
 cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser --example emit
-cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser-serde --example emit
+cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser-serde --example serde_emit
 javac -cp build/classes -d build/classes gen/Verify.java
 
 expected_suid=$(awk '$1 == "Fixtures$NoSuid" { print $2 }' build/suid.txt)

@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 12:35 · chore: 重命名 jser-serde emit 示例
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`crates/jser-serde/examples/emit.rs` → `serde_emit.rs`，`docs/testdata/gen/interop.sh` 同步 `--example serde_emit`。`jser` 与 `jser-serde` 原来都产出 `target/debug/examples/emit.exe`，并行链接时报 `LNK1104`，阻塞 `cargo test --workspace`（示例编译）。
+- **验证**：`cargo test --workspace` 不再出现示例输出名冲突；`cargo fmt --check` 通过。
+- **TDD**：不适用（构建配置）。
+
+---
+
 ## 2026-11-04 12:20 · feat: P9-15 derive 继承（TDD）
 
 - **提交**：本次（hash 见 `git log`）

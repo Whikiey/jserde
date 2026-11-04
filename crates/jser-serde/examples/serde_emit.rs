@@ -27,12 +27,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 typecode: FieldType::Int,
                 class_name1: None,
                 nested: None,
+                map: None,
+                set: None,
             },
             SchemaField {
                 name: "y",
                 typecode: FieldType::Int,
                 class_name1: None,
                 nested: None,
+                map: None,
+                set: None,
             },
         ],
     };
