@@ -65,7 +65,7 @@ struct FieldInfo {
     ident: syn::Ident,
     java_name: String,
     typecode: proc_macro2::TokenStream,
-    class_name1: Option<String>,
+    class_name1: Option<proc_macro2::TokenStream>,
     primitive: bool,
     vec: bool,
     array_class: Option<String>,
@@ -127,6 +127,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     });
 
     let name = &input.ident;
+    let descriptor = format!("L{};", class.replace('.', "/"));
     let schema = infos.iter().filter(|field| !field.transient).map(|field| {
         let java_name = &field.java_name;
         let typecode = &field.typecode;
@@ -205,6 +206,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         impl jser::JavaSerializable for #name {
             const CLASS: &'static str = #class;
             const SUID: i64 = #suid;
+            const DESCRIPTOR: &'static str = #descriptor;
 
             fn schema() -> &'static [jser::JavaField] {
                 static FIELDS: &[jser::JavaField] = &[#(#schema),*];
@@ -295,11 +297,12 @@ fn field_info(field: &Field) -> syn::Result<FieldInfo> {
 
 struct TypeInfo {
     typecode: proc_macro2::TokenStream,
-    class_name1: Option<String>,
+    class_name1: Option<proc_macro2::TokenStream>,
     descriptor: String,
     primitive: bool,
     vec: bool,
     array_class: Option<String>,
+    custom: bool,
 }
 
 fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
@@ -318,6 +321,7 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
         primitive: true,
         vec: false,
         array_class: None,
+        custom: false,
     };
 
     match name.as_str() {
@@ -329,6 +333,12 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
         "i64" => Ok(primitive("J", quote! { jser::FieldType::Long })),
         "f32" => Ok(primitive("F", quote! { jser::FieldType::Float })),
         "f64" => Ok(primitive("D", quote! { jser::FieldType::Double })),
+        "u8" | "u32" | "u64" | "usize" | "i128" | "u128" => Err(syn::Error::new_spanned(
+            ty,
+            format!(
+                "unsupported integer field type `{name}`; use i8/i16/i32/i64 (Java `byte` is `i8`)"
+            ),
+        )),
         "String" => Ok(object("Ljava/lang/String;")),
         "HashMap" => Ok(object("Ljava/util/HashMap;")),
         "HashSet" => Ok(object("Ljava/util/HashSet;")),
@@ -338,14 +348,32 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
             if inner.primitive || inner.vec {
                 return Err(syn::Error::new_spanned(
                     ty,
-                    "Option<T> requires an object type (String, HashMap, HashSet)",
+                    "Option<T> requires an object type (String, custom class, HashMap, HashSet)",
                 ));
             }
-            Ok(object_owned(inner.descriptor))
+            if inner.custom {
+                Ok(TypeInfo {
+                    typecode: quote! { jser::FieldType::Object },
+                    class_name1: inner.class_name1,
+                    descriptor: String::new(),
+                    primitive: false,
+                    vec: false,
+                    array_class: None,
+                    custom: true,
+                })
+            } else {
+                Ok(object_owned(inner.descriptor))
+            }
         }
         "Vec" => {
             let inner = generic_arg(ty, 0, "Vec")?;
             let inner = field_type(inner, field_name)?;
+            if inner.custom {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    "Vec<Custom> fields need object-array SUID support (P9-14)",
+                ));
+            }
             if inner.vec || (inner.class_name1.is_some() && !inner.descriptor.starts_with('L')) {
                 return Err(syn::Error::new_spanned(
                     ty,
@@ -372,17 +400,23 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
             }
             Ok(TypeInfo {
                 typecode: quote! { jser::FieldType::Array },
-                class_name1: Some(array_class.clone()),
+                class_name1: Some(quote! { #array_class }),
                 descriptor: array_class.clone(),
                 primitive: false,
                 vec: true,
                 array_class: Some(array_class),
+                custom: false,
             })
         }
-        _ => Err(syn::Error::new_spanned(
-            ty,
-            format!("unsupported JavaSerializable field type `{name}`"),
-        )),
+        _ => Ok(TypeInfo {
+            typecode: quote! { jser::FieldType::Object },
+            class_name1: Some(quote! { <#ty as jser::JavaSerializable>::DESCRIPTOR }),
+            descriptor: String::new(),
+            primitive: false,
+            vec: false,
+            array_class: None,
+            custom: true,
+        }),
     }
 }
 
@@ -393,11 +427,12 @@ fn object(descriptor: &str) -> TypeInfo {
 fn object_owned(descriptor: String) -> TypeInfo {
     TypeInfo {
         typecode: quote! { jser::FieldType::Object },
-        class_name1: Some(descriptor.clone()),
+        class_name1: Some(quote! { #descriptor }),
         descriptor,
         primitive: false,
         vec: false,
         array_class: None,
+        custom: false,
     }
 }
 
@@ -469,11 +504,24 @@ mod tests {
         let input: DeriveInput = parse_quote! {
             #[java(class = "Foo", suid = 1)]
             struct Foo {
-                value: std::time::Duration,
+                value: u8,
             }
         };
         let error = expand(input).unwrap_err();
-        assert!(error.to_string().contains("unsupported"));
+        assert!(error.to_string().contains("unsupported integer field type"));
+        assert!(error.to_string().contains("u8"));
+    }
+
+    #[test]
+    fn vec_of_custom_types_is_rejected() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo", suid = 1)]
+            struct Foo {
+                values: Vec<Bar>,
+            }
+        };
+        let error = expand(input).unwrap_err();
+        assert!(error.to_string().contains("Vec<Custom>"));
     }
 
     #[test]

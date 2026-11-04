@@ -13,7 +13,7 @@
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P7；P8 缺口见计划 §20 |
 | 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成；P7-1 的 30 分钟 fuzz workflow 已接入但暂缓，等功能完成后执行；计划假设按默认执行，设计缺口已定案） |
 | 基准数据 | **已完成**：34 个用例、74947 字节（P6/P7 新增 object/40/41），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 完成 primitive raw 数组；122 项测试全绿 |
+| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 primitive raw 数组、P8-3 嵌套 derive/serde；126 项测试全绿 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
 所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20（近期优先）与 §21（全部纯 Rust 可实现的扩展候选）：P7-1 的 30 分钟 fuzz（AC-04）、真实 100 MB 对象数组（AC-06）、嵌套 derive/serde、`Year` 等内置类、跨平台 CI 等。
@@ -154,8 +154,8 @@ jser/
 设计约束：
 
 - 核心数据模型是**句柄化动态图 + arena 句柄表**（`JValue` + `Handle(u32)` + `Graph`）：引用型值（`String`/数组/对象/enum）统一走 `Handle`，`classDesc` 也占句柄；primitive 数组按 wire 大端字节存 raw（`PrimitiveArray`），`as_array` 只返回对象数组；内部 `Handle` 单调递增，`TC_RESET` 只清 wire 映射。不要用 `Rc<RefCell<..>>` 建环（泄漏且与 serde/并发冲突）。
-- 写出走 `JavaSerializable` trait + `JavaSchema`，**不要**试图只用 serde derive 表达 `serialVersionUID` / 字段类型码 / `classDescFlags` / 集合头部。
-- serde 只做单根、无环、无回指、已知 POJO 的便利层；遇到 `TC_REFERENCE`、`Reset`、多元素流或未知类直接报错，不做半成品支持。
+- 写出走 `JavaSerializable` trait + `JavaSchema`，**不要**试图只用 serde derive 表达 `serialVersionUID` / 字段类型码 / `classDescFlags` / 集合头部。derive 支持嵌套自定义字段（`DESCRIPTOR`）与 `Option<Custom>`；`Vec<Custom>`/继承仍未支持。
+- serde 只做单根、无环、无回指、已知 POJO 的便利层；字段可经 `SchemaField::nested` 递归嵌套，但仍不支持 Map/Set 字段、`TC_REFERENCE`、`Reset`、多元素流或未知类，超范围直接报错。
 - 已知类走注册表 + 特例 codec；未知类在 allowlist 放行时降级为 `JValue::Obj` 并支持原样回写。
 - 错误用 `thiserror` 枚举，至少区分：协议错误 / 不支持（**带类名**）/ 结构不匹配。
 - 解析器用迭代式而非深递归，并显式限制最大深度、最大元素数、最大流大小。

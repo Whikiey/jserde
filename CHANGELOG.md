@@ -15,7 +15,9 @@
 - Semantic views for `Date`, `BigInteger`, `BigDecimal` and `java.time`
   (Duration, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime).
 - Strict-by-default `Allowlist` with exact/prefix/array rules.
-- Schema-driven `jser-serde` bridge (single-root flat POJO).
+- Nested `JavaSerializable` fields (`DESCRIPTOR` const) and `Option<Custom>`
+  in derive; recursive `SchemaField::nested` in the serde bridge.
+- Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
 - 34 JDK-generated fixtures, byte-exact replay, Java `Verify` interop,
@@ -27,8 +29,8 @@
 ### Known limitations
 
 - Generic `Externalizable`, dynamic proxies, `TC_CLASS`, RMI/JNDI are out of scope.
-- serde bridge: no nested POJOs, Map/Set fields, cycles/shared refs, `TC_RESET`
-  or multi-root streams.
+- serde bridge: no Map/Set fields, object arrays, cycles/shared refs,
+  `TC_RESET` or multi-root streams.
 - `Year`/`YearMonth`/`MonthDay`/`Period` semantic views are not implemented.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.

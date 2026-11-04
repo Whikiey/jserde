@@ -26,6 +26,12 @@ pub trait JavaSerializable: Sized {
     /// `serialVersionUID` written into the class descriptor.
     const SUID: i64;
 
+    /// JVM field descriptor for this class (`Lcom/example/Foo;`).
+    ///
+    /// Used when another `JavaSerializable` type has a field of this type; the
+    /// derive macro emits it from the `class` attribute.
+    const DESCRIPTOR: &'static str;
+
     /// Fields in Java wire order: primitives by name, then objects by name.
     fn schema() -> &'static [JavaField];
 

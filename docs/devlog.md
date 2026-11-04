@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-11-04 11:45 · feat: P8-3 嵌套 derive/serde（TDD）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `JavaSerializable` 新增 `DESCRIPTOR: &'static str`；derive 从 `class` 属性生成（`.`→`/`），手写实现同步补常量。
+  - `jser-derive`：未知字段类型按嵌套 `JavaSerializable` 处理（`class_name1` 引用子类 `DESCRIPTOR`），支持 `Option<Custom>`；`Vec<Custom>` 明确拒绝并指向 P9-14；`u8/u32/u64/...` 给出明确错误。
+  - `jser-serde`：`SchemaField` 新增 `nested: Option<Box<JavaSchema>>`；`to_vec`/`from_slice` 重构为递归 `encode_object`/`decode_object`，逐层校验类名与 SUID；`validate_schema` 拒绝「nested 但 typecode 非 Object」。
+  - 测试：derive 嵌套 `Outer{Inner}`、`Option<Inner>`、点号类名 DESCRIPTOR；serde 两层 `Outer{Inner}` 往返；更新既有 `SchemaField` 字面量与 derive 单测。
+- **验证**：`cargo test --workspace` **126 passed**；clippy/fmt 通过；无新增 fixture（Rust 构造用例，Java fixture 待 P9-33/P8-5）。
+- **TDD**：Red：先加嵌套测试，derive 报 `unsupported ... Inner`、serde 报 `SchemaField has no field nested`；Green：实现 `DESCRIPTOR`、宏自定义字段与递归 schema 后全绿。
+
+---
+
 ## 2026-11-04 11:30 · test: 混合嵌套（Map × 数组 × 自定义类）回归
 
 - **提交**：本次（hash 见 `git log`）

@@ -2,8 +2,9 @@
 //!
 //! serde cannot carry Java class names, type codes or `serialVersionUID`, so
 //! this crate requires an explicit [`JavaSchema`]. It supports a **single root
-//! POJO** with scalar, `String`, `Option<T>` and array fields. Cycles, shared
-//! references, `TC_RESET`, multiple roots and nested object fields are rejected.
+//! POJO** whose fields may be scalars, `String`, `Option<T>`, arrays, or nested
+//! POJOs via [`SchemaField::nested`]. Cycles, shared references, `TC_RESET`,
+//! multiple roots, Map/Set fields and arrays of objects are rejected.
 
 use jser::builtin::new_java_array;
 use jser::{
@@ -22,6 +23,8 @@ pub struct SchemaField {
     pub typecode: FieldType,
     /// JVM descriptor for object/array fields.
     pub class_name1: Option<&'static str>,
+    /// Schema of a nested POJO field; `None` for scalars, String and arrays.
+    pub nested: Option<Box<JavaSchema>>,
 }
 
 /// Explicit Java class metadata for the serde bridge.
@@ -34,20 +37,50 @@ pub struct JavaSchema {
 
 /// Serialize `value` and write one Java object stream.
 pub fn to_vec<T: Serialize>(value: &T, schema: &JavaSchema) -> Result<Vec<u8>> {
+    validate_schema(schema)?;
     let json = serde_json::to_value(value).map_err(serde_error)?;
-    let object = json.as_object().ok_or_else(|| Error::FieldMismatch {
-        message: "serde root must serialize to a struct/object".to_owned(),
-    })?;
 
     let mut graph = Graph::new();
+    let object = encode_object(&json, schema, &mut graph)?;
+    graph.add_item(object);
+    encode_stream(&graph)
+}
+
+fn validate_schema(schema: &JavaSchema) -> Result<()> {
+    for field in &schema.fields {
+        if field.nested.is_some() && field.typecode != FieldType::Object {
+            return Err(Error::InvalidSchema(format!(
+                "nested field `{}` must have typecode Object",
+                field.name
+            )));
+        }
+        if let Some(nested) = &field.nested {
+            validate_schema(nested)?;
+        }
+    }
+    Ok(())
+}
+
+fn encode_object(value: &Value, schema: &JavaSchema, graph: &mut Graph) -> Result<JValue> {
+    let object = value.as_object().ok_or_else(|| Error::FieldMismatch {
+        message: format!(
+            "serde value for `{}` must be an object/struct",
+            schema.class
+        ),
+    })?;
+
     let mut field_descs = Vec::with_capacity(schema.fields.len());
     let mut fields = Vec::with_capacity(schema.fields.len());
 
     for field in &schema.fields {
-        let value = object.get(field.name).ok_or_else(|| Error::FieldMismatch {
+        let raw = object.get(field.name).ok_or_else(|| Error::FieldMismatch {
             message: format!("serde value has no field `{}`", field.name),
         })?;
-        let value = json_to_jvalue(value, field.typecode, field.class_name1, &mut graph)?;
+        let value = match &field.nested {
+            Some(nested) if !raw.is_null() => encode_object(raw, nested, graph)?,
+            Some(_) => JValue::Null,
+            None => json_to_jvalue(raw, field.typecode, field.class_name1, graph)?,
+        };
         field_descs.push(FieldDesc {
             name: field.name.to_owned(),
             typecode: field.typecode,
@@ -70,8 +103,7 @@ pub fn to_vec<T: Serialize>(value: &T, schema: &JavaSchema) -> Result<Vec<u8>> {
         fields,
         custom: None,
     }])?;
-    graph.add_item(JValue::Obj(object));
-    encode_stream(&graph)
+    Ok(JValue::Obj(object))
 }
 
 /// Read one Java object stream and deserialize it into `T`.
@@ -80,9 +112,14 @@ pub fn from_slice<T: DeserializeOwned>(
     schema: &JavaSchema,
     allowlist: &Allowlist,
 ) -> Result<T> {
+    validate_schema(schema)?;
     let graph = decode_with_allowlist(bytes, allowlist)?;
     let value = &graph.items()[0];
+    let json = decode_object(&graph, value, schema)?;
+    serde_json::from_value(json).map_err(serde_error)
+}
 
+fn decode_object(graph: &Graph, value: &JValue, schema: &JavaSchema) -> Result<Value> {
     let class = graph.class_name(value)?;
     if class != schema.class {
         return Err(Error::FieldMismatch {
@@ -105,13 +142,17 @@ pub fn from_slice<T: DeserializeOwned>(
     let mut object = Map::with_capacity(schema.fields.len());
     for field in &schema.fields {
         let field_value = graph.require_field(value, field.name)?;
-        object.insert(
-            field.name.to_owned(),
-            jvalue_to_json(&graph, field_value, field.typecode, field.class_name1)?,
-        );
+        let json = match &field.nested {
+            Some(nested) if !matches!(field_value, JValue::Null) => {
+                decode_object(graph, field_value, nested)?
+            }
+            Some(_) => Value::Null,
+            None => jvalue_to_json(graph, field_value, field.typecode, field.class_name1)?,
+        };
+        object.insert(field.name.to_owned(), json);
     }
 
-    serde_json::from_value(Value::Object(object)).map_err(serde_error)
+    Ok(Value::Object(object))
 }
 
 fn json_to_jvalue(

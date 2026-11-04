@@ -6,7 +6,7 @@
 
 ## 当前进度
 
-- P0–P7 已实现：34 个 fixture / 74947 字节、122 项测试通过、Java/SUID 互操作 14 项。
+- P0–P7 已实现：34 个 fixture / 74947 字节、126 项测试通过、Java/SUID 互操作 14 项。
 - 已覆盖：动态编解码、集合、环/共享、typed、derive、SUID、内置类语义、allowlist、serde 桥、三层嵌套对象。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地工作集约 2.03×（AC-06）。
 - 未收口：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪、等功能完成后再执行）；嵌套 derive/serde、`Year` 等内置类、跨平台 CI。
@@ -113,8 +113,8 @@ cargo test -p jser --test fuzz_smoke
 ## 已知限制
 
 - `Externalizable` 通用语义、动态代理、`TC_CLASS` 完整语义、RMI/JNDI 不在范围。
-- 动态 `JValue` 层支持任意深度嵌套（`object/41` 验证 3 层）；serde 桥只支持单根扁平 POJO，derive 只支持扁平字段，二者都不支持嵌套自定义对象。
-- serde 桥不支持 Map/Set 字段、环/共享、`TC_RESET`、多元素流。
+- 动态 `JValue` 层支持任意深度嵌套（`object/41` 验证 3 层）；derive 支持嵌套自定义字段与 `Option<Custom>`；serde 通过递归 `SchemaField::nested` 支持多层 POJO。`Vec<Custom>`/继承仍未支持（P9-14/15）。
+- serde 桥不支持 Map/Set 字段、对象数组、环/共享、`TC_RESET`、多元素流。
 - `Year`/`YearMonth`/`MonthDay`/`Period` 暂无语义视图。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - primitive 数组已改紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集采样约 2.03× 输入，Linux 上可用 `bench -- array` 的 `VmHWM` 复核；对象数组仍按 `JValue` 展开。

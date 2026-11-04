@@ -421,17 +421,18 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P8-1 落地：新增 nightly workflow（decode 1800s + roundtrip/mutf8 300s、语料取 fixture、OOM/hang 限值、失败上传 artifacts）与 fuzz README；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | P8-2 完成（TDD）：primitive 数组改 raw bytes（`ArrayData::Primitive`/`PrimitiveArray`），`as_array` 仅对象数组，typed/derive/serde 走 raw；新增 `tests/primitive_arrays.rs`（7 项），`bench -- array` 实测 25M `int[]` 约 2.03×；全仓 120 项通过 | P8-2 |
 | 2026-11-04 | 补混合嵌套回归（Map × 数组 × 自定义类，含共享引用）与 typed `HashMap<String, Vec<Point>>` 往返；§21 登记 P9-33 混合嵌套 fixture 矩阵 | P9-33 |
+| 2026-11-04 | P8-3 完成（TDD）：`JavaSerializable::DESCRIPTOR`；derive 支持嵌套自定义字段与 `Option<Custom>`；serde `SchemaField::nested` 递归编解码；新增 derive/serde 嵌套测试；全仓 126 项通过 | P8-3 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **122 passed**；Java/SUID 互操作 14 项；P8-2 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **126 passed**；Java/SUID 互操作 14 项；P8-2/P8-3 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
 | P7-1 30 分钟 fuzz 未跑满 | ⏸ 暂缓（2026-11-04 决定：等全部功能完成后再执行）；workflow 已就绪但 `schedule` 已停用，可从 Actions 手动触发 | P8-1 | AC-04 |
 | 真实 100 MB primitive 数组内存超 3× | ✅ 已实现：`ArrayData::Primitive` raw bytes + `PrimitiveArray` 视图；`as_array` 仅对象数组，typed/derive/serde 走 raw；25M `int[]` 本地工作集采样 **2.03×**（Windows，Linux `bench -- array` 可复核） | P8-2（高） | AC-06 |
-| 嵌套 derive/serde | derive 增加字段级 class 描述符；serde 扩展递归 `JavaSchema` | P8-3 | FR-14/15 |
+| 嵌套 derive/serde | ✅ 已实现：derive 支持嵌套自定义字段与 `Option<Custom>`（`DESCRIPTOR` 常量）；serde 支持递归 `SchemaField::nested`；`Vec<Custom>`/继承仍待 P9-14/15 | P8-3 | FR-14/15 |
 | OUT 负例（TC_EXCEPTION/TC_CLASS/proxy/Externalizable no-block） | 只补错误断言与文档，不实现语义 | P8-4 | — |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | 新增 fixture + `BuiltinValue` 语义 | P8-5 | FR-13 |
 | 跨平台/并发/深链 | CI matrix、深度测试、并发文档 | P8-6 | NFR-05 |
@@ -459,7 +460,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 ### 21.2 serde 桥（改变 D3 边界，需先改 design §5.4）
 
-嵌套自定义对象由 P8-3 覆盖，不在本节重复；本节其余项都是 P8-3 递归 `JavaSchema` 的自然延伸。
+嵌套自定义对象已由 P8-3 完成；本节其余项都是递归 `JavaSchema` 的自然延伸。
 
 | ID | 目标 | 说明 | 优先级/复杂度 |
 |---|---|---|---|

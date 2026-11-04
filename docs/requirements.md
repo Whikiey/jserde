@@ -173,3 +173,4 @@
 | 2026-11-04 | P8-1：新增 nightly fuzz workflow（decode 1800s、roundtrip/mutf8 300s、corpus 取 fixture、失败上传 artifacts）；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | 暂缓 30 分钟 fuzz：nightly `schedule` 停用、保留手动触发；等功能完成后恢复 | 用户决定 |
 | 2026-11-04 | P8-2：primitive 数组改紧凑 raw bytes 存储（`PrimitiveArray` 视图），`as_array` 仅对象数组；typed/derive/serde 走 raw；25M `int[]` 本地工作集采样约 2.03× | P8-2 |
+| 2026-11-04 | P8-3：`JavaSerializable::DESCRIPTOR`；derive 支持嵌套自定义字段与 `Option<Custom>`；serde 递归 `SchemaField::nested`；`Vec<Custom>`/继承留待 P9-14/15 | P8-3 |

@@ -133,17 +133,18 @@ pub struct JavaField {
 pub trait JavaSerializable: Sized {
     const CLASS: &'static str;                     // "com.example.Foo"
     const SUID: i64;                               // 显式给出，或编解码期用工具计算
+    const DESCRIPTOR: &'static str;                // "Lcom/example/Foo;"，嵌套字段用
     fn schema() -> &'static [JavaField];           // 名、类型码、顺序
     fn to_jvalue(&self, g: &mut Graph) -> Result<JValue>;
     fn from_jvalue(v: &JValue, g: &Graph) -> Result<Self>;
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`Vec<T>`（数组）、`HashMap`/`HashSet`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
+`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（仅 primitive/String 数组），以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`（`Lcom/example/Foo;`），父类字段引用它。`Vec<Custom>` 与继承仍待 P9-14/P9-15。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求 struct 实现 `Clone`。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。**仅**支持单根扁平 POJO、标量/String/Option/数组；遇到多元素流、`TC_RESET`、回指/环、未知类、嵌套对象或 Map/Set 字段直接报错。
+`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：`to_vec(&T)` 先生成 JSON 中间值再按 schema 构造 `Graph`，`from_slice::<T>()` 先解码再按 schema 转回 JSON。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组，或通过 `SchemaField::nested` 指向子 `JavaSchema`（可多层）。仍拒绝多元素流、`TC_RESET`、回指/环、未知类、Map/Set 字段与对象数组。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
@@ -348,9 +349,9 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ❌ 未实现（fixture 未覆盖） | — |
 | `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
 
-serde 桥额外限制：只支持单根扁平 POJO；字段限标量/String/`Option`/数组；不支持嵌套对象、Map/Set 字段、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、`TC_RESET`、共享/环、直接 serde 实现）已登记在 `implementation-plan.md` §21.2；在这些项落地前，D3 的边界不变。
+serde 桥额外限制：单根 POJO；字段限标量/String/`Option`/数组/递归嵌套 POJO（`SchemaField::nested`）；不支持 Map/Set 字段、对象数组、环/共享、`TC_RESET`、多元素流；`from_slice` 必须传入 allowlist。扩展候选（Map/Set、枚举、多根、直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
 
-嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现，derive 只支持扁平字段，serde 明确拒绝嵌套对象字段。
+嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段与 `Option<Custom>`；serde 通过递归 `SchemaField::nested` 支持多层 POJO。`Vec<Custom>`/继承仍未支持（P9-14/P9-15）。
 
 ## 6. 里程碑与出口条件
 

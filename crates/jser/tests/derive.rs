@@ -5,7 +5,10 @@ mod common;
 use std::collections::HashMap;
 
 use common::{fixture_allowlist, read_fixture};
-use jser::{decode_typed_with_allowlist, encode_typed, Allowlist, JavaSerializable};
+use jser::{
+    decode_stream_with_allowlist, decode_typed_with_allowlist, encode_typed, Allowlist,
+    JavaSerializable,
+};
 use jser_derive::JavaSerializable;
 
 #[derive(JavaSerializable, Debug, Clone, PartialEq)]
@@ -158,4 +161,87 @@ fn derive_supports_map_fields() {
     let bytes = encode_typed(value.clone()).unwrap();
     let decoded: WithMap = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
     assert_eq!(decoded, value);
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Inner", suid = 1)]
+struct Inner {
+    label: String,
+    value: i32,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Outer", suid = 1)]
+struct Outer {
+    inner: Inner,
+    note: String,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Maybe", suid = 1)]
+struct Maybe {
+    inner: Option<Inner>,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "com.example.Deep", suid = 1)]
+struct Deep {
+    id: i32,
+}
+
+#[test]
+fn derive_nests_custom_objects() {
+    assert_eq!(<Inner as JavaSerializable>::DESCRIPTOR, "LFixtures$Inner;");
+    assert_eq!(
+        <Deep as JavaSerializable>::DESCRIPTOR,
+        "Lcom/example/Deep;",
+        "dots become slashes in the JVM descriptor"
+    );
+
+    let value = Outer {
+        inner: Inner {
+            label: "in".to_owned(),
+            value: 7,
+        },
+        note: "out".to_owned(),
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: Outer = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = decode_stream_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    let outer = &graph.items()[0];
+    assert_eq!(graph.class_name(outer).unwrap(), "Fixtures$Outer");
+    let inner = graph.require_field(outer, "inner").unwrap();
+    assert_eq!(graph.class_name(inner).unwrap(), "Fixtures$Inner");
+    assert_eq!(
+        graph
+            .as_i32(graph.require_field(inner, "value").unwrap())
+            .unwrap(),
+        7
+    );
+    assert_eq!(
+        graph
+            .as_str(graph.require_field(inner, "label").unwrap())
+            .unwrap(),
+        "in"
+    );
+}
+
+#[test]
+fn derive_nests_optional_custom_objects() {
+    let some = Maybe {
+        inner: Some(Inner {
+            label: "x".to_owned(),
+            value: 1,
+        }),
+    };
+    let bytes = encode_typed(some.clone()).unwrap();
+    let decoded: Maybe = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, some);
+
+    let none = Maybe { inner: None };
+    let bytes = encode_typed(none.clone()).unwrap();
+    let decoded: Maybe = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, none);
 }
