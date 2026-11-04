@@ -4,3 +4,6 @@
 
 # JVM 构建产物（testdata 的临时目录另见 docs/testdata/.gitignore）
 *.class
+
+# IDE（Visual Studio）
+.vs/

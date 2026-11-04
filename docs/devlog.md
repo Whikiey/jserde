@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 10:45 · chore: 忽略 Visual Studio 的 .vs 目录
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`.gitignore` 增加 `.vs/`，避免 Visual Studio 的本地元数据出现在 `git status`。
+- **验证**：`git check-ignore -v .vs` 命中；`git status --short` 不再显示 `?? .vs/`。
+- **TDD**：不适用（仓库配置）。
+
+---
+
 ## 2026-11-04 10:40 · docs: 登记全部纯 Rust 可实现的扩展 backlog
 
 - **提交**：本次（hash 见 `git log`）
