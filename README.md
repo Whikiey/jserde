@@ -6,7 +6,7 @@
 
 ## 当前进度
 
-- P0–P7 已实现：34 个 fixture / 74947 字节、120 项测试通过、Java/SUID 互操作 14 项。
+- P0–P7 已实现：34 个 fixture / 74947 字节、122 项测试通过、Java/SUID 互操作 14 项。
 - 已覆盖：动态编解码、集合、环/共享、typed、derive、SUID、内置类语义、allowlist、serde 桥、三层嵌套对象。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地工作集约 2.03×（AC-06）。
 - 未收口：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪、等功能完成后再执行）；嵌套 derive/serde、`Year` 等内置类、跨平台 CI。

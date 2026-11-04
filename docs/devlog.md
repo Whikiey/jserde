@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-04 11:30 · test: 混合嵌套（Map × 数组 × 自定义类）回归
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `crates/jser/tests/nesting.rs`（2 项）：Rust 构造 `HashMap<String, Object[]>`，数组内含自定义 `Widget`（字段为 `int[]` 与 `HashMap`），并让同一 `HashMap` 在数组中出现两次以验证 `TC_REFERENCE`；断言解码结构、共享句柄与构造流的逐字节回放。
+  - 另加 typed `HashMap<String, Vec<Point>>` 往返用例。
+  - `implementation-plan.md` §21 新增 P9-33（混合嵌套 fixture 矩阵），§19/§20 计数同步。
+- **验证**：`cargo test --workspace` **122 passed**；clippy/fmt 通过。
+- **TDD**：动态层已支持该嵌套，本用例先写断言再构造图；同时记录了 `new_java_array` 目前只支持固定数组类（自定义对象数组的 SUID 待 P9-14/P8-3 扩展）。
+
+---
+
 ## 2026-11-04 11:15 · feat: P8-2 primitive 数组 raw 存储（TDD）
 
 - **提交**：本次（hash 见 `git log`）

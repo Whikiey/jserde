@@ -417,14 +417,15 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |
 | 2026-11-04 | P6 完成（TDD）：内置类语义（Date/BigInteger/BigDecimal/java.time）、Registry、`object/40` fixture、schema 驱动 serde 桥；全仓 110 项通过，Java interop 14 项 + SUID | P6 |
 | 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.8GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 113 项通过 | P7 |
-| 2026-11-04 | 新增 §21 扩展 backlog：登记全部纯 Rust 可实现的缺口（32 项，P9-1～P9-32）并单列不可实现项与理由；§20 加近期/全量指引 | 用户要求 |
+| 2026-11-04 | 新增 §21 扩展 backlog：登记全部纯 Rust 可实现的缺口（33 项，P9-1～P9-33）并单列不可实现项与理由；§20 加近期/全量指引 | 用户要求 |
 | 2026-11-04 | P8-1 落地：新增 nightly workflow（decode 1800s + roundtrip/mutf8 300s、语料取 fixture、OOM/hang 限值、失败上传 artifacts）与 fuzz README；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | P8-2 完成（TDD）：primitive 数组改 raw bytes（`ArrayData::Primitive`/`PrimitiveArray`），`as_array` 仅对象数组，typed/derive/serde 走 raw；新增 `tests/primitive_arrays.rs`（7 项），`bench -- array` 实测 25M `int[]` 约 2.03×；全仓 120 项通过 | P8-2 |
+| 2026-11-04 | 补混合嵌套回归（Map × 数组 × 自定义类，含共享引用）与 typed `HashMap<String, Vec<Point>>` 往返；§21 登记 P9-33 混合嵌套 fixture 矩阵 | P9-33 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-04）
 
-**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **120 passed**；Java/SUID 互操作 14 项；P8-2 已完成。
+**当前**：P0–P7 完成（P7-1 的 30 分钟 fuzz 未跑满，暂缓）；34 个 fixture / 74947 字节；全仓 **122 passed**；Java/SUID 互操作 14 项；P8-2 已完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -437,7 +438,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
 >
-> §21 登记了全部纯 Rust 可实现的扩展候选（32 项）；本节只保留近期优先项。
+> §21 登记了全部纯 Rust 可实现的扩展候选（33 项）；本节只保留近期优先项。
 
 ## 21. 扩展 backlog（可行性登记）
 
@@ -503,6 +504,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable（MSRV job 可选）。缓存 `
 | P9-30 | bench 回归门禁：nightly 对比 `docs/bench.md` 基线并阈值化（含真实大数组） | 低 / S |
 | P9-31 | mutation 测试扩展：更多字段类型、嵌套与集合 | 中 / M |
 | P9-32 | 文档收口：`cargo doc` 全量示例、`design.md` §8 未决问题（目标 Java 版本/发布/性能数值） | 低 / S |
+| P9-33 | 混合嵌套矩阵：Map × 数组 × 自定义类（含共享引用/环）的 fixture 与回归；先补 Rust 构造用例（`tests/nesting.rs`），JDK fixture 随 P8-3 生成 | 中 / S |
 
 ### 21.6 不可实现 / 明确不做（与 §5 OUT 一致）
 
