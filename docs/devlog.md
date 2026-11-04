@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-11-04 12:45 · test: interop 临时目录改用 CARGO_TARGET_TMPDIR
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：`tests/interop.rs` 的编译/校验目录从系统 `temp_dir()/jser-interop-<pid>` 改为 `env!("CARGO_TARGET_TMPDIR")/jser-interop`。本机系统临时目录出现异常 ACL，`create_dir_all` 返回 `PermissionDenied`（os error 5）；Cargo 的 target 临时目录随构建产物管理，始终可写。
+- **验证**：`cargo test -p jser --test interop` 通过；Java 读回 14 项断言不变。
+- **TDD**：不适用（测试环境修复）。
+
+---
+
 ## 2026-11-04 12:35 · chore: 重命名 jser-serde emit 示例
 
 - **提交**：本次（hash 见 `git log`）
