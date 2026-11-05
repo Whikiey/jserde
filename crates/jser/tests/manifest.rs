@@ -9,11 +9,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[test]
-fn manifest_declares_42_fixture_cases() {
+fn manifest_declares_43_fixture_cases() {
     let manifest = load_manifest();
 
     assert_eq!(manifest.schema, "jser-fixtures/1");
-    assert_eq!(manifest.case_count, 42);
+    assert_eq!(manifest.case_count, 43);
     assert_eq!(manifest.cases.len(), manifest.case_count);
     assert!(!manifest.jdk.is_empty());
     assert!(!manifest.generator.is_empty());
@@ -138,6 +138,7 @@ fn expectations_use_known_kinds() {
         "blockdata",
         "cycle",
         "enum",
+        "exception",
         "list",
         "map",
         "null",

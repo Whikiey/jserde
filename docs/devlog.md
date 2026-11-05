@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-05 23:40 · feat: TC_EXCEPTION 结构化错误（P9-3）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `Error::JavaException(JavaException)` 与 `JavaExceptionField`：包含异常类名、`Throwable.detailMessage`、class 链字段的可读摘要。
+  - Reader 的 `read_exception` 用临时 `Allowlist::all()` 解析异常对象（真实 `IOException` 不在 strict 默认内），解析后恢复 allowlist；所有 limits 仍生效。
+  - 新增合成 `object/50-tc-exception.ser`（header + TC_EXCEPTION + 序列化的 `java.io.IOException`，空 stack trace）与 `tests/exception.rs`；`emit`/Java 读回/逐字节回放跳过该 fatal 流，`decode_all` 断言结构化错误。
+  - manifest 43 例 / 79031 字节；相关门禁和计数同步。
+- **TDD**：
+  - Red：先加 `object/50` 与 `tests/exception.rs`，因缺少 `Error::JavaException` 编译失败。
+  - Green：实现 error/reader 后通过；再处理 `emit` 跳过、manifest 43 例、all-fixture 门禁。
+- **验证**：`cargo test --workspace` **168 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`（43 例/79031 字节）、`interop.sh`（42 个常规 fixture）通过。
+
+---
+
 ## 2026-11-05 23:05 · feat: derive 解码校验类名/SUID（P9-19）
 
 - **提交**：本次（hash 见 `git log`）

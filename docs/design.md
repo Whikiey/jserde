@@ -206,7 +206,7 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
 8. **数组类名与 SUID**：类名是 `[I`、`[Ljava.lang.String;`（数组用点号，与第 7 条的字段描述符不同）；**数组类的 SUID 不为 0**，是算出来的（`[I` = `0x4DBA602676EAB2A5`），不能假设为 0。自定义元素数组（`[Lcom.example.Foo;`）同样用默认算法按数组类名计算（`PUBLIC|FINAL|ABSTRACT`、无接口/成员，P9-14）。基本类型数组按元素宽度连续写裸字节：`B=1, C=2, D=8, F=4, I=4, J=8, S=2, Z=1`。
 9. **`SC_WRITE_METHOD` 的类**：先按 schema 写字段，再写自定义数据，最后 `TC_ENDBLOCKDATA`。
 10. **`TC_RESET`**：重置 wire 句柄表（对应 Java 的 `ObjectOutputStream.reset()`），reader 必须支持；reset 后类描述符与对象句柄都从 `0x7E0000` 重新分配。内部 arena 不回收（D1），重放时按原顺序重新分配即可保持字节一致。
-11. **`TC_EXCEPTION`**：写出侧异常时产生的元素，MVP 读到即报 `Unsupported`，但要在错误里保留原始类名。
+11. **`TC_EXCEPTION`**：写出侧异常时产生的元素；P9-3 起解析异常对象并返回 `JavaException`（class/message/字段摘要），异常类解析使用临时宽松 allowlist，不进入 `Graph` 回放。
 12. **`HashMap` 的 wire 形态（已核实，JDK 17）**：classdata 是 `loadFactor`(float) + `threshold`(int) 两个基本类型字段（裸字节 8 字节，按名字升序即 loadFactor 在前），随后自定义部分是 `TC_BLOCKDATA 08` + `capacity`(int) + `size`(int) + 逐条 `key,value`，最后 `TC_ENDBLOCKDATA`。`readObject` 读但**忽略** capacity，`putMapEntries` 会重算 threshold，所以从 Rust 写出时这两个值按 `size` 反推合理值即可（Java 自己写的是 `table.length` 与 `capacity*loadFactor`）。依据：`fixtures/object/29-collection-hashmap.ser`。
 13. **深度与长度上限**：解析必须设最大嵌套深度与最大元素数，否则恶意流可导致栈溢出/OOM。
 14. **集合与内置类的已知布局（已核实，JDK 17）**：classdata 与自定义块不同，不能统一按"字段直读"处理。
@@ -311,11 +311,12 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 "逐字节回放"只用于**未修改的 fixture 流**，是 P3 的回归门禁，不是验收标准（验收仍是 `AC-02` 的 Java 读回）。
 
 - **定义**：`encode_stream(decode_stream(x)) == x`。
-- **适用**：`testdata/fixtures/**` 的 42 个已提交用例；decode 后不改动 `Graph`。
+- **适用**：`testdata/fixtures/**` 的 43 个已提交用例；decode 后不改动 `Graph`。
 - **不适用**：新建的图、修改过字段/集合/引用的图；这些只要求"Java 读回语义相等"。
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
+- **当前例外**：`object/50`（`TC_EXCEPTION`）按设计没有可重放的 `Graph`，由 `tests/exception.rs` 断言结构化错误；原因：fatal 流。
 - **防作弊**：mutation test（解码 → 改字段/Map 条目/数组元素 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO/数组 → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
-- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部 fixture 回放 + Java 读回（P9-23 后为 42 例）。
+- **分级**：P1 只要求 12 个 codec 用例语义正确；P3 起要求全部常规 fixture 回放 + Java 读回（当前 42 个常规用例；`object/50` 为错误路径例外）。
 
 ### 5.2 Allowlist（2026-11-04 定案）
 
@@ -360,13 +361,22 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 
 嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承（`#[java(flatten)]`）与 unit-only enum；serde 通过递归 `SchemaField::nested` 支持多层 POJO。
 
+### 5.5 `TC_EXCEPTION`（P9-3）
+
+- **触发**：`ObjectOutputStream.writeObject` 在顶层写入过程中遇到 `IOException` 时，调用 `writeFatalException` 写入 `TC_EXCEPTION` + 异常对象；流中的对象数据可能已部分写出。
+- **解码**：`read_exception` 用临时 `Allowlist::all()` 解析异常对象，仅用于构建错误；随后恢复原 allowlist。这样 `java.io.IOException`（严格默认不放开 `java.io.*`）也能报告类名/消息，且仍受深度/元素/大小限制。
+- **错误**：返回 `Error::JavaException(JavaException { class, message, fields })`；`message` 取 `Throwable.detailMessage`，`fields` 是 class 链字段的受限字符串摘要（标量/字符串/对象类名/数组长度等）。
+- **不回放**：异常流没有可重建的 `Graph`，`object/50` 只验证错误结构与 `tests/exception.rs`，不进入逐字节回放门禁；`emit`/Java 读回跳过该 fixture。
+
+---
+
 ## 6. 里程碑与出口条件
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 42 例/78640 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 43 例/79031 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部常规用例；`object/50` 验证异常错误路径 |
 | M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
-| M2 ✅ | **写** + 回放门禁 + 双向对拍 | 42 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
+| M2 ✅ | **写** + 回放门禁 + 双向对拍 | 42 个常规 fixture 全部逐字节回放；`object/50` 为 fatal 错误路径，不重放；构造/修改流由 Java 读回 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
 | M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 余项与常见值类/扩展容器已补；serde 支持递归嵌套/Map/Set/枚举/多根，树模型限制已文档化 |
@@ -379,7 +389,7 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 | 协议细节靠文档记忆写错（字段顺序、块缓冲时机） | Java 端直接拒绝流 | golden fixture 驱动开发；每个细节一条对拍用例 |
 | `serialVersionUID` 计算（`computeDefaultSUID`：SHA-1 over 类签名）移植不精确 | Java 端 `InvalidClassException` | 优先要求显式声明 SUID；提供计算工具并与 JDK `serialver` 对拍；文档说明"计算值仅供参考" |
 | serde 数据模型无法表达环/共享 | 半成品体验 | D3 已隔离：serde 桥只做无环 POJO，超范围明确报错 |
-| 未知类的 `TC_EXCEPTION` / 自定义 `writeObject` 语义 | 读到一半失败 | 未知类降级为 `JValue::Obj`；无法降级的给出带类名的精确错误 |
+| `TC_EXCEPTION` / 自定义 `writeObject` 语义 | 读到一半失败 | 已知异常解析为 `JavaException`；未知类降级为 `JValue::Obj`，无法降级时给出带类名的精确错误 |
 | 大对象/深递归导致栈溢出 | 崩溃 | 迭代式解析器 + 显式深度/数量上限 |
 | 内部句柄与 wire 句柄混淆 | reset 后引用错位、重放字节不一致 | D1 已分离：arena 单调、wire 映射随 reset 清空；`35` 专项用例 |
 | 顶层多元素流被当成单根 | 只读到第一个元素/丢失 reset | `decode_stream` + `JValue::Reset`；`08`/`09`/`11`/`33`/`35` 专项用例 |

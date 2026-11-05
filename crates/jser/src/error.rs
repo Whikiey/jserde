@@ -39,6 +39,10 @@ pub enum Error {
     #[error("field mismatch: {message}")]
     FieldMismatch { message: String },
 
+    /// A `TC_EXCEPTION` item carried a Java exception object.
+    #[error("java exception {0}")]
+    JavaException(JavaException),
+
     /// A configured depth, element count or size limit was exceeded.
     #[error("limit exceeded: {kind} = {actual} (limit {limit})")]
     LimitExceeded {
@@ -50,6 +54,35 @@ pub enum Error {
     /// A `JavaSerializable` schema is internally inconsistent.
     #[error("invalid Java schema: {0}")]
     InvalidSchema(String),
+}
+
+/// One field of a Java exception object, with a readable summary value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JavaExceptionField {
+    /// Java field name.
+    pub name: String,
+    /// A bounded, readable rendering of the field value.
+    pub value: String,
+}
+
+/// Structured information parsed from a `TC_EXCEPTION` object.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JavaException {
+    /// Most-derived Java exception class.
+    pub class: String,
+    /// `Throwable.detailMessage`, when present.
+    pub message: Option<String>,
+    /// Fields from the exception's class chain, parent to child.
+    pub fields: Vec<JavaExceptionField>,
+}
+
+impl std::fmt::Display for JavaException {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.message {
+            Some(message) => write!(f, "{}: {message}", self.class),
+            None => write!(f, "{}", self.class),
+        }
+    }
 }
 
 /// Convenient result alias used throughout the crate.

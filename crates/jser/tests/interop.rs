@@ -373,7 +373,7 @@ fn java_can_read_rust_written_streams() {
             .get("kind")
             .and_then(serde_json::Value::as_str)
             .unwrap_or("");
-        if matches!(kind, "primitive_stream" | "blockdata") {
+        if matches!(kind, "primitive_stream" | "blockdata" | "exception") {
             continue;
         }
         let bytes = read_fixture(&case.id);

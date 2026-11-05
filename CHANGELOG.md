@@ -38,6 +38,8 @@
 - Derived `from_jvalue` validates Java class name and SUID before reading
   fields (P9-19); class/serialVersionUID mismatches return `FieldMismatch`
   with both SUIDs.
+- `TC_EXCEPTION` parsing (P9-3): `Error::JavaException` carries the exception
+  class, `Throwable.detailMessage` and summarized fields; `object/50` fixture.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
@@ -66,7 +68,7 @@
   strings, vectors, maps, re-encode stability, random/truncated bytes, mutation.
 - Hybrid nested fixture `object/44`: Map × array × custom class with shared
   references and a self-cycle; Rust build + decode/replay regressions.
-- 42 JDK-generated fixtures / 78640 bytes, byte-exact replay, Java `Verify`
+- 43 JDK-generated fixtures / 79031 bytes, byte-exact replay, Java `Verify`
   interop (every fixture re-encoded by Rust and read back), SUID comparison,
   deterministic fuzz smoke and a benchmark example.
 - P8/P9: compact primitive arrays, nested derive/serde, Map/Set/enum serde,

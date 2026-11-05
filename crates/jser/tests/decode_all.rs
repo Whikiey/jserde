@@ -10,6 +10,14 @@ fn every_fixture_decodes() {
 
     for case in &manifest.cases {
         let bytes = read_fixture(&case.id);
+        if case.expect.get("kind").and_then(serde_json::Value::as_str) == Some("exception") {
+            assert!(
+                matches!(decode_fixture(&bytes), Err(jser::Error::JavaException(_))),
+                "{} must report JavaException",
+                case.id
+            );
+            continue;
+        }
         decode_fixture(&bytes).unwrap_or_else(|err| {
             panic!(
                 "{} ({} bytes, {}) failed to decode: {err}",

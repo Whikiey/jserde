@@ -123,6 +123,10 @@ fn main() -> Result<(), BoxError> {
         }
         files.sort();
         for file in files {
+            if file.file_name().and_then(|name| name.to_str()) == Some("50-tc-exception.ser") {
+                // TC_EXCEPTION aborts decoding by design; it has no Graph to re-encode.
+                continue;
+            }
             let bytes = fs::read(&file)?;
             let graph = decode(&bytes)?;
             let name = file.file_name().ok_or("fixture without a file name")?;

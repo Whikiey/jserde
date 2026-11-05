@@ -1,4 +1,6 @@
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
@@ -212,6 +214,32 @@ public class Fixtures {
         Path target = dir.resolve(file);
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(target.toFile()))) {
             body.write(out);
+        }
+        count++;
+        System.err.printf("  %-40s %8d bytes%n", file, Files.size(target));
+    }
+
+    /**
+     * Write a synthetic fatal-exception stream: header + TC_EXCEPTION + the
+     * JDK-serialized exception object. The object is first serialized normally,
+     * then the TC_OBJECT byte after the header is replaced by TC_EXCEPTION.
+     * This keeps the fixture independent of the IOException stack trace that a
+     * real writeObject failure would embed.
+     */
+    static void genException(Path dir, String file, Exception exception) throws Exception {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (ObjectOutputStream out = new ObjectOutputStream(buffer)) {
+            out.writeObject(exception);
+        }
+        byte[] serialized = buffer.toByteArray();
+        if (serialized.length < 5 || serialized[4] != 0x73) {
+            throw new IllegalStateException("expected a TC_OBJECT stream");
+        }
+        Path target = dir.resolve(file);
+        try (FileOutputStream out = new FileOutputStream(target.toFile())) {
+            out.write(serialized, 0, 4);
+            out.write(0x7B);
+            out.write(serialized, 4, serialized.length - 4);
         }
         count++;
         System.err.printf("  %-40s %8d bytes%n", file, Files.size(target));
@@ -445,6 +473,10 @@ public class Fixtures {
             map.put(Color.RED, "red");
             out.writeObject(new Object[] {set, map});
         });
+
+        IOException fatal = new IOException("exception-message");
+        fatal.setStackTrace(new StackTraceElement[0]);
+        genException(dir, "50-tc-exception.ser", fatal);
     }
 
     static void printSuids() {

@@ -95,7 +95,7 @@ pub mod wire;
 pub mod writer;
 
 pub use allowlist::Allowlist;
-pub use error::{Error, Result};
+pub use error::{Error, JavaException, JavaExceptionField, Result};
 pub use java::{JavaField, JavaSerializable};
 pub use reader::{
     decode, decode_stream, decode_stream_with_allowlist, decode_stream_with_limits,

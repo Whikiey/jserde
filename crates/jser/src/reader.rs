@@ -5,7 +5,7 @@
 //! enums, shared references, cycles and `TC_RESET`, with configurable limits.
 
 use crate::allowlist::Allowlist;
-use crate::error::{Error, Result};
+use crate::error::{Error, JavaException, JavaExceptionField, Result};
 use crate::value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue,
 };
@@ -191,12 +191,82 @@ impl<'a> Reader<'a> {
 
     fn read_exception(&mut self, depth: usize) -> Result<Error> {
         let tag = self.input.read_u8()?;
-        let value = self.read_content(tag, depth + 1)?;
-        let class_name = self
+        // Exception classes commonly live in `java.io.*` (IOException is what
+        // writeFatalException receives), which the strict default allowlist
+        // intentionally does not grant. A TC_EXCEPTION is parsed only to build
+        // an error, never to execute Java code; parse it permissively while
+        // keeping all depth/element/size limits in force.
+        let allowlist = std::mem::replace(&mut self.allowlist, Allowlist::all());
+        let parsed = self.read_content(tag, depth + 1);
+        self.allowlist = allowlist;
+        let value = parsed?;
+
+        let class = self
             .graph
             .class_name(&value)
-            .unwrap_or("unknown exception class");
-        Ok(Error::UnsupportedClass(class_name.to_owned()))
+            .unwrap_or("unknown")
+            .to_owned();
+        let message = self
+            .graph
+            .field(&value, "detailMessage")
+            .ok()
+            .flatten()
+            .and_then(|value| self.graph.as_str(value).ok())
+            .map(str::to_owned);
+        let fields = self
+            .graph
+            .fields(&value)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(name, value)| JavaExceptionField {
+                name: name.to_owned(),
+                value: self.exception_value(value),
+            })
+            .collect();
+
+        Ok(Error::JavaException(JavaException {
+            class,
+            message,
+            fields,
+        }))
+    }
+
+    fn exception_value(&self, value: &JValue) -> String {
+        match value {
+            JValue::Null => "null".to_owned(),
+            JValue::Bool(value) => value.to_string(),
+            JValue::Byte(value) => value.to_string(),
+            JValue::Char(value) => format!("0x{value:04X}"),
+            JValue::Short(value) => value.to_string(),
+            JValue::Int(value) => value.to_string(),
+            JValue::Long(value) => value.to_string(),
+            JValue::Float(value) => value.to_string(),
+            JValue::Double(value) => value.to_string(),
+            JValue::Str(_) => self
+                .graph
+                .as_str(value)
+                .map(str::to_owned)
+                .unwrap_or_else(|_| "<invalid string>".to_owned()),
+            JValue::Arr(_) => match self.graph.as_array(value) {
+                Ok(Some(elements)) => format!("<array len {}>", elements.len()),
+                _ => "<primitive array>".to_owned(),
+            },
+            JValue::Obj(_) => self
+                .graph
+                .class_name(value)
+                .map(|class| format!("<{class}>"))
+                .unwrap_or_else(|_| "<object>".to_owned()),
+            JValue::Enum(_) => self
+                .graph
+                .as_enum_constant(value)
+                .ok()
+                .flatten()
+                .unwrap_or("<enum>")
+                .to_owned(),
+            JValue::Class(_) => "<class>".to_owned(),
+            JValue::Block(block) => format!("<block {} bytes>", block.bytes.len()),
+            JValue::Reset => "<reset>".to_owned(),
+        }
     }
 
     fn read_string(&mut self, long: bool) -> Result<JValue> {

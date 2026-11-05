@@ -3,8 +3,8 @@
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
-  "case_count": 42,
-  "total_bytes": 78640,
+  "case_count": 43,
+  "total_bytes": 79031,
   "cases": [
     {
       "id": "codec/01",
@@ -1091,6 +1091,24 @@
       },
       "size": 344,
       "sha256": "3b8d183739b647c3c48833767896e5e435f16865e1d930bdaee5605cc1132a86"
+    },
+    {
+      "id": "object/50",
+      "file": "fixtures/object/50-tc-exception.ser",
+      "case": "TC_EXCEPTION -> java.io.IOException(\"exception-message\")",
+      "features": [
+        "TC_EXCEPTION",
+        "fatal exception object",
+        "java.io.IOException + Throwable fields",
+        "empty stack trace（合成 fatal 流）"
+      ],
+      "expect": {
+        "kind": "exception",
+        "class": "java.io.IOException",
+        "message": "exception-message"
+      },
+      "size": 391,
+      "sha256": "6fb743fb8d723d3b10e75b2399d64764e684033f3a7cbc6d80918fc593b5ed6e"
     }
   ]
 }

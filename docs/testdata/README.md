@@ -1,6 +1,6 @@
 # testdata/ — 基准数据与生成器
 
-**当前状态**：已产出。42 个用例、78640 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
+**当前状态**：已产出。43 个用例、79031 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
 
 这批数据是协议层的唯一事实来源：`requirements.md` 的 **AC-01** 就是"全部用例的解码结果与 `manifest.json` 的期望值一致"，AC-02 反向要求 Rust 写出的字节能被 Java 读回。
 
@@ -10,7 +10,7 @@
 
 | 路径 | 说明 | 入库 |
 |---|---|---|
-| `manifest.json` | **机读契约**：42 个用例的编号、文件、覆盖特性、期望语义值、size、sha256 | 是 |
+| `manifest.json` | **机读契约**：43 个用例的编号、文件、覆盖特性、期望语义值、size、sha256 | 是 |
 | `fixtures/codec/` | codec 层：无类描述符的流原语（字符串/空/块数据/句柄回指/reset） | 是 |
 | `fixtures/object/` | object 层：类描述符、SUID、继承、自定义 `writeObject`、enum、数组、集合、循环引用、三层对象嵌套 | 是 |
 | `gen/Fixtures.java` | **权威生成器**（JDK 17+），同时把各类的 `serialVersionUID` 打到 stdout | 是 |
@@ -61,6 +61,7 @@ cd testdata
 | object | 47 | `String.class`/`Color.class`/`Mixed.class`（`TC_CLASS`，含共享类对象） |
 | object | 48 | 动态代理（`Greeter` 接口 + `GreeterHandler`，`TC_PROXYCLASSDESC`） |
 | object | 49 | `EnumSet`/`EnumMap`（SerializationProxy / keyType + custom entries） |
+| object | 50 | `TC_EXCEPTION` → `java.io.IOException`（合成 fatal 流，空 stack trace；不参与回放） |
 
 ## SUID 表
 

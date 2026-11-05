@@ -12,6 +12,9 @@ fn every_fixture_replays_byte_exactly() {
     let manifest = load_manifest();
 
     for case in &manifest.cases {
+        if case.expect.get("kind").and_then(serde_json::Value::as_str) == Some("exception") {
+            continue;
+        }
         let bytes = read_fixture(&case.id);
         let graph = decode_fixture(&bytes).unwrap_or_else(|err| panic!("{}: {err}", case.id));
         let encoded = encode_stream(&graph).unwrap_or_else(|err| panic!("{}: {err}", case.id));

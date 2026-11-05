@@ -377,6 +377,13 @@ CASES = [
             {"type": "java.util.EnumSet", "values": ["RED"]},
             {"type": "java.util.EnumMap", "entries": {"RED": "red"}},
         ]},
+    ),    dict(
+        id="object/50", file="fixtures/object/50-tc-exception.ser",
+        case="TC_EXCEPTION -> java.io.IOException(\"exception-message\")",
+        features=["TC_EXCEPTION", "fatal exception object", "java.io.IOException + Throwable fields",
+                  "empty stack trace（合成 fatal 流）"],
+        expect={"kind": "exception", "class": "java.io.IOException",
+                "message": "exception-message"},
     ),
 ]
 
