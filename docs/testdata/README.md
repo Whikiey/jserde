@@ -1,6 +1,6 @@
 # testdata/ — 基准数据与生成器
 
-**当前状态**：已产出。42 个用例、78843 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
+**当前状态**：已产出。42 个用例、78640 字节，由 JDK 17.0.20.1 生成；codec 层的手写推导与 JDK 输出**逐字节一致**。
 
 这批数据是协议层的唯一事实来源：`requirements.md` 的 **AC-01** 就是"全部用例的解码结果与 `manifest.json` 的期望值一致"，AC-02 反向要求 Rust 写出的字节能被 Java 读回。
 
@@ -57,7 +57,7 @@ cd testdata
 | object | 43 | `ZoneId`/`ZoneOffset`/`OffsetTime`/`OffsetDateTime` |
 | object | 44 | `Hybrid`：Map × 数组 × 自定义类，含共享引用与自环 |
 | object | 45 | UUID/Currency/Locale/BitSet/StringBuilder/StringBuffer/Pattern/java.sql 日期时间 |
-| object | 46 | 扩展容器：LinkedHashSet/TreeMap/TreeSet/ArrayDeque/PriorityQueue/Vector/Stack/Hashtable/Properties/包装/Arrays$ArrayList |
+| object | 46 | 扩展容器：LinkedHashSet/TreeMap/TreeSet/ArrayDeque/PriorityQueue/Vector/Stack/Hashtable/Properties/UnmodifiableList/Arrays$ArrayList。注：`Collections$SynchronizedList` 的内部 SUID 随 JDK 构建变化，未放入 fixture；解码支持仍在 |
 | object | 47 | `String.class`/`Color.class`/`Mixed.class`（`TC_CLASS`，含共享类对象） |
 | object | 48 | 动态代理（`Greeter` 接口 + `GreeterHandler`，`TC_PROXYCLASSDESC`） |
 | object | 49 | `EnumSet`/`EnumMap`（SerializationProxy / keyType + custom entries） |

@@ -34,6 +34,10 @@ fn fixture_allowlist() -> Allowlist {
         .unwrap()
         .allow("java.time.*")
         .unwrap()
+        .allow("java.sql.*")
+        .unwrap()
+        .allow("java.util.regex.*")
+        .unwrap()
 }
 
 fn decode(bytes: &[u8]) -> Result<Graph, BoxError> {

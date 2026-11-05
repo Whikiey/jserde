@@ -4,7 +4,7 @@
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",
   "case_count": 42,
-  "total_bytes": 78843,
+  "total_bytes": 78640,
   "cases": [
     {
       "id": "codec/01",
@@ -948,7 +948,7 @@
     {
       "id": "object/46",
       "file": "fixtures/object/46-containers.ser",
-      "case": "Object[]{LinkedHashSet, TreeMap, TreeSet, ArrayDeque, PriorityQueue, Vector, Stack, Hashtable, Properties, UnmodifiableList, SynchronizedList, Arrays$ArrayList}",
+      "case": "Object[]{LinkedHashSet, TreeMap, TreeSet, ArrayDeque, PriorityQueue, Vector, Stack, Hashtable, Properties, UnmodifiableList, Arrays$ArrayList}",
       "features": [
         "更多容器布局",
         "TreeMap/TreeSet 自定义数据",
@@ -1002,17 +1002,13 @@
             "size": 2
           },
           {
-            "type": "java.util.Collections$SynchronizedList",
-            "size": 2
-          },
-          {
             "type": "java.util.Arrays$ArrayList",
             "size": 2
           }
         ]
       },
-      "size": 1469,
-      "sha256": "b8286f1f3210fe89ff47d4193489e6ca7f70a24cb7e984428d82d048ad015f83"
+      "size": 1266,
+      "sha256": "766be846bb75783a0d9170fc9392fd2813d878fd00901fafa23bb5d94007248f"
     },
     {
       "id": "object/47",

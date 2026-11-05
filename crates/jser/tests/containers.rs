@@ -95,12 +95,8 @@ fn decodes_extended_containers() {
         strings(&graph, &graph.as_list(item(&graph, 9)).unwrap().unwrap());
     assert_eq!(unmodifiable, ["u1", "u2"]);
 
-    let synchronized: Vec<String> =
-        strings(&graph, &graph.as_list(item(&graph, 10)).unwrap().unwrap());
-    assert_eq!(synchronized, ["s1", "s2"]);
-
     let arrays_list: Vec<String> =
-        strings(&graph, &graph.as_list(item(&graph, 11)).unwrap().unwrap());
+        strings(&graph, &graph.as_list(item(&graph, 10)).unwrap().unwrap());
     assert_eq!(arrays_list, ["a1", "a2"]);
 }
 

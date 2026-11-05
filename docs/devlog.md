@@ -361,6 +361,18 @@
 
 ---
 
+## 2026-11-05 21:30 · fix: 修复 46 号夹具可移植性与 interop allowlist
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `gen/Fixtures.java` 从 `object/46` 移除 `Collections.synchronizedList`：`Collections$SynchronizedList` 的默认 SUID 在 Windows/Linux JDK 构建间不同，导致 `gen.sh --check` 在另一平台失败；解码支持保留。
+  - 重新生成 `46-containers.ser` 与 manifest：**42 例 / 78640 字节**；`tests/containers.rs` 相应移除 synchronized 断言。
+  - `examples/emit.rs` 的 fixture allowlist 增加 `java.sql.*`、`java.util.regex.*`，修复 `interop.sh` 在 `object/45` 处 `UnsupportedClass("java.sql.Date")`。
+- **验证**：`gen.sh --check` 通过；`cargo test --workspace` 164 passed；`interop.sh` 42 例 Java 读回通过。
+- **TDD/回归**：由跨平台 `gen.sh --check` 失败与 interop 失败触发，修复后回归通过。
+
+---
+
 ## 2026-11-04 03:10 · docs: 同步当前进度与缺口
 
 - **提交**：本次（hash 见 `git log`）

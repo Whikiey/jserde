@@ -416,12 +416,14 @@ public class Fixtures {
             Properties properties = new Properties();
             properties.setProperty("k", "v");
             List<String> unmodifiable = Collections.unmodifiableList(new ArrayList<>(List.of("u1", "u2")));
-            List<String> synchronizedList = Collections.synchronizedList(new ArrayList<>(List.of("s1", "s2")));
             List<String> arraysList = Arrays.asList("a1", "a2");
 
+            // `Collections$SynchronizedList` is intentionally not used here: its
+            // computed SUID differs between JDK builds, so the fixture would not
+            // be reproducible across Linux/Windows JDKs. Decode support remains.
             out.writeObject(new Object[] {
                     linkedSet, treeMap, treeSet, deque, queue, vector, stack,
-                    table, properties, unmodifiable, synchronizedList, arraysList,
+                    table, properties, unmodifiable, arraysList,
             });
         });
 
