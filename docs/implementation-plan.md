@@ -486,7 +486,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-3 | `TC_EXCEPTION` 语义化：解析异常对象并保留类名/message/字段，错误类型携带结构化信息——✅ 已实现：`Error::JavaException` + `object/50` + `tests/exception.rs`；异常解析临时宽松、不回放 | Error 模型、fixture | 已完成 | 中 / S |
 | P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`——✅ 已实现：`Reader<I: Input>` + `ReadStream` + 增量解码；写侧暂缓冲整图 | wire 层缓冲、错误偏移、文档 | 已完成 | 中 / M |
 | P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图——◐ 暂缓：需 D1 生命周期泛型大改，当前仅有 arena 借用视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |
-| P9-6 | `HashMap` 写侧 `capacity`/`threshold` 与 JDK 完全一致——✅ 已实现：`HashMapLayout` + `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，`MapView.threshold`；测试覆盖精确布局/非法容量 | 编码器 | 已完成 | 低 / S |
+| P9-6 | `HashMap` 写侧 `capacity`/`threshold` 与 JDK 完全一致——✅ 已实现：`HashMapLayout` + `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，`MapView.threshold`；测试覆盖精确布局/非法容量，Java 读回 `map-layout.ser` | 编码器 | 已完成 | 低 / S |
 
 ### 21.2 serde 桥（改变 D3 边界，需先改 design §5.4）
 

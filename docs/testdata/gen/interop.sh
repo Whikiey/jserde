@@ -44,6 +44,7 @@ verify build/rust/mixed.ser 'Fixtures$Mixed' i=7 s=mix b=true
 verify build/rust/map.ser 'java.util.HashMap' one=1 two=2 three=3
 verify build/rust/map-mutated.ser 'java.util.HashMap' one=1 two=2 three=3 four=1
 verify build/rust/map-constructed.ser 'java.util.HashMap' alpha=one beta=two
+verify build/rust/map-layout.ser 'java.util.HashMap' alpha=one beta=two
 verify build/rust/typed-map.ser 'java.util.HashMap' alpha=1 beta=2
 verify build/rust/typed-list.ser 'java.util.ArrayList' 0=1 1=2 2=3
 verify build/rust/point-derived.ser 'Fixtures$Point' x=9 y=10

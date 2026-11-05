@@ -8,10 +8,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-use jser::builtin::new_hash_map;
+use jser::builtin::{new_hash_map, new_hash_map_with_layout};
 use jser::{
     decode_stream_with_allowlist, encode_stream, encode_typed, Allowlist, ClassData, ClassDesc,
-    FieldDesc, FieldType, Graph, JValue,
+    FieldDesc, FieldType, Graph, HashMapLayout, JValue,
 };
 use jser_derive::JavaSerializable;
 
@@ -96,6 +96,19 @@ fn main() -> Result<(), BoxError> {
         out.join("map-constructed.ser"),
         encode_stream(&constructed_map)?,
     )?;
+
+    let mut layout_map = Graph::new();
+    let map = new_hash_map_with_layout(
+        &mut layout_map,
+        &[("alpha", "one"), ("beta", "two")],
+        HashMapLayout {
+            capacity: 32,
+            threshold: 24,
+            load_factor: 0.75,
+        },
+    )?;
+    layout_map.add_item(JValue::Obj(map));
+    fs::write(out.join("map-layout.ser"), encode_stream(&layout_map)?)?;
 
     let typed_map: HashMap<String, i32> = [("alpha".to_owned(), 1), ("beta".to_owned(), 2)]
         .into_iter()

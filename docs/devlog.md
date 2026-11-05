@@ -368,7 +368,7 @@
   - 新增 `builtin::HashMapLayout { capacity, threshold, load_factor }` 与根导出；capacity 校验为 2 的幂，threshold/loadFactor 原样写入 classdata/custom header。
   - 新增 `new_hash_map_entries_with_layout` 与 `new_hash_map_with_layout`；`new_hash_map_entries` 保留按 size 推断的默认路径（空表 threshold 0，非空按 0.75）。
   - `MapView` 增加 `threshold` 字段，解码时可核对 classdata 的 threshold。
-  - 新增 `tests/hashmap_layout.rs`：精确 32/24 布局、空表布局、非法 capacity。
+  - 新增 `tests/hashmap_layout.rs`：精确 32/24 布局、空表布局、非法 capacity；`emit`/`interop.sh` 增加 `map-layout.ser`，Java 读回精确布局 map。
 - **验证**：`cargo test --workspace` **180 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`、`interop.sh` 通过。
 - **TDD**：先加精确布局测试，确认默认构造无法表达 32/24 后增加 layout API；非法 capacity 负例锁定校验。
 
