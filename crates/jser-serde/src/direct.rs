@@ -18,6 +18,7 @@ use serde::de::{
 use serde::ser::{self, SerializeMap, SerializeSeq, SerializeStruct};
 use serde::Serialize as SerializeTrait;
 
+use crate::shared;
 use crate::{EnumSchema, JavaSchema, MapSchema, SchemaField, SchemaValue};
 
 /// serde error wrapper around [`jser::Error`] (the orphan rule prevents
@@ -204,6 +205,7 @@ pub(crate) fn to_jvalue<T: SerializeTrait + ?Sized>(
     ctx: Ctx,
     graph: &mut Graph,
 ) -> Result<JValue, SerdeError> {
+    shared::begin_encode();
     value.serialize(DirectSerializer { graph, ctx })
 }
 
@@ -395,9 +397,25 @@ impl<'a> ser::Serializer for DirectSerializer<'a> {
 
     fn serialize_newtype_struct<T: SerializeTrait + ?Sized>(
         self,
-        _name: &'static str,
+        name: &'static str,
         value: &T,
     ) -> Result<JValue, SerdeError> {
+        if name == "__jser_shared" {
+            let pointer = shared::current_pointer()
+                .ok_or_else(|| err("Shared<T> is only supported inside the schema bridge"))?;
+            if let Some(value) = shared::encoded(pointer) {
+                return Ok(value);
+            }
+            let value = value.serialize(DirectSerializer {
+                graph: self.graph,
+                ctx: self.ctx,
+            })?;
+            if shared::handle_of(&value).is_none() {
+                return Err(err("Shared<T> must contain a reference value"));
+            }
+            shared::remember_encoded(pointer, value.clone());
+            return Ok(value);
+        }
         value.serialize(DirectSerializer {
             graph: self.graph,
             ctx: self.ctx,
@@ -654,6 +672,8 @@ pub(crate) fn from_jvalue<'de, T: DeserializeOwned>(
     graph: &'de Graph,
     ctx: Ctx,
 ) -> Result<T, SerdeError> {
+    shared::begin_decode();
+    let _guard = shared::handle_of(value).map(shared::enter_handle);
     T::deserialize({
         let deserializer: DirectDeserializer<'de> =
             DirectDeserializer::from_holder(graph, Holder::Borrowed(value), ctx);
@@ -1050,6 +1070,7 @@ impl<'de> MapAccess<'de> for FieldAccess<'de> {
         let field = self.schema.fields[self.index].clone();
         self.index += 1;
         let value = self.graph.require_field(&self.object, field.name)?.clone();
+        let _guard = shared::handle_of(&value).map(shared::enter_handle);
         let deserializer: DirectDeserializer<'de> =
             DirectDeserializer::from_holder(self.graph, Holder::Owned(value), Ctx::Field(field));
         seed.deserialize(deserializer)
@@ -1075,6 +1096,7 @@ impl<'de> MapAccess<'de> for EntriesAccess<'de> {
             return Ok(None);
         }
         let key = self.entries[self.index].0.clone();
+        let _guard = shared::handle_of(&key).map(shared::enter_handle);
         let deserializer: DirectDeserializer<'de> = DirectDeserializer::from_holder(
             self.graph,
             Holder::Owned(key),
@@ -1089,6 +1111,7 @@ impl<'de> MapAccess<'de> for EntriesAccess<'de> {
     {
         let value = self.entries[self.index].1.clone();
         self.index += 1;
+        let _guard = shared::handle_of(&value).map(shared::enter_handle);
         let deserializer: DirectDeserializer<'de> = DirectDeserializer::from_holder(
             self.graph,
             Holder::Owned(value),
@@ -1128,6 +1151,7 @@ impl<'de> SeqAccess<'de> for ItemsAccess<'de> {
             },
         };
         self.index += 1;
+        let _guard = shared::handle_of(value.get()).map(shared::enter_handle);
         let deserializer: DirectDeserializer<'de> =
             DirectDeserializer::from_holder(self.graph, value, Ctx::Value(self.element.clone()));
         seed.deserialize(deserializer).map(Some)
@@ -1194,6 +1218,7 @@ pub(crate) fn from_roots<T: DeserializeOwned>(
     items: Vec<&JValue>,
     schemas: Vec<JavaSchema>,
 ) -> Result<T, SerdeError> {
+    shared::begin_decode();
     T::deserialize(RootsDeserializer {
         graph,
         items,
@@ -1268,6 +1293,7 @@ impl<'de> SeqAccess<'de> for RootsAccess<'de> {
             .clone();
         self.index += 1;
         let value = value.clone();
+        let _guard = shared::handle_of(&value).map(shared::enter_handle);
         let deserializer: DirectDeserializer<'de> =
             DirectDeserializer::from_holder(self.graph, Holder::Owned(value), Ctx::Object(schema));
         seed.deserialize(deserializer).map(Some)

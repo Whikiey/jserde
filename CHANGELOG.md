@@ -47,6 +47,8 @@
   hard stream-size limit (P9-4); the encoder currently stages one encoded graph.
 - Exact `HashMap` write layout (`HashMapLayout` + `new_hash_map_entries_with_layout`)
   for capacity/threshold/loadFactor matching a specific JDK construction (P9-6).
+- `jser_serde::Shared<T>` (`Rc<T>`) preserves non-cyclic shared pointer
+  identity within one serde call; cycles are rejected (P9-12, partial).
 - Zero-copy/borrowed `Graph` decoding remains deferred (P9-5, API-breaking D1
   lifetime change); existing `as_str`/`as_primitive_array` views are borrowed.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).

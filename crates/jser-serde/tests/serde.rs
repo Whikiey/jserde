@@ -7,13 +7,14 @@ mod common {
 }
 
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use jser::Allowlist;
 use jser::FieldType;
 use jser_serde::{
     from_slice, from_slice_enum, from_slice_map, from_slice_multi, from_slice_set, to_vec,
     to_vec_enum, to_vec_map, to_vec_set, EnumConstant, EnumSchema, JavaSchema, MapSchema,
-    MultiRootWriter, SchemaField, SchemaValue,
+    MultiRootWriter, SchemaField, SchemaValue, Shared,
 };
 use serde::{Deserialize, Serialize};
 
@@ -568,6 +569,66 @@ fn serde_supports_multi_root_streams_and_resets() {
             text: "a".to_owned()
         }
     );
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct SharedRoot {
+    a: Shared<Inner>,
+    b: Shared<Inner>,
+}
+
+fn shared_root_schema() -> JavaSchema {
+    JavaSchema {
+        class: "example.SharedRoot",
+        suid: 1,
+        fields: vec![
+            SchemaField {
+                name: "a",
+                typecode: FieldType::Object,
+                class_name1: Some("Lexample/Inner;"),
+                nested: Some(Box::new(inner_schema())),
+                map: None,
+                set: None,
+                enumeration: None,
+            },
+            SchemaField {
+                name: "b",
+                typecode: FieldType::Object,
+                class_name1: Some("Lexample/Inner;"),
+                nested: Some(Box::new(inner_schema())),
+                map: None,
+                set: None,
+                enumeration: None,
+            },
+        ],
+    }
+}
+
+#[test]
+fn serde_preserves_shared_pointer_identity() {
+    let inner = Rc::new(Inner {
+        id: 9,
+        label: "shared".to_owned(),
+    });
+    let value = SharedRoot {
+        a: Shared::new(inner.clone()),
+        b: Shared::new(inner),
+    };
+    let bytes = to_vec(&value, &shared_root_schema()).unwrap();
+
+    let graph = jser::decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let root = &graph.items()[0];
+    let a = graph.require_field(root, "a").unwrap();
+    let b = graph.require_field(root, "b").unwrap();
+    assert_eq!(a, b, "both fields must reference the same graph object");
+
+    let decoded: SharedRoot = from_slice(&bytes, &shared_root_schema(), &Allowlist::all()).unwrap();
+    assert!(
+        Rc::ptr_eq(&decoded.a.0, &decoded.b.0),
+        "decoded Shared fields must keep pointer identity"
+    );
+    assert_eq!(decoded.a.id, 9);
+    assert_eq!(decoded.b.label, "shared");
 }
 
 #[test]

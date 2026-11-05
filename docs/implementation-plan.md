@@ -243,7 +243,7 @@ P2 ─────────────────────────�
 - P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
 - P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`；P9-7～13 进一步支持递归嵌套 POJO、Map/Set/枚举字段与根、多根/`TC_RESET`、直连 `JValue`。
 - P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
-- 验证：全仓 **180 passed**（P9-6 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
+- 验证：全仓 **181 passed**（P9-12 Shared 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -266,7 +266,7 @@ P2 ─────────────────────────�
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
 - P7-5：`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
-- P7-6：全仓 **180 passed**（P9-6 后），clippy/fmt/gen/interop 通过。
+- P7-6：全仓 **181 passed**（P9-12 Shared 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -451,11 +451,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-05 | P9-18/P9-20 完成：derive `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`（含自定义数组）；typed `&[T]`/`[T;N]`/BTreeMap/Set；新增组合/自定义 slice 测试；全仓 173 passed | P9-18/20 |
 | 2026-11-05 | P9-4 完成：`Reader<I: Input>`/`ReadStream`/`decode_from`/`encode_to`；42 个常规 fixture 经流式解码逐字节回放；P9-5 零拷贝因 D1 生命周期改造暂缓；全仓 178 passed | P9-4/5 |
 | 2026-11-05 | P9-6 完成：`HashMapLayout` 显式 capacity/threshold/loadFactor；layout 构造器与 `MapView.threshold`；测试精确布局/非法容量；全仓 180 passed | P9-6 |
+| 2026-11-05 | P9-12 部分完成：`jser_serde::Shared<T>` 保留单次调用内的非环共享指针身份；编码复用 handle、解码复用 `Rc`；环检测报错；全仓 181 passed | P9-12 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
 
-**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **180 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
+**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **181 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -499,7 +500,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-9 | 枚举字段/根 | `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射），`to_vec_enum`/`from_slice_enum`——✅ 已实现 | 中 / M |
 | P9-10 | 多根流 | ✅ 已实现：`MultiRootWriter` + `from_slice_roots`/`from_slice_multi`（逐根 schema） | 中 / M |
 | P9-11 | `TC_RESET` 流 | ✅ 已实现：`MultiRootWriter::reset()` 插入 `TC_RESET`；解码跳过 Reset 并按段读取 | 中 / S |
-| P9-12 | 共享引用/环 | ◐ 语义定界：解码时共享引用按值展开；环无法用有限 schema 表达，真实身份/环仍用动态 `Graph`；未做指针级 serde 支持 | 低 / XL |
+| P9-12 | 共享引用/环 | ◐ 部分：新增 `jser_serde::Shared<T>`（`Rc<T>`）保留非环共享身份；普通 serde 值仍按值展开；环检测返回 `FieldMismatch`，完整环仍用动态 `Graph` | 低 / XL |
 | P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层）——✅ 已实现：typed 路径直连 `JValue`；`from_slice_roots` 仍返回 JSON（按设计） | 性能与错误定位；外部 API 不变 | 中 / L |
 
 ### 21.3 derive / typed

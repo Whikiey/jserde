@@ -361,6 +361,18 @@
 
 ---
 
+## 2026-11-06 01:50 · feat: serde 非环共享身份（P9-12，部分）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 新增 `jser_serde::Shared<T>`（`Rc<T>` wrapper），实现 `Serialize`/`Deserialize`；编码在单次 `to_vec` 内按 `Rc` 指针复用同一 graph handle（Java 写 `TC_REFERENCE`），解码在单次 `from_slice` 内按 handle 复用同一 `Rc`。
+  - 环检测：解码遇到同一 handle 正在构造时返回 `FieldMismatch`（提示使用 `jser::Graph`），不无限递归；serde 树模型仍无法表达完整环。
+  - 加测试：共享 `Shared<Inner>` 两字段编码后 graph handle 相同，解码后 `Rc::ptr_eq` 为真；普通共享值仍按值展开的旧测试保留。
+- **验证**：`cargo test --workspace` **181 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`、`interop.sh` 通过。
+- **TDD**：先加 pointer identity 测试，确认 `Shared` 未导出/未实现后补 wrapper 与 direct 桥钩子；普通 serde 共享展开行为不回归。
+
+---
+
 ## 2026-11-06 01:15 · feat: HashMap 精确容量/阈值（P9-6）
 
 - **提交**：本次（hash 见 `git log`）

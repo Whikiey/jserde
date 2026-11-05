@@ -12,10 +12,12 @@
 //! [`to_vec_enum`]/[`from_slice_enum`] cover map/set/enum roots;
 //! [`MultiRootWriter`]/[`from_slice_multi`] cover multi-root streams with
 //! optional `TC_RESET` markers. [`from_slice_roots`] is the JSON-view helper
-//! (it returns `serde_json::Value` by design). Values are serde trees: shared
-//! references decode as duplicated subtrees and cycles are not representable
-//! (use [`jser::Graph`] for true identity/cycles). Arrays of objects and
-//! unknown classes are rejected.
+//! (it returns `serde_json::Value` by design). Plain values are serde trees:
+//! shared references decode as duplicated subtrees. Wrap a value in
+//! [`Shared`] (an `Rc<T>`) to preserve pointer identity across fields within
+//! one `to_vec`/`from_slice` call. Cycles are still not representable in a
+//! finite schema and are rejected with `FieldMismatch`; use [`jser::Graph`]
+//! for arbitrary cycles. Arrays of objects and unknown classes are rejected.
 //!
 //! # Example
 //!
@@ -63,6 +65,7 @@
 //! ```
 
 mod direct;
+mod shared;
 
 use jser::{
     decode_stream_with_allowlist, decode_with_allowlist, encode_stream, Allowlist, Error,
@@ -71,6 +74,8 @@ use jser::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{Map, Value};
+
+pub use shared::Shared;
 
 use direct::Ctx;
 
