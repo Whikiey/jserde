@@ -57,7 +57,8 @@
 
 ```
 AGENT.md                     # 本文件（仓库根）
-README.md / SECURITY.md      # 快速开始、安全边界
+README.md / README.en.md     # 中文/英文快速开始
+SECURITY.md                  # 安全边界
 CHANGELOG.md                 # 版本变更
 RELEASING.md                 # 发布 runbook
 CONTRIBUTING.md              # 贡献指南

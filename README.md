@@ -1,5 +1,7 @@
 # jserde
 
+[English](README.en.md) | 简体中文
+
 纯 Rust 实现的 Java 对象序列化协议，与 JDK 的 `ObjectOutputStream` / `ObjectInputStream` 双向互通，**运行时零 JVM 依赖**。
 
 当前版本：`0.1.0`（release candidate；尚未发布 crates.io）。

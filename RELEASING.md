@@ -121,7 +121,7 @@ if it is not already in the repository.
 - [ ] `cargo add jserde` in a clean temp project compiles;
 - [ ] `cargo add jserde-derive` + derive example compiles;
 - [ ] `cargo add jserde-serde` + schema example compiles;
-- [ ] README installation instructions match the published names.
+- [ ] Chinese/English README installation instructions match the published names.
 
 ## 8. Rollback / yank
 
