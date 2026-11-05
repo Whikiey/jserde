@@ -52,6 +52,8 @@
 - `jser_serde::Shared<T>` (`Rc<T>`) preserves non-cyclic shared pointer
   identity within one serde call; full cycles are closed as a scope decision
   and remain supported by the dynamic `Graph` API (P9-12, partial accepted).
+- OUT negative path coverage: legacy Externalizable, non-serializable class
+  descriptors, malformed `TC_CLASS`/`TC_PROXYCLASSDESC`, bad tags (P8-4).
 - Scope decision: P9-5 zero-copy/borrowed input decoding is closed (not planned;
   existing `as_str`/`as_primitive_array` views are arena borrows, not input
   zero-copy).

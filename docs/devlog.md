@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-06 02:55 · test: OUT 负例（P8-4）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：新增 `tests/out_negative.rs` 10 个负例，覆盖：
+  - 旧式无 block 的 `Externalizable`；
+  - 非 `Serializable` classdesc；
+  - `TC_CLASS` 的 null/错误 classdesc；
+  - 顶层 `TC_CLASSDESC` / `TC_PROXYCLASSDESC`；
+  - `TC_ENDBLOCKDATA` 作为顶层值；
+  - proxy 负 interface count、错误 super tag、未放行接口。
+- **验证**：`cargo test --workspace` **193 passed**；clippy/fmt/`cargo doc -D warnings` 通过。
+- **TDD**：这些是错误路径契约测试，先按 reader 当前行为写断言，全部通过后补文档；不改变协议语义。
+
+---
+
 ## 2026-11-06 02:35 · docs: 关闭 P9-5/P9-12 剩余范围
 
 - **提交**：本次（hash 见 `git log`）

@@ -207,3 +207,4 @@
 | 2026-11-05 | P9-12（部分）：新增 `jser_serde::Shared<T>`（`Rc<T>`），单次调用内保留非环共享身份；环检测返回 `FieldMismatch`，完整环仍由 `Graph` 支持；全仓 181 项通过 | P9-12 |
 | 2026-11-05 | P9-17：泛型 `#[derive(JavaSerializable)]`；`schema()` 改为返回 `Vec<JavaField>` 以支持单态化字段描述符；拒绝生命周期/const 泛型与泛型 enum；全仓 183 项通过 | P9-17 |
 | 2026-11-06 | 范围关闭：P9-5 零拷贝不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`，完整环继续用动态 `Graph` | 用户决定 |
+| 2026-11-06 | P8-4：补 OUT 负例（旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径、错误 tag）；全仓 193 项通过 | P8-4 |
