@@ -4,7 +4,7 @@ Java deserialization is a well-known attack surface. `jser` is a decoder of an
 untrusted-on-the-wire format; it is **not** a sandbox.
 
 Current implementation: v0.1.0, P0–P9 code line, strict allowlist by default,
-173 tests. The remaining security-relevant gaps are listed in
+178 tests. The remaining security-relevant gaps are listed in
 `docs/implementation-plan.md` §20/§21 (notably: allowlist is not a gadget
 sandbox, the 30-minute fuzz workflow is in place but deferred, and several P9
 extensions such as streaming IO are not done).
@@ -44,9 +44,10 @@ let limits = jser::Limits { max_depth: 256, max_elements: 1_000_000, max_stream_
 let reader = jser::Reader::with_allowlist(bytes, limits, allowlist)?;
 ```
 
-Random/truncated input is expected to return `Err`; it must not panic. Fuzz
-targets live in `fuzz/`, and `cargo test -p jser --test fuzz_smoke` is the
-offline smoke test.
+Random/truncated input is expected to return `Err`; it must not panic. Streaming
+`decode_from` enforces `max_stream_size` in `ReadStream`; `encode_to` currently
+stages one encoded graph before writing. Fuzz targets live in `fuzz/`, and
+`cargo test -p jser --test fuzz_smoke` is the offline smoke test.
 
 ## Dependency audit
 

@@ -361,6 +361,20 @@
 
 ---
 
+## 2026-11-06 00:45 · feat: 流式 IO（P9-4）；P9-5 暂缓
+
+- **提交**：本次（hash 见 `git log`）
+- **P9-4**：
+  - 新增 `wire::Input` trait、`ReadStream<R>`（`BufReader` + `max_stream_size` 硬上限）；`Reader<I: Input>` 同时支持切片和 `Read`。
+  - 新增 `Reader::from_reader`、`decode_from`/`decode_from_with_allowlist`/`decode_from_with_options`；字符串/块/primitive 数组按需复制进 arena，错误偏移继续由已消费字节数给出。
+  - 新增 `encode_to<W: Write>`；当前先完成整图编码再 `write_all`，文档明确写侧尚未逐块 flush。
+  - 新增 `tests/streaming.rs`：单 fixture、全 42 个常规 fixture、截断、流大小上限、`encode_to`。
+- **P9-5**：暂缓。零拷贝需要把 `Graph`/`Slot`/`BlockData`/`ArrayData` 生命周期参数化，并处理 modified UTF-8 的借用/拥有混合；当前只有 arena 借用视图（`as_str`/`as_primitive_array`），不是输入零拷贝。设计 §5.6 记录边界。
+- **验证**：`cargo test --workspace` **178 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`（43 例/79031 字节）、`interop.sh` 通过。
+- **TDD**：先加 `tests/streaming.rs`（截断测试最初因 strict allowlist 选错 fixture 失败，改用 HashMap fixture），实现 Input/Reader 后全绿。
+
+---
+
 ## 2026-11-06 00:10 · feat: 组合字段与 slice/数组/BTree（P9-18 + P9-20）
 
 - **提交**：本次（hash 见 `git log`）

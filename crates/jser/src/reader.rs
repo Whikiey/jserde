@@ -11,7 +11,9 @@ use crate::value::{
 };
 use crate::wire::handle::WireHandles;
 use crate::wire::mutf8;
-use crate::wire::reader::StreamReader;
+use std::io::Read;
+
+use crate::wire::reader::{Input, ReadStream, StreamReader};
 use crate::wire::{
     STREAM_MAGIC, STREAM_VERSION, TC_ARRAY, TC_BLOCKDATA, TC_BLOCKDATALONG, TC_CLASS, TC_CLASSDESC,
     TC_ENDBLOCKDATA, TC_ENUM, TC_EXCEPTION, TC_LONGSTRING, TC_NULL, TC_OBJECT, TC_PROXYCLASSDESC,
@@ -41,8 +43,8 @@ impl Default for Limits {
 
 /// Streaming decoder. Owns the arena while values are read.
 #[derive(Debug)]
-pub struct Reader<'a> {
-    input: StreamReader<'a>,
+pub struct Reader<I> {
+    input: I,
     graph: Graph,
     handles: WireHandles,
     limits: Limits,
@@ -50,7 +52,7 @@ pub struct Reader<'a> {
     elements: usize,
 }
 
-impl<'a> Reader<'a> {
+impl<'a> Reader<StreamReader<'a>> {
     /// Validate the stream header and create a reader with default limits.
     pub fn new(bytes: &'a [u8]) -> Result<Self> {
         Self::with_allowlist(bytes, Limits::default(), Allowlist::strict())
@@ -70,9 +72,37 @@ impl<'a> Reader<'a> {
                 actual: bytes.len(),
             });
         }
+        Self::with_input(StreamReader::new(bytes), limits, allowlist)
+    }
+}
 
-        let mut input = StreamReader::new(bytes);
+impl<R: Read> Reader<ReadStream<R>> {
+    /// Decode from a `std::io::Read` stream with default limits and allowlist.
+    pub fn from_reader(reader: R) -> Result<Self> {
+        Self::from_reader_with_options(reader, Limits::default(), Allowlist::strict())
+    }
 
+    /// Decode from a `std::io::Read` stream with explicit limits.
+    pub fn from_reader_with_limits(reader: R, limits: Limits) -> Result<Self> {
+        Self::from_reader_with_options(reader, limits, Allowlist::strict())
+    }
+
+    /// Decode from a `std::io::Read` stream with explicit limits and allowlist.
+    pub fn from_reader_with_options(
+        reader: R,
+        limits: Limits,
+        allowlist: Allowlist,
+    ) -> Result<Self> {
+        Self::with_input(
+            ReadStream::with_limit(reader, limits.max_stream_size),
+            limits,
+            allowlist,
+        )
+    }
+}
+
+impl<I: Input> Reader<I> {
+    fn with_input(mut input: I, limits: Limits, allowlist: Allowlist) -> Result<Self> {
         let magic = input.read_u16()?;
         if magic != STREAM_MAGIC {
             return Err(Error::BadMagic { found: magic });
@@ -95,7 +125,7 @@ impl<'a> Reader<'a> {
 
     /// Read the next top-level element, or `None` at end of stream.
     pub fn read_next(&mut self) -> Result<Option<JValue>> {
-        if self.input.is_empty() {
+        if self.input.is_empty()? {
             return Ok(None);
         }
 
@@ -108,7 +138,7 @@ impl<'a> Reader<'a> {
     /// Bulk decoder path: move the value into the arena instead of cloning it.
     /// Large top-level block-data items otherwise double the peak memory.
     fn read_next_in_place(&mut self) -> Result<bool> {
-        if self.input.is_empty() {
+        if self.input.is_empty()? {
             return Ok(false);
         }
 
@@ -281,8 +311,8 @@ impl<'a> Reader<'a> {
         };
 
         let offset = self.input.position();
-        let bytes = self.input.read_exact(length)?;
-        let value = mutf8::decode_at(bytes, offset)?;
+        let bytes = self.input.read_exact_vec(length)?;
+        let value = mutf8::decode_at(&bytes, offset)?;
 
         let handle = self.graph.insert_str(value, long);
         self.handles.assign(handle);
@@ -292,8 +322,8 @@ impl<'a> Reader<'a> {
     fn read_utf(&mut self) -> Result<String> {
         let length = usize::from(self.input.read_u16()?);
         let offset = self.input.position();
-        let bytes = self.input.read_exact(length)?;
-        mutf8::decode_at(bytes, offset)
+        let bytes = self.input.read_exact_vec(length)?;
+        mutf8::decode_at(&bytes, offset)
     }
 
     fn read_reference(&mut self) -> Result<JValue> {
@@ -313,7 +343,7 @@ impl<'a> Reader<'a> {
             usize::from(self.input.read_u8()?)
         };
 
-        let bytes = self.input.read_exact(length)?.to_vec();
+        let bytes = self.input.read_exact_vec(length)?;
         Ok(JValue::Block(BlockData { bytes, long }))
     }
 
@@ -628,7 +658,7 @@ impl<'a> Reader<'a> {
                     kind: "array",
                     value: length as u64,
                 })?;
-                let bytes = self.input.read_exact(total)?.to_vec();
+                let bytes = self.input.read_exact_vec(total)?;
                 self.graph.set_array_primitive(handle, typecode, bytes)?;
             }
             ArrayElement::Object => {
@@ -679,6 +709,27 @@ fn array_element(name: &str) -> Result<ArrayElement> {
     }
 
     Ok(ArrayElement::Object)
+}
+
+/// Decode every top-level element from a `std::io::Read` stream.
+pub fn decode_from<R: Read>(reader: R) -> Result<Graph> {
+    decode_from_with_options(reader, Limits::default(), Allowlist::strict())
+}
+
+/// Decode from a reader with an explicit class allowlist.
+pub fn decode_from_with_allowlist<R: Read>(reader: R, allowlist: &Allowlist) -> Result<Graph> {
+    decode_from_with_options(reader, Limits::default(), allowlist.clone())
+}
+
+/// Decode from a reader with explicit limits and allowlist.
+pub fn decode_from_with_options<R: Read>(
+    reader: R,
+    limits: Limits,
+    allowlist: Allowlist,
+) -> Result<Graph> {
+    let mut reader = Reader::from_reader_with_options(reader, limits, allowlist)?;
+    while reader.read_next_in_place()? {}
+    Ok(reader.into_graph())
 }
 
 /// Decode every top-level element into one arena with default limits.

@@ -6,6 +6,8 @@
 
 use std::collections::HashMap;
 
+use std::io::Write;
+
 use crate::error::{Error, Result};
 use crate::value::{ArrayData, BlockData, FieldType, Graph, Handle, JValue};
 use crate::wire::handle::BASE_WIRE_HANDLE;
@@ -20,6 +22,14 @@ use crate::wire::{
 /// Encode all top-level items of a graph with the Java stream header.
 pub fn encode_stream(graph: &Graph) -> Result<Vec<u8>> {
     encode(graph, graph.items())
+}
+
+/// Encode a graph to a `std::io::Write` sink.
+pub fn encode_to<W: Write>(graph: &Graph, writer: &mut W) -> Result<()> {
+    let bytes = encode_stream(graph)?;
+    writer
+        .write_all(&bytes)
+        .map_err(|error| Error::Io(error.to_string()))
 }
 
 /// Encode the given top-level items with the Java stream header.

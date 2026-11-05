@@ -43,6 +43,10 @@
 - Derive combination fields (`Option<Vec<T>>`, `Option<HashMap>`, `Vec<Option<T>>`,
   including custom element arrays) and typed `IntoJValue` for `&[T]`, `[T; N]`,
   `BTreeMap`/`BTreeSet` (P9-18/P9-20).
+- Streaming input `decode_from<R: Read>` and output `encode_to<W: Write>` with a
+  hard stream-size limit (P9-4); the encoder currently stages one encoded graph.
+- Zero-copy/borrowed `Graph` decoding remains deferred (P9-5, API-breaking D1
+  lifetime change); existing `as_str`/`as_primitive_array` views are borrowed.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.

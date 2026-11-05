@@ -98,8 +98,9 @@ pub use allowlist::Allowlist;
 pub use error::{Error, JavaException, JavaExceptionField, Result};
 pub use java::{JavaField, JavaSerializable};
 pub use reader::{
-    decode, decode_stream, decode_stream_with_allowlist, decode_stream_with_limits,
-    decode_stream_with_options, decode_with_allowlist, decode_with_limits, Limits, Reader,
+    decode, decode_from, decode_from_with_allowlist, decode_from_with_options, decode_stream,
+    decode_stream_with_allowlist, decode_stream_with_limits, decode_stream_with_options,
+    decode_with_allowlist, decode_with_limits, Limits, Reader,
 };
 pub use suid::{
     array_class_suid, compute_default_suid, parse_class_file, ClassSignature, FieldSignature,
@@ -110,4 +111,4 @@ pub use value::{
     BlockData, ClassData, ClassDesc, FieldDesc, FieldType, Graph, Handle, JObject, JValue, MapView,
     PrimitiveArray, Ref, Scalar,
 };
-pub use writer::{encode, encode_stream};
+pub use writer::{encode, encode_stream, encode_to};

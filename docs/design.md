@@ -372,6 +372,14 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 
 ---
 
+### 5.6 流式 IO 与零拷贝边界（P9-4/P9-5）
+
+- **解码**：`Reader<I: Input>` 抽象字节源；`StreamReader<'a>` 走切片，`ReadStream<R>` 走 `BufReader<R>` + `max_stream_size` 硬上限；`decode_from<R: Read>` / `decode_from_with_allowlist` / `decode_from_with_options` 增量读取，字符串/块/primitive 数组按需复制到 arena。错误偏移仍以已消费字节数为准，`UnexpectedEof` 映射为 `Truncated`。
+- **编码**：`encode_to<W: Write>` 已提供，但当前实现先在内存构造完整编码结果再 `write_all`；写侧的逐块 flush 留待后续，不宣称零缓冲。
+- **P9-5 暂缓**：要做到输入零拷贝，需要把 `Graph`/`Slot`/`BlockData`/`ArrayData` 生命周期参数化（D1 大改），并同时处理 modified UTF-8 的借用/拥有混合；这与 P8-2 已选的 compact raw 数组有交叉。当前只提供 arena 内的借用视图（`Graph::as_str`、`as_primitive_array`），不是输入零拷贝。除非有明确吞吐/分配指标，否则不启动该改造。
+
+---
+
 ## 6. 里程碑与出口条件
 
 | # | 内容 | 出口条件 |

@@ -43,6 +43,10 @@ pub enum Error {
     #[error("java exception {0}")]
     JavaException(JavaException),
 
+    /// An underlying `std::io` operation failed.
+    #[error("io error: {0}")]
+    Io(String),
+
     /// A configured depth, element count or size limit was exceeded.
     #[error("limit exceeded: {kind} = {actual} (limit {limit})")]
     LimitExceeded {

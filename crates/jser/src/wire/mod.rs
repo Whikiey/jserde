@@ -9,7 +9,7 @@ pub mod writer;
 
 pub use block::BlockWriter;
 pub use handle::WireHandles;
-pub use reader::StreamReader;
+pub use reader::{Input, ReadStream, StreamReader};
 
 /// Stream magic (`AC ED`).
 pub const STREAM_MAGIC: u16 = 0xACED;

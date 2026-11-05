@@ -243,7 +243,7 @@ P2 ─────────────────────────�
 - P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
 - P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`；P9-7～13 进一步支持递归嵌套 POJO、Map/Set/枚举字段与根、多根/`TC_RESET`、直连 `JValue`。
 - P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
-- 验证：全仓 **173 passed**（P8/P9/P9-19/P9-3/P9-18/P9-20 后续）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
+- 验证：全仓 **178 passed**（P9-4 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -266,7 +266,7 @@ P2 ─────────────────────────�
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
 - P7-5：`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
-- P7-6：全仓 **173 passed**（P8/P9/P9-19/P9-3/P9-18/P9-20 后），clippy/fmt/gen/interop 通过。
+- P7-6：全仓 **178 passed**（P9-4 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -418,7 +418,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-04 | allowlist 完成（用户拍板严格默认）：`Allowlist` 精确/`prefix.*`/`Fixtures$*`、数组按元素、默认 `java.lang.*`+`java.util.*`、`UnsupportedClass` 带类名；fixture 测试显式放行；全仓 90 项通过 | NFR-04 |
 | 2026-11-04 | P5 完成（TDD）：`JavaSerializable` + derive（class/suid/rename/transient、Vec 数组）、`computeDefaultSUID`、`.class` 解析与 `suid` 工具；NoSuid 与 JDK 一致；全仓 102 项通过 | P5 |
 | 2026-11-04 | P6 完成（TDD）：内置类语义（Date/BigInteger/BigDecimal/java.time）、Registry、`object/40` fixture、schema 驱动 serde 桥；全仓 110 项通过，Java interop 14 项 + SUID | P6 |
-| 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.8GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 173 项通过（P8/P9/P9-19/P9-3/P9-18/P9-20 后） | P7 |
+| 2026-11-04 | P7 完成（P7-1 30 分钟 fuzz 待夜间）：panic 审计、fuzz 目标/冒烟、100MB bench（约 4.8GB/s、2.0×）、README/SECURITY/CHANGELOG；全仓 178 项通过（P9-4 后） | P7 |
 | 2026-11-04 | 新增 §21 扩展 backlog：登记全部纯 Rust 可实现的缺口（33 项，P9-1～P9-33）并单列不可实现项与理由；§20 加近期/全量指引 | 用户要求 |
 | 2026-11-04 | P8-1 落地：新增 nightly workflow（decode 1800s + roundtrip/mutf8 300s、语料取 fixture、OOM/hang 限值、失败上传 artifacts）与 fuzz README；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | P8-2 完成（TDD）：primitive 数组改 raw bytes（`ArrayData::Primitive`/`PrimitiveArray`），`as_array` 仅对象数组，typed/derive/serde 走 raw；新增 `tests/primitive_arrays.rs`（7 项），`bench -- array` 实测 25M `int[]` 约 2.03×；全仓 120 项通过 | P8-2 |
@@ -449,11 +449,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-05 | P9-19 完成：`JavaSerializable::validate_decoded` 校验类名/SUID，derive struct/enum 在 `from_jvalue` 入口调用；错误含两个 SUID；新增 mismatch/enum/继承回归；全仓 167 passed | P9-19 |
 | 2026-11-05 | P9-3 完成：`Error::JavaException` 携带 class/message/字段摘要；`TC_EXCEPTION` 解析使用临时宽松 allowlist，不回放；新增 `object/50` 与 `tests/exception.rs`；全仓 168 passed | P9-3 |
 | 2026-11-05 | P9-18/P9-20 完成：derive `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`（含自定义数组）；typed `&[T]`/`[T;N]`/BTreeMap/Set；新增组合/自定义 slice 测试；全仓 173 passed | P9-18/20 |
+| 2026-11-05 | P9-4 完成：`Reader<I: Input>`/`ReadStream`/`decode_from`/`encode_to`；42 个常规 fixture 经流式解码逐字节回放；P9-5 零拷贝因 D1 生命周期改造暂缓；全仓 178 passed | P9-4/5 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
 
-**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **173 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
+**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **178 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -463,7 +464,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | OUT 负例 | 只补错误断言与文档，不实现语义 | P8-4 | — |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ `object/42` + `BuiltinValue` | P8-5 | FR-13 |
 | 跨平台/并发/深链 | CI matrix 已加；并发/深链仍待补 | P8-6 | NFR-05 |
-| P9-4/5/6/12/17 | 见 §21 | P9 余项 | — |
+| P9-5/6/12/17 | 见 §21；P9-5 零拷贝暂缓 | P9 余项 | — |
 
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
 >
@@ -482,8 +483,8 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-1 | `TC_CLASS` 保真回放：新增 `JValue::Class(Handle)` + `Slot::Class { desc }`，解码/重编码字节一致；不解类加载语义——✅ 已实现：`object/47`（含共享 `String.class`）与 `tests/class_objects.rs` | D1 模型、Reader/Writer、回放门禁 | 新 fixture（`Class` 对象）、design D1 | 中 / M |
 | P9-2 | `TC_PROXYCLASSDESC` 保真回放：新增 proxy 描述符槽（接口名 + annotation），对象 classdata 按 0 字段处理；代理语义仍 OUT-02——✅ 已实现：`ClassDesc.proxy_interfaces` + Reader/Writer + `object/48` | D1 扩展、allowlist 检查接口名 | JDK 生成 proxy fixture | 低 / L |
 | P9-3 | `TC_EXCEPTION` 语义化：解析异常对象并保留类名/message/字段，错误类型携带结构化信息——✅ 已实现：`Error::JavaException` + `object/50` + `tests/exception.rs`；异常解析临时宽松、不回放 | Error 模型、fixture | 已完成 | 中 / S |
-| P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`（当前仅 `&[u8]`/`Vec<u8>`） | wire 层缓冲、错误偏移、文档 | — | 中 / M |
-| P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |
+| P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`——✅ 已实现：`Reader<I: Input>` + `ReadStream` + 增量解码；写侧暂缓冲整图 | wire 层缓冲、错误偏移、文档 | 已完成 | 中 / M |
+| P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图——◐ 暂缓：需 D1 生命周期泛型大改，当前仅有 arena 借用视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |
 | P9-6 | `HashMap` 写侧 `capacity`/`threshold` 与 JDK 完全一致（当前按 size 反推） | 编码器 | fixture 对拍 | 低 / S |
 
 ### 21.2 serde 桥（改变 D3 边界，需先改 design §5.4）
