@@ -240,6 +240,8 @@ pub struct MapView<'a> {
     pub load_factor: f32,
     /// Capacity from the custom block header.
     pub capacity: i32,
+    /// `threshold` classdata field (`HashMap`); `0` for other map types.
+    pub threshold: i32,
     /// `true` for `LinkedHashMap`.
     pub ordered: bool,
 }

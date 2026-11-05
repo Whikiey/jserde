@@ -119,7 +119,7 @@ pub struct BlockData { pub bytes: Vec<u8>, pub long: bool }  // long = 用 TC_BL
 
 ### D2：写出一侧用 `JavaSchema` 描述符，而不是裸用 serde derive
 
-serde 的数据模型**表达不了** Java 流的这些必需信息：字段类型码（`I`/`J`/`L...;`/`[I`）、`serialVersionUID`、`classDescFlags`（`SC_WRITE_METHOD` 等）、`HashMap` 的 capacity 头部、字段顺序。
+serde 的数据模型**表达不了** Java 流的这些必需信息：字段类型码（`I`/`J`/`L...;`/`[I`）、`serialVersionUID`、`classDescFlags`（`SC_WRITE_METHOD` 等）、`HashMap` 的 capacity/threshold 头部、字段顺序。
 
 因此主路径是自定义 trait。注意签名必须带 `Graph`：构造字符串/对象/数组时要在 arena 里分配句柄：
 
@@ -148,7 +148,7 @@ pub trait JavaSerializable: Sized {
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
-`HashMap`/`HashSet`/`Date`/`BigInteger`/`BigDecimal`/`java.time.*` 等的 wire 形态不符合"字段直读"规则（它们有 `writeObject/readObject` 自定义逻辑），必须逐个实现：
+`HashMap` 的精确写侧布局由 `HashMapLayout` 显式给出（capacity 必须为 2 的幂，threshold/loadFactor 原样写入）；`HashSet`/`Date`/`BigInteger`/`BigDecimal`/`java.time.*` 等的 wire 形态也不符合"字段直读"规则（它们有 `writeObject/readObject` 自定义逻辑），必须逐个实现：
 
 ```rust
 pub struct Registry; // builtin::Registry

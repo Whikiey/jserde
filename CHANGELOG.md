@@ -45,6 +45,8 @@
   `BTreeMap`/`BTreeSet` (P9-18/P9-20).
 - Streaming input `decode_from<R: Read>` and output `encode_to<W: Write>` with a
   hard stream-size limit (P9-4); the encoder currently stages one encoded graph.
+- Exact `HashMap` write layout (`HashMapLayout` + `new_hash_map_entries_with_layout`)
+  for capacity/threshold/loadFactor matching a specific JDK construction (P9-6).
 - Zero-copy/borrowed `Graph` decoding remains deferred (P9-5, API-breaking D1
   lifetime change); existing `as_str`/`as_primitive_array` views are borrowed.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).

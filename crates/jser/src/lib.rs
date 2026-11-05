@@ -95,6 +95,7 @@ pub mod wire;
 pub mod writer;
 
 pub use allowlist::Allowlist;
+pub use builtin::HashMapLayout;
 pub use error::{Error, JavaException, JavaExceptionField, Result};
 pub use java::{JavaField, JavaSerializable};
 pub use reader::{

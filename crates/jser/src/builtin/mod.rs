@@ -124,6 +124,10 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
         let capacity = reader.read_i32()?;
         let size = collection_size(reader.read_i32()?, HASH_MAP)?;
         debug_assert!(reader.is_empty());
+        let threshold = match layer_field(hash_map, "threshold") {
+            Some(JValue::Int(threshold)) => *threshold,
+            _ => 0,
+        };
 
         let entry_count = size.checked_mul(2).ok_or_else(|| Error::FieldMismatch {
             message: "`java.util.HashMap` entry count overflows".to_owned(),
@@ -135,6 +139,7 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
             entries,
             load_factor,
             capacity,
+            threshold,
             ordered: layer(graph, object, LINKED_HASH_MAP)?.is_some(),
         }));
     }
@@ -151,6 +156,7 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
             entries: pair_entries(&contents[1..], size, TREE_MAP)?,
             load_factor: 0.0,
             capacity: i32::try_from(size).unwrap_or(i32::MAX),
+            threshold: 0,
             ordered: true,
         }));
     }
@@ -172,6 +178,7 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
             entries: pair_entries(&contents[1..], size, HASHTABLE)?,
             load_factor,
             capacity,
+            threshold: 0,
             ordered: false,
         }));
     }
@@ -188,6 +195,7 @@ pub fn map_view<'a>(graph: &'a Graph, value: &'a JValue) -> Result<Option<MapVie
             entries: pair_entries(&contents[1..], size, ENUM_MAP)?,
             load_factor: 0.0,
             capacity: i32::try_from(size).unwrap_or(i32::MAX),
+            threshold: 0,
             ordered: true,
         }));
     }
@@ -367,13 +375,130 @@ pub fn new_hash_map(graph: &mut Graph, entries: &[(&str, &str)]) -> Result<Handl
 
 /// Build a `java.util.HashMap` from already-built entry values.
 ///
-/// Keys/values must be Java objects (or `null`), not inline primitives: the
-/// entries are written as object contents after the custom data header.
+/// Uses the layout inferred from the entry count; use
+/// [`new_hash_map_entries_with_layout`] for an exact JDK construction layout.
 pub fn new_hash_map_entries(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -> Result<Handle> {
+    let layout = HashMapLayout::from_entries(entries.len())?;
+    new_hash_map_entries_with_layout(graph, entries, layout)
+}
+
+/// Build a `java.util.HashMap` from string entries with an exact layout.
+pub fn new_hash_map_with_layout(
+    graph: &mut Graph,
+    entries: &[(&str, &str)],
+    layout: HashMapLayout,
+) -> Result<Handle> {
+    let mut values = Vec::with_capacity(entries.len());
+    for (key, value) in entries {
+        values.push((
+            JValue::Str(graph.new_string(*key)),
+            JValue::Str(graph.new_string(*value)),
+        ));
+    }
+    new_hash_map_entries_with_layout(graph, values, layout)
+}
+
+/// Explicit `HashMap` classdata/custom-header layout.
+///
+/// JDK serialization writes `loadFactor` + `threshold` as classdata fields and
+/// `capacity` + `size` in the custom block. The defaults inferred from the
+/// entry count are only a convenience; use this type when the stream must match
+/// a map constructed with a particular initial capacity (for example
+/// `new HashMap<>(32)`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HashMapLayout {
+    /// Table length written in the custom header; must be a positive power of two.
+    pub capacity: i32,
+    /// `threshold` field written in classdata.
+    pub threshold: i32,
+    /// `loadFactor` field written in classdata.
+    pub load_factor: f32,
+}
+
+impl HashMapLayout {
+    /// Default layout for a freshly built map with `size` entries.
+    ///
+    /// This cannot distinguish `new HashMap<>()` from `new HashMap<>(n)`; use
+    /// [`Self::new`] or a struct literal for an exact JDK layout.
+    pub fn from_entries(size: usize) -> Result<Self> {
+        let capacity = table_size_for(size)?;
+        let threshold = if size == 0 {
+            0
+        } else {
+            (capacity as f32 * 0.75) as i32
+        };
+        Ok(Self {
+            capacity,
+            threshold,
+            load_factor: 0.75,
+        })
+    }
+
+    /// Construct and validate an explicit layout.
+    pub fn new(capacity: i32, threshold: i32, load_factor: f32) -> Result<Self> {
+        let layout = Self {
+            capacity,
+            threshold,
+            load_factor,
+        };
+        layout.validate(0)?;
+        Ok(layout)
+    }
+
+    fn validate(&self, size: usize) -> Result<()> {
+        let capacity = u32::try_from(self.capacity).map_err(|_| {
+            Error::InvalidSchema(format!(
+                "HashMap capacity must be positive, got {}",
+                self.capacity
+            ))
+        })?;
+        if !capacity.is_power_of_two() {
+            return Err(Error::InvalidSchema(format!(
+                "HashMap capacity must be a positive power of two, got {}",
+                self.capacity
+            )));
+        }
+        if self.threshold < 0 {
+            return Err(Error::InvalidSchema(
+                "HashMap threshold must not be negative".to_owned(),
+            ));
+        }
+        if !(self.load_factor.is_finite() && self.load_factor > 0.0) {
+            return Err(Error::InvalidSchema(
+                "HashMap load factor must be finite and positive".to_owned(),
+            ));
+        }
+        if size > self.capacity as usize {
+            return Err(Error::InvalidSchema(format!(
+                "HashMap has {size} entries but capacity {}",
+                self.capacity
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl Default for HashMapLayout {
+    fn default() -> Self {
+        Self {
+            capacity: 16,
+            threshold: 12,
+            load_factor: 0.75,
+        }
+    }
+}
+
+/// Build a `java.util.HashMap` from already-built entries with an exact layout.
+pub fn new_hash_map_entries_with_layout(
+    graph: &mut Graph,
+    entries: Vec<(JValue, JValue)>,
+    layout: HashMapLayout,
+) -> Result<Handle> {
     let size = i32::try_from(entries.len())
         .map_err(|_| Error::InvalidSchema("HashMap has too many entries".to_owned()))?;
-    let capacity = table_size_for(entries.len())?;
-    let threshold = (capacity as f32 * 0.75) as i32;
+    layout.validate(entries.len())?;
+    let capacity = layout.capacity;
+    let threshold = layout.threshold;
 
     let desc = graph.add_class_desc(ClassDesc {
         name: HASH_MAP.to_owned(),
@@ -419,7 +544,7 @@ pub fn new_hash_map_entries(graph: &mut Graph, entries: Vec<(JValue, JValue)>) -
     graph.new_object(vec![ClassData {
         desc,
         fields: vec![
-            ("loadFactor".to_owned(), JValue::Float(0.75)),
+            ("loadFactor".to_owned(), JValue::Float(layout.load_factor)),
             ("threshold".to_owned(), JValue::Int(threshold)),
         ],
         custom: Some(custom),

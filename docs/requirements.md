@@ -203,3 +203,4 @@
 | 2026-11-05 | P9-3：新增 `object/50`（TC_EXCEPTION + IOException）；`Error::JavaException` 携带 class/message/字段摘要；异常流的类解析使用临时宽松策略，不回放；全仓 168 项通过 | P9-3 |
 | 2026-11-05 | P9-18/P9-20：derive 组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`（含自定义数组）；typed `IntoJValue` 支持 `&[T]`/`[T;N]`/`BTreeMap`/`BTreeSet`；全仓 173 项通过 | P9-18/20 |
 | 2026-11-05 | P9-4：`Reader<I: Input>`、`ReadStream<R>`、`decode_from`/`encode_to`；解码增量缓冲、写侧暂缓冲整图；全仓 178 项通过。P9-5 零拷贝因 D1 生命周期改造暂缓 | P9-4/5 |
+| 2026-11-05 | P9-6：新增 `HashMapLayout` 与 `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，可精确写 capacity/threshold/loadFactor；`MapView.threshold` 可读；全仓 180 项通过 | P9-6 |

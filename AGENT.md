@@ -13,10 +13,10 @@
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；剩余项见计划 §20/§21 |
 | 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成主要功能；P8-1 的 30 分钟 fuzz 暂缓；剩余 P9 扩展见 §20/§21 |
 | 基准数据 | **已完成**：43 个用例、79031 字节（P6/P7/P8/P9 新增 object/40–50），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**178 项测试全绿**。剩余 P9-5/6/12/17 见 §20/§21 |
+| Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**180 项测试全绿**。剩余 P9-5/12/17 见 §20/§21 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P9 主要功能已完成；剩余项见 `implementation-plan.md` §20/§21：P8-1 的 30 分钟 fuzz（AC-04，暂缓）、P9-5 零拷贝（架构级暂缓）、P9-6 HashMap 容量、P9-12 serde 指针级共享/环、P9-17 泛型。
+所以：P0–P9 主要功能已完成；剩余项见 `implementation-plan.md` §20/§21：P8-1 的 30 分钟 fuzz（AC-04，暂缓）、P9-5 零拷贝（架构级暂缓）、P9-12 serde 指针级共享/环、P9-17 泛型。
 
 ---
 
