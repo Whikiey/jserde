@@ -199,3 +199,4 @@
 | 2026-11-04 | P9-23 补齐：EnumSet/EnumMap 解码视图 + `new_enum_set`/`new_enum_map`；`object/49`；manifest 42 例/78843 字节；全仓 164 passed | P9-23 |
 | 2026-11-05 | 进度同步：P8/P9 主要功能完成；当前 42 例/78640 字节、164 项测试、42 例 Java 读回；剩余 P9-3/4/5/6/12/17/18/19/20 与 P8-1 fuzz | 跨机同步 |
 | 2026-11-05 | `object/46` 移除 `Collections$SynchronizedList`（跨 JDK 构建 SUID 不稳定）并重新生成 manifest；fixture 42 例/78640 字节 | 跨平台修复 |
+| 2026-11-05 | P9-19：derive `from_jvalue` 校验类名/SUID；类名或 SUID 不匹配返回 `FieldMismatch`（含两个 SUID）；覆盖 struct/enum/继承回归，全仓 167 项通过 | P9-19 |

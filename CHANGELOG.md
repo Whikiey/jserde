@@ -35,6 +35,9 @@
   class SUIDs are computed by the default algorithm for any element class.
 - Nested `JavaSerializable` fields (`DESCRIPTOR` const) and `Option<Custom>`
   in derive; recursive `SchemaField::nested` in the serde bridge.
+- Derived `from_jvalue` validates Java class name and SUID before reading
+  fields (P9-19); class/serialVersionUID mismatches return `FieldMismatch`
+  with both SUIDs.
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.

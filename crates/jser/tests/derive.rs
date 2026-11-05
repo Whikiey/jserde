@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use common::{fixture_allowlist, read_fixture};
 use jser::{
-    decode_stream_with_allowlist, decode_typed_with_allowlist, encode_typed, Allowlist,
+    decode_stream_with_allowlist, decode_typed_with_allowlist, encode_typed, Allowlist, Error,
     JavaSerializable,
 };
 use jser_derive::JavaSerializable;
@@ -18,6 +18,24 @@ struct Point {
     java_x: i32,
     #[java(rename = "y")]
     java_y: i32,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$Point", suid = 2)]
+struct WrongPointSuid {
+    #[java(rename = "x")]
+    x: i32,
+    #[java(rename = "y")]
+    y: i32,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$OtherPoint", suid = 1)]
+struct OtherPoint {
+    #[java(rename = "x")]
+    x: i32,
+    #[java(rename = "y")]
+    y: i32,
 }
 
 #[derive(JavaSerializable, Debug, Clone, PartialEq)]
@@ -70,6 +88,30 @@ fn derive_decodes_point_fixture() {
             java_y: 2
         }
     );
+}
+
+#[test]
+fn derive_rejects_a_mismatched_serial_version_uid() {
+    let bytes = encode_typed(WrongPointSuid { x: 1, y: 2 }).unwrap();
+    let error = decode_typed_with_allowlist::<Point>(&bytes, &fixture_allowlist()).unwrap_err();
+    assert!(matches!(error, Error::FieldMismatch { .. }));
+    let message = error.to_string();
+    assert!(message.contains("serialVersionUID mismatch"), "{message}");
+    assert!(message.contains("Fixtures$Point"), "{message}");
+    assert!(message.contains("expected 1"), "{message}");
+    assert!(message.contains("got 2"), "{message}");
+}
+
+#[test]
+fn derive_rejects_a_mismatched_class_name() {
+    let bytes = encode_typed(OtherPoint { x: 1, y: 2 }).unwrap();
+    let error = decode_typed_with_allowlist::<Point>(&bytes, &fixture_allowlist()).unwrap_err();
+    assert!(matches!(error, Error::FieldMismatch { .. }));
+    let message = error.to_string();
+    assert!(message.contains("class name mismatch"), "{message}");
+    assert!(message.contains("Fixtures$Point"), "{message}");
+    assert!(message.contains("Fixtures$OtherPoint"), "{message}");
+    assert!(message.contains("SUID 1"), "{message}");
 }
 
 #[test]
@@ -390,6 +432,24 @@ enum Color {
     Green,
     #[java(rename = "BLUE")]
     Blue,
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "Fixtures$OtherColor", suid = 0)]
+enum OtherColor {
+    Red,
+    Green,
+}
+
+#[test]
+fn derive_enum_rejects_a_mismatched_class_name() {
+    let bytes = encode_typed(OtherColor::Green).unwrap();
+    let error = decode_typed_with_allowlist::<Color>(&bytes, &fixture_allowlist()).unwrap_err();
+    assert!(matches!(error, Error::FieldMismatch { .. }));
+    let message = error.to_string();
+    assert!(message.contains("class name mismatch"), "{message}");
+    assert!(message.contains("Fixtures$Color"), "{message}");
+    assert!(message.contains("Fixtures$OtherColor"), "{message}");
 }
 
 #[test]

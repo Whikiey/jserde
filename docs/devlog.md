@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-05 23:05 · feat: derive 解码校验类名/SUID（P9-19）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - `JavaSerializable` 新增默认方法 `validate_decoded(value, graph)`：在对象 class 链中查找 `Self::CLASS`；找到后校验该层 `serialVersionUID`，未找到则校验实际类名/SUID；不匹配返回 `FieldMismatch`，错误包含期望/实际 SUID。
+  - derive 的 struct/enum `from_jvalue` 入口调用校验；`#[java(flatten)]` 通过父类 layer 命中，继承 fixture 仍通过。
+  - 新增 3 个负例：同名字段但类名不同、同类名但 SUID 不同、enum 类名不同。
+- **TDD**：
+  - Red：先新增两个 derive mismatch 测试，确认当前会静默成功。
+  - Green：实现校验后两个测试通过；再补 enum 负例与继承回归，全绿。
+- **验证**：`cargo test --workspace` **167 passed**；clippy/fmt/`cargo doc -D warnings` 通过。
+- **文档**：AGENT/README/SECURITY/CHANGELOG、requirements、design D2、plan §20/§21 与 §19 同步。
+
+---
+
 ## 2026-11-05 21:50 · docs: 跨机同步 P8/P9 进度
 
 - **提交**：本次（hash 见 `git log`）

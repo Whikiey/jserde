@@ -331,6 +331,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 value: &jser::JValue,
                 graph: &jser::Graph,
             ) -> jser::Result<Self> {
+                <Self as jser::JavaSerializable>::validate_decoded(value, graph)?;
                 Ok(Self {
                     #(#initializers),*
                 })
@@ -447,6 +448,7 @@ fn expand_enum(
                 value: &jser::JValue,
                 graph: &jser::Graph,
             ) -> jser::Result<Self> {
+                <Self as jser::JavaSerializable>::validate_decoded(value, graph)?;
                 let constant = graph.as_enum_constant(value)?.ok_or_else(|| {
                     jser::Error::FieldMismatch {
                         message: format!("expected a Java enum for `{}`", Self::CLASS),
