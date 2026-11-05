@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-jser = { path = ".." }
+jser = { path = "../crates/jser" }
 
 [[bin]]
 name = "decode"

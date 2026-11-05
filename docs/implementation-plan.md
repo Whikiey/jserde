@@ -253,7 +253,7 @@ P2 ─────────────────────────�
 
 | ID | 任务 | 要点 | 验证 |
 |---|---|---|---|
-| P7-1 ◐ | fuzz | `fuzz/` + `libfuzzer-sys`；目标：任意字节解码、解码→编码→解码、`MUTF-8`；语料从 fixture seed；CI 冒烟 + nightly 30 分钟（`.github/workflows/nightly.yml`，2026-11-04 接入） | 30 分钟无 panic/OOM（`AC-04`，待首次绿色 nightly） |
+| P7-1 ✅ | fuzz | `fuzz/` + `libfuzzer-sys`；目标：任意字节解码、解码→编码→解码、`MUTF-8`；语料从 fixture seed；CI 冒烟 + nightly 30 分钟（`.github/workflows/nightly.yml`） | 2026-11-06：decode 1801s/5,000,272 runs/476MB，roundtrip/mutf8 各 301s，均 exit 0；`AC-04` ✅ |
 | P7-2 ✅ | 性能 | 自定义 `examples/bench.rs`（无 criterion 依赖）：字符串、POJO、大 Map、100 MB 合成块、25M `int[]`；目标 ≥ 50 MB/s、内存峰值 < 3× | `AC-06` + `docs/bench.md` |
 | P7-3 ✅ | panic 审计 | `#![forbid(unsafe_code)]`；库内禁用 `unwrap`/`expect`（clippy `unwrap_used` 或评审）；所有切片用 `get`/游标 | `cargo clippy` |
 | P7-4 ✅ | 文档 | README（能力矩阵、快速开始、安全警告）、SECURITY.md（gadget 风险与 allowlist）、CHANGELOG、rustdoc 示例 | `cargo test --doc` |
@@ -261,7 +261,7 @@ P2 ─────────────────────────�
 | P7-6 ✅ | 全量回归 | 全部 fixture 用例；`gen.sh --check`；interop；fuzz 冒烟；bench 基线归档 | 全绿 |
 
 **状态（2026-11-04，TDD）**：P7 基本完成。
-- P7-1：`fuzz/` 三个 libFuzzer 目标（decode/roundtrip/mutf8）、离线 `tests/fuzz_smoke.rs` 与 CI `fuzz-smoke` job；**nightly workflow 已接入**（decode 1800s + roundtrip/mutf8 300s，语料取 fixture，2026-11-04），本机因无 `cargo-fuzz`/离线未跑满；**2026-11-04 起暂缓**（用户决定：等功能完成后再执行），nightly schedule 已停用、保留手动触发。
+- P7-1：`fuzz/` 三个 libFuzzer 目标（decode/roundtrip/mutf8）、离线 `tests/fuzz_smoke.rs` 与 CI `fuzz-smoke` job；nightly schedule 已启用。2026-11-06 本地 AC-04：decode 1801s/5,000,272 runs/476MB，roundtrip 301s/3,397,428 runs，mutf8 301s/68,445,913 runs，均 exit 0；`cargo-fuzz` 依赖路径修正为 `../crates/jser`。
 - P7-2：无 criterion 离线依赖，改用 `examples/bench.rs`；100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入，见 `docs/bench.md`（AC-06 的合成块负载）；真实 25M `int[]` 已由 P8-2 改为 raw 存储，本地采样约 2.03×。
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
@@ -315,7 +315,7 @@ ac 对应：`AC-01` → P1/P2/P3；`AC-02` → P3；`AC-03` → P3/P4；`AC-04` 
 | interop | PR | `emit` + `serde_emit` + 42 例 Java `Verify` 读回 + SUID | 任一用例失败 |
 | deny | PR | `cargo deny check` | license/advisory 失败 |
 | fuzz-smoke | PR | `cargo test -p jser --test fuzz_smoke` | panic |
-| nightly | 定时/手动 | fuzz 30 分钟、bench-gate | 回归/panic（fuzz schedule 暂缓） |
+| nightly | 定时/手动 | fuzz 30 分钟、bench-gate | 回归/panic（fuzz schedule 已启用） |
 
 CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 cargo-deny job。缓存 `~/.cargo`、`target/`。
 
@@ -456,15 +456,15 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-06 | 范围关闭：P9-5 零拷贝不做；P9-12 完整环关闭，保留非环 `Shared<T>`；剩余工作只剩 P8-1/P8-6 与发布决策 | 用户决定 |
 | 2026-11-06 | P8-4 完成：新增 `out_negative.rs` 10 项，覆盖旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径与错误 tag；全仓 193 passed | P8-4 |
 | 2026-11-06 | P8-6 完成：300 层对象链/深度上限、8 线程独立与共享 Graph 并发测试；全仓 198 passed | P8-6 |
+| 2026-11-06 | P8-1/AC-04 完成：启用 nightly schedule，修正 fuzz 依赖路径，本地 decode 1801s/5,000,272 runs/476MB、roundtrip 301s、mutf8 301s 全部 exit 0 | P8-1 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
 
-**当前（2026-11-06）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **198 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
+**当前（2026-11-06）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **198 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-1 fuzz（AC-04）已通过，P8-2/P8-3/P8-5 与 P9 相关项均完成。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
-| P8-1 30 分钟 fuzz 未跑满 | ⏸ 暂缓；nightly workflow 已就绪但 `schedule` 停用，可手动触发 | P8-1 | AC-04 |
 | 真实 100 MB primitive 数组 | ✅ `ArrayData::Primitive` raw bytes + `PrimitiveArray`；25M `int[]` 本地约 2.03× | P8-2 | AC-06 |
 | 嵌套 derive/serde | ✅ 嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承、递归 `SchemaField`、Map/Set/枚举/多根 | P8-3 | FR-14/15 |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ `object/42` + `BuiltinValue` | P8-5 | FR-13 |

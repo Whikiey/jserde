@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；剩余项见计划 §20/§21 |
-| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成主要功能；P8-1 的 30 分钟 fuzz 暂缓；剩余 P9 扩展见 §20/§21 |
+| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成主要功能；P8-1 的 30 分钟 fuzz 已通过；剩余工作见 §20 |
 | 基准数据 | **已完成**：43 个用例、79031 字节（P6/P7/P8/P9 新增 object/40–50），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**198 项测试全绿**。P9-5/P9-12 已关闭（见 §20/§21） |
+| Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**198 项测试全绿**。P8-1 fuzz、P9-5/P9-12 均已关闭/完成 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P9 主要功能已完成；P9-5（零拷贝）与 P9-12（完整环）已关闭，不再作为待办；剩余项是 P8-1 的 30 分钟 fuzz（AC-04，暂缓）。发布仍按 A-5 暂缓。
+所以：P0–P9 主要功能已完成；P8-1 30 分钟 fuzz 已通过（AC-04 ✅）；P9-5 与 P9-12 已关闭；当前没有功能待办，剩余仅是发布决策。发布仍按 A-5 暂缓。
 
 ---
 

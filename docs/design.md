@@ -398,7 +398,7 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
 | M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 余项与常见值类/扩展容器已补；serde 支持递归嵌套/Map/Set/枚举/多根，树模型限制已文档化 |
-| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 合成 100 MB 与 25M `int[]` bench 达标（约 2.0× RSS）；fuzz 目标/冒烟完成；30 分钟完整 fuzz 暂缓 |
+| M6 ✅ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 100 MB/25M `int[]` bench 达标；2026-11-06 decode 1801s/5,000,272 runs/476MB、roundtrip/mutf8 各 301s 均无失败 |
 
 ## 7. 风险与缓解
 

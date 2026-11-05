@@ -30,8 +30,9 @@ printf '\xc0\x80' > fuzz/corpus/mutf8/seed-overlong-nul
 
 ## Nightly CI (AC-04)
 
-> **暂缓（2026-11-04）**：按用户决定，定时任务已停用，等功能开发完成后再启用；
-> 目前只能从 Actions 手动触发。恢复时取消 `nightly.yml` 中 `schedule` 的注释即可。
+> **已启用（2026-11-06）**：定时任务已恢复；也可从 Actions 手动触发。
+> 2026-11-06 本地 AC-04 结果：decode 1801 s / 5,000,272 runs / peak 476 MB，
+> roundtrip 301 s / 3,397,428 runs，mutf8 301 s / 68,445,913 runs，均 exit 0。
 
 [`.github/workflows/nightly.yml`](../.github/workflows/nightly.yml) runs on
 manual dispatch (the daily 18:00 UTC / 02:00 Asia/Shanghai schedule is disabled
@@ -44,6 +45,7 @@ until feature work completes):
   hand-written MUTF-8 seeds, and cached between runs;
 - on failure, `fuzz/artifacts/` and `fuzz/corpus/` are uploaded as artifacts.
 
-Until the first green nightly run, AC-04 stays partial in
-`docs/requirements.md`. The always-on CI check remains the offline smoke test
-(`cargo test -p jser --test fuzz_smoke`), which needs no fuzzing toolchain.
+AC-04 is now marked ✅ in `docs/requirements.md` based on the 2026-11-06 run;
+subsequent nightly runs remain the regression gate. The always-on CI check
+remains the offline smoke test (`cargo test -p jser --test fuzz_smoke`), which
+needs no fuzzing toolchain.

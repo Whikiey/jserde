@@ -9,7 +9,7 @@
 - P0–P9 主要功能已实现：43 个 fixture / 79031 字节、198 项测试通过、42 例 Java 读回 + SUID 对拍（`50` 为结构化异常，不重编码）；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
 - 已覆盖：动态编解码、集合/扩展容器、环/共享、typed、derive（嵌套/继承/enum）、SUID、内置类语义、allowlist、`TC_CLASS`/动态代理保真回放、serde 桥（递归嵌套 POJO/Map/Set/枚举/多根/`TC_RESET`）。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地约 2.03×（AC-06）；三层/混合嵌套 fixture 已覆盖。
-- P8-1：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪，`schedule` 停用，可从 Actions 手动触发）。
+- P8-1：30 分钟 fuzz 已通过（AC-04）：decode 1801s / 5,000,272 runs，roundtrip 301s，mutf8 301s；nightly schedule 已启用。
 - P8-4：OUT 负例已补齐（旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径）。
 - P8-6：300 层对象链与 8 线程并发只读/独立编解码测试已补齐。
 - P9-5（零拷贝）与 P9-12（完整环）已关闭：P9-5 不做 `Graph` 生命周期改造；P9-12 接受非环 `Shared<T>`，完整环仍用动态 `Graph`。

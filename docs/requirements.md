@@ -110,7 +110,7 @@
 | AC-01 | ✅ | 43 个 fixture 全部可处理（42 个正常解码，`50` 返回结构化异常）；`36`/`40`/`42`/`43` 语义、`41` 三层嵌套、`44` 混合/共享/环、`45` 常见值类、`46` 扩展容器、`47` Class 对象、`48` 动态代理、`49` EnumSet/EnumMap、`50` TC_EXCEPTION 由 `tests/builtin.rs`、`tests/nested.rs`、`tests/nesting.rs`、`tests/containers.rs`、`tests/class_objects.rs`、`tests/proxy.rs`、`tests/exception.rs` 覆盖 |
 | AC-02 | ✅（常规 fixture） | `tests/interop.rs` + `Verify.java`：42 个常规 fixture 全部由 Rust 重编码后经 Java `ObjectInputStream` 读回（`--read`/`--sequence`/`--primitives`/`--blocks`/`--array`）；`50` 是 fatal 流，不重编码；构造/typed/derive/serde 代表用例断言字段值；范围外类型（`Externalizable` 语义、代理语义等）仍不覆盖 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
-| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（`schedule` 停用，可手动触发），30 分钟未跑满 |
+| AC-04 | ✅ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；2026-11-06 decode 1801 s / 5,000,272 runs / peak 476 MB，roundtrip 301 s，mutf8 301 s，均 exit 0；nightly schedule 已启用 |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
 | AC-06 | ✅（本地实测） | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；25M `int[]` raw 存储本地约 **2.03×**（Windows；Linux `bench -- array` 可复核） |
 
@@ -209,3 +209,4 @@
 | 2026-11-06 | 范围关闭：P9-5 零拷贝不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`，完整环继续用动态 `Graph` | 用户决定 |
 | 2026-11-06 | P8-4：补 OUT 负例（旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径、错误 tag）；全仓 193 项通过 | P8-4 |
 | 2026-11-06 | P8-6：300 层对象链、深度上限错误、8 线程独立/只读并发测试；全仓 198 项通过 | P8-6 |
+| 2026-11-06 | P8-1 / AC-04：启用 nightly schedule；本地 decode 1801s/5,000,272 runs/476MB，roundtrip 301s，mutf8 301s，均 exit 0 | P8-1 |

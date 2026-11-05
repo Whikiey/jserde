@@ -4,10 +4,10 @@ Java deserialization is a well-known attack surface. `jser` is a decoder of an
 untrusted-on-the-wire format; it is **not** a sandbox.
 
 Current implementation: v0.1.0, P0–P9 code line, strict allowlist by default,
-198 tests. The remaining security-relevant gaps are listed in
+198 tests. The 30-minute fuzz gate passed locally (decode 1801s, peak 476 MB).
+The remaining security-relevant gaps are listed in
 `docs/implementation-plan.md` §20/§21 (notably: allowlist is not a gadget
-sandbox, the 30-minute fuzz workflow is in place but deferred, and several P9
-extensions such as streaming IO are not done).
+sandbox). P9-5/P9-12 are closed scope decisions; streaming IO is implemented.
 Primitive arrays use compact raw-byte storage; 25M-element `int[]` is under the
 3× local memory target.
 

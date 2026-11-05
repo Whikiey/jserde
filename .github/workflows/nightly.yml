@@ -1,10 +1,8 @@
 name: nightly
 
 on:
-  # 2026-11-04: 按用户决定暂缓，等功能开发完成后再启用定时任务。
-  # 恢复时取消下面两行注释即可（也可随时从 Actions 手动触发）。
-  # schedule:
-  #   - cron: "0 18 * * *"
+  schedule:
+    - cron: "0 18 * * *" # 02:00 Asia/Shanghai
   workflow_dispatch:
 
 env:
@@ -69,13 +67,39 @@ jobs:
           printf '\xed\xa0\xbd\xed\xb8\x80' > fuzz/corpus/mutf8/seed-emoji
 
       - name: Fuzz decode for 30 minutes (AC-04)
-        run: cargo fuzz run decode -- -max_total_time="$DECODE_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo fuzz run decode -- \
+            -max_total_time="$DECODE_FUZZ_SECONDS" \
+            -rss_limit_mb=2048 -timeout=30 -print_final_stats=1 \
+            2>&1 | tee fuzz-decode.log
 
       - name: Fuzz roundtrip (short)
-        run: cargo fuzz run roundtrip -- -max_total_time="$AUX_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo fuzz run roundtrip -- \
+            -max_total_time="$AUX_FUZZ_SECONDS" \
+            -rss_limit_mb=2048 -timeout=30 -print_final_stats=1 \
+            2>&1 | tee fuzz-roundtrip.log
 
       - name: Fuzz mutf8 (short)
-        run: cargo fuzz run mutf8 -- -max_total_time="$AUX_FUZZ_SECONDS" -rss_limit_mb=2048 -timeout=30 -print_final_stats=1
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo fuzz run mutf8 -- \
+            -max_total_time="$AUX_FUZZ_SECONDS" \
+            -rss_limit_mb=2048 -timeout=30 -print_final_stats=1 \
+            2>&1 | tee fuzz-mutf8.log
+
+      - name: Upload fuzz logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-logs
+          path: fuzz/fuzz-*.log
+          if-no-files-found: ignore
 
       - name: Upload crash artifacts
         if: failure()

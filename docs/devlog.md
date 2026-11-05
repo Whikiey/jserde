@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-06 03:50 · test: 30 分钟 fuzz 通过（P8-1 / AC-04）
+
+- **提交**：本次（hash 见 `git log`）
+- **修复**：`fuzz/Cargo.toml` 的 `jser` 依赖从 `..`（虚拟 workspace 根）改为 `../crates/jser`，否则 `cargo fuzz` 无法构建。
+- **CI**：`.github/workflows/nightly.yml` 恢复每日 18:00 UTC schedule；三个 fuzz step 改为 `set -o pipefail` + `tee`，新增 `fuzz-logs` artifact（`if: always()`）。
+- **本地 AC-04**（2026-11-06，Linux，nightly + cargo-fuzz）：
+  - decode：1801 s，5,000,272 runs，peak RSS 476 MB，exit 0；
+  - roundtrip：301 s，3,397,428 runs，peak RSS 169 MB，exit 0；
+  - mutf8：301 s，68,445,913 runs，peak RSS 580 MB，exit 0；
+  - 无 crash artifacts。
+- **验证**：`docs/requirements.md` AC-04、design M6、plan P7-1/P8-1 均为 ✅；本地 `cargo test` 198 passed 不变。
+- **TDD/操作**：首次运行暴露 fuzz 依赖路径错误，修正后短跑通过，再跑满 30 分钟；日志作为本地证据，CI artifact 名称 `fuzz-logs`。
+
+---
+
 ## 2026-11-06 03:15 · test: 深链与并发（P8-6）
 
 - **提交**：本次（hash 见 `git log`）

@@ -54,6 +54,8 @@
   and remain supported by the dynamic `Graph` API (P9-12, partial accepted).
 - Deep-chain (300 objects) and concurrent read-only/independent encode tests
   (P8-6).
+- AC-04: 30-minute decode fuzz completed locally (1801 s, 5,000,272 runs,
+  peak 476 MB); roundtrip/mutf8 5-minute runs also green; nightly schedule enabled.
 - OUT negative path coverage: legacy Externalizable, non-serializable class
   descriptors, malformed `TC_CLASS`/`TC_PROXYCLASSDESC`, bad tags (P8-4).
 - Scope decision: P9-5 zero-copy/borrowed input decoding is closed (not planned;
@@ -109,7 +111,8 @@
   cross-JDK fixture because its computed SUID varies between JDK builds.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.
-- AC-04: the 30-minute decode fuzz workflow is in place but deferred until
-  feature work is complete. The offline smoke test is always on.
+- AC-04: the 30-minute decode fuzz completed on 2026-11-06 (1801 s, 5,000,272
+  runs, 476 MB peak); nightly schedule is enabled and the offline smoke test
+  remains always-on.
 - AC-06: synthetic 100 MB block and a real 25M-element `int[]` stay under the
   3× memory target with compact primitive arrays (local measurement).
