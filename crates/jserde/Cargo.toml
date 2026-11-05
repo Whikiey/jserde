@@ -4,6 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+description = "Pure-Rust Java Object Serialization reader/writer compatible with ObjectOutputStream/ObjectInputStream"
+keywords = ["java", "serialization", "deserialization", "protocol"]
+categories = ["encoding", "parser-implementations"]
+documentation = "https://docs.rs/jserde"
 
 [dependencies]
 thiserror.workspace = true

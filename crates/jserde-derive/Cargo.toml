@@ -4,6 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+description = "Derive macros for jserde JavaSerializable bindings"
+keywords = ["java", "serialization", "derive", "proc-macro"]
+categories = ["encoding"]
+documentation = "https://docs.rs/jserde-derive"
 
 [lib]
 proc-macro = true

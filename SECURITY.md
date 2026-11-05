@@ -58,4 +58,8 @@ Zlib), wildcard ban and registry pinning. Run it locally before releases.
 ## Reporting
 
 This is a pre-release project without a private security channel yet. Do not
-deploy it as a trust boundary; report issues to the repository maintainers.
+deploy it as a trust boundary. Before a public release, the maintainers must
+publish a private reporting address (or explicitly use the repository's private
+security advisory flow); until then, report only minimal reproduction details
+in a public issue and ask for a private contact. See `RELEASING.md` for the
+release checklist.

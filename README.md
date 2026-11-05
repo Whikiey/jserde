@@ -2,7 +2,38 @@
 
 纯 Rust 实现的 Java 对象序列化协议，与 JDK 的 `ObjectOutputStream` / `ObjectInputStream` 双向互通，**运行时零 JVM 依赖**。
 
-当前版本：`0.1.0`（P0–P9 开发线；尚未发布 crates.io）。
+当前版本：`0.1.0`（release candidate；尚未发布 crates.io）。
+
+## 安装
+
+> `jserde` 0.1.0 目前尚未发布到 crates.io。发布后使用：
+
+```bash
+# 核心库
+cargo add jserde
+
+# 可选：derive
+cargo add jserde-derive
+
+# 可选：serde 桥
+cargo add jserde-serde
+```
+
+发布前请从源码或 path/git 依赖使用，并参阅
+[RELEASING.md](RELEASING.md) 与 [release notes](docs/release-notes-0.1.0.md)。
+
+## 兼容性
+
+| 项 | 值 |
+|---|---|
+| Java 基线 | Java 17 fixture；wire 格式兼容 Java 1.2+（受支持类） |
+| Rust MSRV | 1.77 |
+| 平台 | Linux / macOS / Windows（CI matrix） |
+| 运行时 | 无 JVM、无 `unsafe` |
+| License | MIT OR Apache-2.0 |
+
+`0.x` 阶段允许 breaking change；1.0 前不承诺 semver 兼容。详细发布流程见
+[RELEASING.md](RELEASING.md)。
 
 ## 当前进度
 
@@ -112,6 +143,10 @@ cargo test -p jserde --test fuzz_smoke
 - [实现计划](docs/implementation-plan.md)
 - [测试基准](docs/testdata/README.md)
 - [Benchmark](docs/bench.md)
+- [API 稳定性](docs/api-stability.md)
+- [发布流程](RELEASING.md)
+- [贡献指南](CONTRIBUTING.md)
+- [0.1.0 release notes](docs/release-notes-0.1.0.md)
 - [编码须知](AGENT.md)
 
 ## 已知限制
@@ -123,3 +158,12 @@ cargo test -p jserde --test fuzz_smoke
 - primitive 数组使用紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集约 2.03× 输入，Linux 可用 `bench -- array` 的 `VmHWM` 复核。
 - **已关闭的 P9 范围**：P9-5 零拷贝（不做 `Graph` 生命周期改造）；P9-12 完整环（`Shared<T>` 仅覆盖非环共享）。
 - 默认 allowlist 不能替代完整反序列化沙箱。
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.

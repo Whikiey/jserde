@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+All notable changes to this project are documented here.
+
+## [Unreleased]
+
+## [0.1.0] - 2026-11-06 (release candidate)
 
 ### Added
 
@@ -61,6 +65,11 @@
 - Scope decision: P9-5 zero-copy/borrowed input decoding is closed (not planned;
   existing `as_str`/`as_primitive_array` views are arena borrows, not input
   zero-copy).
+- Release-ready documentation: installation/compatibility/API-stability notes,
+  `RELEASING.md`, `CONTRIBUTING.md`, `docs/release-notes-0.1.0.md`, and
+  MIT/Apache-2.0 license files.
+- Crate names in the 0.1.0 candidate are `jserde`, `jserde-derive`, and
+  `jserde-serde` (the pre-release `jser` name was retired before publication).
 - Schema-driven `jserde-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
@@ -105,8 +114,9 @@
 - Generic `Externalizable` semantics, dynamic-proxy invocation semantics,
   `TC_CLASS` class-loading semantics and RMI/JNDI are out of scope; P9-1/2 only
   provide byte/handle-fidelity replay.
-- serde is a tree model: shared references decode as duplicated values and
-  cycles are not representable; object-array fields are unsupported.
+- serde is a tree model: ordinary shared references decode as duplicated
+  values; `Shared<T>` preserves non-cyclic identity, while full cycles use the
+  dynamic `Graph` API; object-array fields are unsupported.
 - `Collections$SynchronizedList` decode support exists, but it is not in the
   cross-JDK fixture because its computed SUID varies between JDK builds.
 - `java.util.Optional` is not `Serializable`.

@@ -6,17 +6,17 @@
 
 ---
 
-## 1. 当前状态（2026-11-05）
+## 1. 当前状态（2026-11-06）
 
 | 项 | 状态 |
 |---|---|
-| 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；剩余项见计划 §20/§21 |
-| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成主要功能；P8-1 的 30 分钟 fuzz 已通过；剩余工作见 §20 |
+| 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；发布前文档见 `RELEASING.md` / `CONTRIBUTING.md` / `docs/api-stability.md` |
+| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成；P8-1 fuzz 已通过；当前只差发布决策（A-5） |
 | 基准数据 | **已完成**：43 个用例、79031 字节（P6/P7/P8/P9 新增 object/40–50），JDK 17.0.20.1 生成，见 `docs/testdata/` |
 | Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**198 项测试全绿**。P8-1 fuzz、P9-5/P9-12 均已关闭/完成 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P9 主要功能已完成；P8-1 30 分钟 fuzz 已通过（AC-04 ✅）；P9-5 与 P9-12 已关闭；当前没有功能待办，剩余仅是发布决策。发布仍按 A-5 暂缓。
+所以：P0–P9 主要功能已完成；P8-1 30 分钟 fuzz 已通过（AC-04 ✅）；P9-5 与 P9-12 已关闭；当前没有功能待办；发布文档已就绪，发布仍按 A-5 暂缓。
 
 ---
 
@@ -59,6 +59,9 @@
 AGENT.md                     # 本文件（仓库根）
 README.md / SECURITY.md      # 快速开始、安全边界
 CHANGELOG.md                 # 版本变更
+RELEASING.md                 # 发布 runbook
+CONTRIBUTING.md              # 贡献指南
+LICENSE-MIT / LICENSE-APACHE # 双许可证
 fuzz/                        # cargo-fuzz 目标（独立 workspace）
 deny.toml / .github/         # 依赖审计与 CI matrix/nightly
 dsh-session-*/               # 本地 DSH 日志（已 ignore，不入库）
@@ -67,13 +70,15 @@ docs/
 ├── design.md                # 怎么做：决策 D1–D5、协议要点、模块、里程碑、风险
 ├── implementation-plan.md   # P0–P9 任务拆分、门禁、§20/§21 缺口 backlog
 ├── bench.md / bench-baseline.json / bench_gate.py  # 性能基线
+├── api-stability.md         # 版本/兼容性/弃用策略
+├── release-notes-0.1.0.md   # 0.1.0 release candidate notes
 ├── devlog.md                # 每次提交的开发日志（§10.2）
 └── testdata/
     ├── README.md            # 基准数据的用途、用法、覆盖表
     ├── manifest.json        # 机读契约（43 例，含期望语义值 + sha256）
     ├── fixtures/
     │   ├── codec/           # 01–12：无类描述符的流原语
-    │   └── object/          # 20–49：类描述符/SUID/继承/enum/数组/集合/环/reset/扩展类型
+    │   └── object/          # 20–50：类描述符/SUID/继承/enum/数组/集合/环/reset/扩展类型/TC_EXCEPTION
     ├── gen/
     │   ├── Fixtures.java              # 权威生成器（JDK 17+）
     │   ├── build_codec_fixtures.py    # codec 层独立再推导，用于对拍

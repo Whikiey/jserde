@@ -257,7 +257,7 @@ P2 ─────────────────────────�
 | P7-2 ✅ | 性能 | 自定义 `examples/bench.rs`（无 criterion 依赖）：字符串、POJO、大 Map、100 MB 合成块、25M `int[]`；目标 ≥ 50 MB/s、内存峰值 < 3× | `AC-06` + `docs/bench.md` |
 | P7-3 ✅ | panic 审计 | `#![forbid(unsafe_code)]`；库内禁用 `unwrap`/`expect`（clippy `unwrap_used` 或评审）；所有切片用 `get`/游标 | `cargo clippy` |
 | P7-4 ✅ | 文档 | README（能力矩阵、快速开始、安全警告）、SECURITY.md（gadget 风险与 allowlist）、CHANGELOG、rustdoc 示例 | `cargo test --doc` |
-| P7-5 ✅ | 发布准备 | `cargo package --list`、版本号、`docs.rs`/feature 说明（若确认发布） | 打包通过 |
+| P7-5 ✅ | 发布准备 | `cargo package --list`、版本号、`docs.rs`/feature 说明；发布 runbook/license/README 见 `RELEASING.md` | 打包通过 |
 | P7-6 ✅ | 全量回归 | 全部 fixture 用例；`gen.sh --check`；interop；fuzz 冒烟；bench 基线归档 | 全绿 |
 
 **状态（2026-11-04，TDD）**：P7 基本完成。
@@ -265,7 +265,7 @@ P2 ─────────────────────────�
 - P7-2：无 criterion 离线依赖，改用 `examples/bench.rs`；100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入，见 `docs/bench.md`（AC-06 的合成块负载）；真实 25M `int[]` 已由 P8-2 改为 raw 存储，本地采样约 2.03×。
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
-- P7-5：`cargo package --list -p jserde` 通过（无发布元数据，按 A-5 暂不发布）。
+- P7-5：`cargo package --list -p jserde` 通过；发布元数据、`RELEASING.md`、`CONTRIBUTING.md`、许可证与 0.1.0 release notes 已补齐，按 A-5 暂不发布。
 - P7-6：全仓 **198 passed**（P8-6 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。

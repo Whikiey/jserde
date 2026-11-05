@@ -4,6 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+description = "Schema-driven serde bridge for jserde Java serialization"
+keywords = ["java", "serialization", "serde"]
+categories = ["encoding"]
+documentation = "https://docs.rs/jserde-serde"
 
 [dependencies]
 jserde = { version = "0.1.0", path = "../jserde" }

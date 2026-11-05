@@ -361,6 +361,22 @@
 
 ---
 
+## 2026-11-06 04:20 · docs: 准备发布前文档
+
+- **提交**：本次（hash 见 `git log`）
+- **新增**：
+  - `RELEASING.md`：发布决策、验收前置条件、package/publish 顺序、tag、发布后检查、yank 策略、release notes 模板；
+  - `CONTRIBUTING.md`：开发/测试/fixture/提交/PR 规则；
+  - `docs/api-stability.md`：0.x/1.0 版本策略、公开 API、MSRV、弃用、scope；
+  - `docs/release-notes-0.1.0.md`：0.1.0 release candidate 说明与验证数据；
+  - `LICENSE-MIT` / `LICENSE-APACHE` 及三个 crate 的副本；三个 crate 的 README。
+- **元数据**：三个 `Cargo.toml` 增加 description/keywords/categories/documentation/readme；`cargo package --list` 不再警告。
+- **README**：增加安装（发布后）、兼容性、API 稳定性、License、发布文档链接；CHANGELOG 标为 `[0.1.0] - 2026-11-06 (release candidate)`。
+- **验证**：`cargo test --workspace` **198 passed**；clippy/fmt/doc、gen/interop、`cargo package --list` 通过。
+- **说明**：A-5 仍是“暂不发布”；文档是发布准备，不是已发布声明。
+
+---
+
 ## 2026-11-06 03:50 · test: 30 分钟 fuzz 通过（P8-1 / AC-04）
 
 - **提交**：本次（hash 见 `git log`）
