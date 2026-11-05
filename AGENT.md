@@ -16,7 +16,7 @@
 | Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**183 项测试全绿**。剩余 P9-5（暂缓）/P9-12（部分） 见 §20/§21 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P9 主要功能已完成；剩余项见 `implementation-plan.md` §20/§21：P8-1 的 30 分钟 fuzz（AC-04，暂缓）、P9-5 零拷贝（架构级暂缓）、P9-12 serde 指针级共享/环、P9-17 泛型。
+所以：P0–P9 主要功能已完成；剩余项见 `implementation-plan.md` §20/§21：P8-1 的 30 分钟 fuzz（AC-04，暂缓）、P8-4 的 OUT 负例、P8-6 的并发/深链、P9-5 零拷贝（架构级暂缓）、P9-12 的完整环（仅非环 `Shared<T>` 已完成）。发布仍按 A-5 暂缓。
 
 ---
 
