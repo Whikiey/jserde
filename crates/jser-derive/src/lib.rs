@@ -16,8 +16,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Field, Fields, GenericArgument, LitInt,
-    LitStr, PathArguments, Type,
+    parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Field, Fields, GenericArgument,
+    GenericParam, LitInt, LitStr, PathArguments, Type,
 };
 
 #[proc_macro_derive(JavaSerializable, attributes(java))]
@@ -82,10 +82,15 @@ struct FieldInfo {
 }
 
 fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
-    if !input.generics.params.is_empty() {
+    if input
+        .generics
+        .params
+        .iter()
+        .any(|param| !matches!(param, GenericParam::Type(_)))
+    {
         return Err(syn::Error::new_spanned(
             &input.generics,
-            "JavaSerializable does not support generic structs",
+            "JavaSerializable supports only type parameters (no lifetimes or const generics)",
         ));
     }
 
@@ -108,6 +113,12 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let array_descriptor = format!("[L{};", class.replace('.', "/"));
 
     if let Data::Enum(data) = &input.data {
+        if !input.generics.params.is_empty() {
+            return Err(syn::Error::new_spanned(
+                &input.generics,
+                "JavaSerializable generic enums are not supported",
+            ));
+        }
         return expand_enum(
             name,
             &class,
@@ -285,16 +296,24 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         )
     };
 
+    let mut generics = input.generics.clone();
+    for param in generics.type_params_mut() {
+        param.bounds.push(parse_quote!(jser::JavaSerializable));
+        param.bounds.push(parse_quote!(jser::IntoJValue));
+        param.bounds.push(parse_quote!(jser::FromJValue));
+        param.bounds.push(parse_quote!(Clone));
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let output = quote! {
-        impl jser::JavaSerializable for #name {
+        impl #impl_generics jser::JavaSerializable for #name #ty_generics #where_clause {
             const CLASS: &'static str = #class;
             const SUID: i64 = #suid;
             const DESCRIPTOR: &'static str = #descriptor;
             const ARRAY_DESCRIPTOR: &'static str = #array_descriptor;
 
-            fn schema() -> &'static [jser::JavaField] {
-                static FIELDS: &[jser::JavaField] = &[#(#schema),*];
-                FIELDS
+            fn schema() -> Vec<jser::JavaField> {
+                vec![#(#schema),*]
             }
 
             fn to_jvalue(&self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
@@ -334,7 +353,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
 
-        impl jser::FromJValue for #name {
+        impl #impl_generics jser::FromJValue for #name #ty_generics #where_clause {
             fn from_jvalue(
                 value: &jser::JValue,
                 graph: &jser::Graph,
@@ -343,7 +362,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
 
-        impl jser::IntoJValue for #name {
+        impl #impl_generics jser::IntoJValue for #name #ty_generics #where_clause {
             fn into_jvalue(self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
                 <Self as jser::JavaSerializable>::to_jvalue(&self, graph)
             }
@@ -409,8 +428,8 @@ fn expand_enum(
             const DESCRIPTOR: &'static str = #descriptor;
             const ARRAY_DESCRIPTOR: &'static str = #array_descriptor;
 
-            fn schema() -> &'static [jser::JavaField] {
-                &[]
+            fn schema() -> Vec<jser::JavaField> {
+                Vec::new()
             }
 
             fn to_jvalue(&self, graph: &mut jser::Graph) -> jser::Result<jser::JValue> {
@@ -808,6 +827,17 @@ mod tests {
                 maybe_values: Option<Vec<i32>>,
                 maybe_map: Option<HashMap<String, i32>>,
                 options: Vec<Option<String>>,
+            }
+        };
+        assert!(expand(input).is_ok());
+    }
+
+    #[test]
+    fn generic_structs_are_supported() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo", suid = 1)]
+            struct Foo<T> {
+                value: T,
             }
         };
         assert!(expand(input).is_ok());

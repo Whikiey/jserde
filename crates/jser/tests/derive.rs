@@ -330,7 +330,8 @@ fn derive_supports_custom_object_arrays() {
         <Inner as JavaSerializable>::ARRAY_DESCRIPTOR,
         "[LFixtures$Inner;"
     );
-    let items_field = Bag::schema()
+    let schema = Bag::schema();
+    let items_field = schema
         .iter()
         .find(|field| field.name == "items")
         .expect("items field");
@@ -459,6 +460,34 @@ fn derive_supports_nested_combination_fields() {
     let bytes = encode_typed(empty.clone()).unwrap();
     let decoded: NestedCombos = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
     assert_eq!(decoded, empty);
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "example.GenericBox", suid = 1)]
+struct GenericBox<T> {
+    value: T,
+}
+
+#[test]
+fn derive_supports_generic_structs() {
+    let value = GenericBox {
+        value: Inner {
+            label: "generic".to_owned(),
+            value: 11,
+        },
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: GenericBox<Inner> =
+        decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, value);
+
+    let schema = <GenericBox<Inner> as JavaSerializable>::schema();
+    assert_eq!(schema[0].name, "value");
+    assert_eq!(schema[0].class_name1, Some("LFixtures$Inner;"));
+
+    let graph = decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let value = graph.require_field(&graph.items()[0], "value").unwrap();
+    assert_eq!(graph.class_name(value).unwrap(), "Fixtures$Inner");
 }
 
 #[derive(JavaSerializable, Debug, Clone, PartialEq)]

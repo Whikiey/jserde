@@ -243,7 +243,7 @@ P2 ─────────────────────────�
 - P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
 - P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`；P9-7～13 进一步支持递归嵌套 POJO、Map/Set/枚举字段与根、多根/`TC_RESET`、直连 `JValue`。
 - P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
-- 验证：全仓 **181 passed**（P9-12 Shared 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
+- 验证：全仓 **183 passed**（P9-17 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -266,7 +266,7 @@ P2 ─────────────────────────�
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
 - P7-5：`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
-- P7-6：全仓 **181 passed**（P9-12 Shared 后），clippy/fmt/gen/interop 通过。
+- P7-6：全仓 **183 passed**（P9-17 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -452,11 +452,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-05 | P9-4 完成：`Reader<I: Input>`/`ReadStream`/`decode_from`/`encode_to`；42 个常规 fixture 经流式解码逐字节回放；P9-5 零拷贝因 D1 生命周期改造暂缓；全仓 178 passed | P9-4/5 |
 | 2026-11-05 | P9-6 完成：`HashMapLayout` 显式 capacity/threshold/loadFactor；layout 构造器与 `MapView.threshold`；测试精确布局/非法容量；全仓 180 passed | P9-6 |
 | 2026-11-05 | P9-12 部分完成：`jser_serde::Shared<T>` 保留单次调用内的非环共享指针身份；编码复用 handle、解码复用 `Rc`；环检测报错；全仓 181 passed | P9-12 |
+| 2026-11-05 | P9-17 完成：泛型 struct derive + 自动 trait bounds；`schema()` 改为 `Vec<JavaField>`；拒绝 lifetime/const/enum 泛型；`GenericBox<Inner>` 测试；全仓 183 passed | P9-17 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
 
-**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **181 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
+**当前（2026-11-05）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **183 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -466,7 +467,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | OUT 负例 | 只补错误断言与文档，不实现语义 | P8-4 | — |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ `object/42` + `BuiltinValue` | P8-5 | FR-13 |
 | 跨平台/并发/深链 | CI matrix 已加；并发/深链仍待补 | P8-6 | NFR-05 |
-| P9-5/12/17 | 见 §21；P9-5 零拷贝暂缓 | P9 余项 | — |
+| P9-5/12 | 见 §21；P9-5 零拷贝暂缓，P9-12 部分 | P9 余项 | — |
 
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
 >
@@ -510,7 +511,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-14 | 对象数组 `Vec<Custom>` 字段（字段级 class 描述符 + 数组类 SUID）——✅ 已实现：`JavaSerializable::ARRAY_DESCRIPTOR`，数组 SUID 由默认算法计算 | 高 / M |
 | P9-15 | 继承：`#[java(flatten)]` 父类字段生成 `super_desc` 与父类 classdata 层（类型安全，无需字符串匹配）——✅ 已实现 | 中 / M |
 | P9-16 | Rust enum ↔ Java enum：unit-only enum 默认 UPPER_SNAKE 常量名（`rename` 覆盖），flags 0x12、SUID 0、super `java.lang.Enum`——✅ 已实现 | 中 / M |
-| P9-17 | 泛型结构体（字段具体化后单态化；仍拒绝未约束的泛型参数） | 低 / L |
+| P9-17 | 泛型结构体（字段具体化后单态化；仍拒绝生命周期/const 泛型与泛型 enum）——✅ 已实现：自动加类型参数约束，`schema()` 返回 `Vec<JavaField>`；`GenericBox<Inner>` 编解码测试 | 低 / L |
 | P9-18 | 组合字段：`Option<Vec<T>>`、`Option<HashMap>`、`Vec<Option<T>>`——✅ 已实现：derive 组合字段（含自定义元素数组）与 typed 泛型组合；测试覆盖 Some/None 与嵌套对象 | 中 / S |
 | P9-19 | typed/derive 解码校验类名与 SUID（不匹配返回 `FieldMismatch`，含两个 SUID）——✅ 已实现：`JavaSerializable::validate_decoded`；derive struct/enum 调用；覆盖 class/SUID/enum/继承回归 | 高 / S |
 | P9-20 | `IntoJValue` 扩展：`&[T]`、`[T; N]`、`BTreeMap`/`BTreeSet`——✅ 已实现：primitive/String/自定义 slice、数组、BTreeMap/Set 双向转换 | 低 / S |

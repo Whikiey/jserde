@@ -20,8 +20,8 @@ impl JavaSerializable for ManualPoint {
     const DESCRIPTOR: &'static str = "LFixtures$Point;";
     const ARRAY_DESCRIPTOR: &'static str = "[LFixtures$Point;";
 
-    fn schema() -> &'static [jser::JavaField] {
-        &[
+    fn schema() -> Vec<jser::JavaField> {
+        vec![
             jser::JavaField {
                 name: "x",
                 typecode: FieldType::Int,

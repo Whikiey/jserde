@@ -38,7 +38,10 @@ pub trait JavaSerializable: Sized {
     const ARRAY_DESCRIPTOR: &'static str;
 
     /// Fields in Java wire order: primitives by name, then objects by name.
-    fn schema() -> &'static [JavaField];
+    ///
+    /// This returns an owned vector so a generic `JavaSerializable` can expose
+    /// field descriptors that depend on its monomorphized type parameters.
+    fn schema() -> Vec<JavaField>;
 
     /// Convert to a Java object value, allocating in `graph`.
     fn to_jvalue(&self, graph: &mut Graph) -> Result<JValue>;

@@ -134,13 +134,13 @@ pub trait JavaSerializable: Sized {
     const CLASS: &'static str;                     // "com.example.Foo"
     const SUID: i64;                               // 显式给出，或编解码期用工具计算
     const DESCRIPTOR: &'static str;                // "Lcom/example/Foo;"，嵌套字段用
-    fn schema() -> &'static [JavaField];           // 名、类型码、顺序
+    fn schema() -> Vec<JavaField>;                 // 名、类型码、顺序（泛型可单态化）
     fn to_jvalue(&self, g: &mut Graph) -> Result<JValue>;
     fn from_jvalue(v: &JValue, g: &Graph) -> Result<Self>;
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`、`#[java(flatten)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算）、组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`，以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承通过 `#[java(flatten)]` 父类字段支持（类型安全，生成 `super_desc` 与父类 classdata 层）。unit-only enum 也可 derive：variant 默认转 UPPER_SNAKE 常量名（`rename` 覆盖），flags `0x12`、SUID 0、super `java.lang.Enum`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求类型实现 `Clone`；`from_jvalue` 先经 `JavaSerializable::validate_decoded` 校验类名/SUID（P9-19），SUID 不匹配的错误包含期望值与实际值。
+`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`、`#[java(flatten)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算）、组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`，以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承通过 `#[java(flatten)]` 父类字段支持（类型安全，生成 `super_desc` 与父类 classdata 层）。unit-only enum 也可 derive：variant 默认转 UPPER_SNAKE 常量名（`rename` 覆盖），flags `0x12`、SUID 0、super `java.lang.Enum`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求类型实现 `Clone`；泛型结构体的类型参数自动加 `JavaSerializable + IntoJValue + FromJValue + Clone` 约束，`schema()` 按单态化返回字段描述符；生命周期/const 泛型与泛型 enum 仍拒绝；`from_jvalue` 先经 `JavaSerializable::validate_decoded` 校验类名/SUID（P9-19），SUID 不匹配的错误包含期望值与实际值。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 

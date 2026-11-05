@@ -361,6 +361,19 @@
 
 ---
 
+## 2026-11-06 02:20 · feat: 泛型 derive（P9-17）
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：
+  - 解除 derive 对泛型 struct 的拒绝；生成 `impl<T: ...>`，自动给每个类型参数加 `JavaSerializable + IntoJValue + FromJValue + Clone` 约束，保留原有 where 子句。
+  - `JavaSerializable::schema()` 从 `&'static [JavaField]` 改为 `Vec<JavaField>`，让字段描述符可按单态化类型计算（如 `GenericBox<Inner>` 的 `LFixtures$Inner;`）。
+  - 仍拒绝生命周期/const 泛型与泛型 enum；transient 泛型字段需用户自行加 `Default` 约束。
+  - 新增 `GenericBox<T>` 编解码/描述符测试。
+- **验证**：`cargo test --workspace` **183 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`、`interop.sh` 通过。
+- **TDD**：先加泛型 derive 单测与 `GenericBox<Inner>` 集成测试，因 schema 签名/泛型 impl 编译失败后逐步修复。
+
+---
+
 ## 2026-11-06 01:50 · feat: serde 非环共享身份（P9-12，部分）
 
 - **提交**：本次（hash 见 `git log`）

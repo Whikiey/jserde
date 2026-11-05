@@ -6,11 +6,11 @@
 
 ## 当前进度
 
-- P0–P9 主要功能已实现：43 个 fixture / 79031 字节、181 项测试通过、42 例 Java 读回 + SUID 对拍（`50` 为结构化异常，不重编码）；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
+- P0–P9 主要功能已实现：43 个 fixture / 79031 字节、183 项测试通过、42 例 Java 读回 + SUID 对拍（`50` 为结构化异常，不重编码）；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
 - 已覆盖：动态编解码、集合/扩展容器、环/共享、typed、derive（嵌套/继承/enum）、SUID、内置类语义、allowlist、`TC_CLASS`/动态代理保真回放、serde 桥（递归嵌套 POJO/Map/Set/枚举/多根/`TC_RESET`）。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地约 2.03×（AC-06）；三层/混合嵌套 fixture 已覆盖。
 - P8-1：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪，`schedule` 停用，可从 Actions 手动触发）。
-- 剩余 P9 扩展：P9-5（暂缓）、P9-12（部分）、P9-17（见 [implementation-plan.md §21](docs/implementation-plan.md#21-扩展-backlog可行性登记)）。
+- 剩余 P9 扩展：P9-5（暂缓）、P9-12（部分）（见 [implementation-plan.md §21](docs/implementation-plan.md#21-扩展-backlog可行性登记)）。
 
 ## 能力
 
@@ -23,7 +23,7 @@
 | 动态 POJO、未知类原样回写 | ✅ |
 | `decode_typed`/`encode_typed`、`FromJValue`/`IntoJValue`（含 slice/数组/BTree/组合字段） | ✅ |
 | 流式 `decode_from<R: Read>` / `encode_to<W: Write>` | ✅（解码增量缓冲） |
-| `#[derive(JavaSerializable)]`、`computeDefaultSUID`/`suid` 工具 | ✅ |
+| `#[derive(JavaSerializable)]`、`computeDefaultSUID`/`suid` 工具 | ✅（泛型结构体支持） |
 | `Date`、`BigInteger`、`BigDecimal`、`java.time` 语义视图 | ✅ |
 | 严格默认 allowlist | ✅ |
 | schema 驱动 serde 桥（递归嵌套/Map/Set/枚举/多根） | ✅（限制见下；`Shared<T>` 保留非环共享身份） |
@@ -90,7 +90,7 @@ struct Point {
 ## 构建与验证
 
 ```bash
-cargo test --workspace          # 181 passed
+cargo test --workspace          # 183 passed
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
@@ -119,5 +119,5 @@ cargo test -p jser --test fuzz_smoke
 - serde 默认仍是树模型：普通共享引用按值展开；`jser_serde::Shared<T>` 在单次调用内保留**非环**共享身份；完整环用动态 `Graph`，serde 环检测返回错误；不支持对象数组字段。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - primitive 数组使用紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集约 2.03× 输入，Linux 可用 `bench -- array` 的 `VmHWM` 复核。
-- **剩余 P9**：P9-5 零拷贝（暂缓）、P9-12 serde 指针级共享/环（部分，`Shared<T>`）、P9-17 泛型 derive。
+- **剩余 P9**：P9-5 零拷贝（暂缓）、P9-12 serde 指针级共享/环（部分，`Shared<T>`）。
 - 默认 allowlist 不能替代完整反序列化沙箱。
