@@ -75,8 +75,8 @@ struct FieldInfo {
     class_name1: Option<proc_macro2::TokenStream>,
     primitive: bool,
     vec: bool,
-    array_class: Option<String>,
-    vec_element: Option<syn::Type>,
+    optional_vec: bool,
+    array_descriptor: Option<proc_macro2::TokenStream>,
     transient: bool,
     flatten: bool,
 }
@@ -202,46 +202,42 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         .iter()
         .filter(|field| !field.transient && !field.flatten)
         .map(|field| {
-        let ident = &field.ident;
-        let java_name = &field.java_name;
-        let value = if field.vec {
-            if let Some(element_ty) = &field.vec_element {
+            let ident = &field.ident;
+            let java_name = &field.java_name;
+            let array_value = |collection: proc_macro2::TokenStream| {
+                let array_descriptor = field
+                    .array_descriptor
+                    .as_ref()
+                    .expect("array fields have a descriptor");
                 quote! {
                     {
-                        let mut values = Vec::new();
-                        for value in self.#ident.clone() {
-                            values.push(jser::IntoJValue::into_jvalue(value, graph)?);
+                        let mut encoded = Vec::new();
+                        for value in #collection {
+                            encoded.push(jser::IntoJValue::into_jvalue(value, graph)?);
                         }
-                        let class_name =
-                            format!("[L{};", <#element_ty as jser::JavaSerializable>::CLASS);
                         let handle =
-                            jser::builtin::new_java_array(graph, &class_name, values)?;
+                            jser::builtin::new_java_array(graph, #array_descriptor, encoded)?;
                         jser::JValue::Arr(handle)
+                    }
+                }
+            };
+            let value = if field.vec {
+                array_value(quote! { self.#ident.clone() })
+            } else if field.optional_vec {
+                let some = array_value(quote! { values });
+                quote! {
+                    match self.#ident.clone() {
+                        Some(values) => #some,
+                        None => jser::JValue::Null,
                     }
                 }
             } else {
-                let array_class = field
-                    .array_class
-                    .as_deref()
-                    .expect("Vec fields have an array class");
                 quote! {
-                    {
-                        let mut values = Vec::new();
-                        for value in self.#ident.clone() {
-                            values.push(jser::IntoJValue::into_jvalue(value, graph)?);
-                        }
-                        let handle = jser::builtin::new_java_array(graph, #array_class, values)?;
-                        jser::JValue::Arr(handle)
-                    }
+                    jser::IntoJValue::into_jvalue(self.#ident.clone(), graph)?
                 }
-            }
-        } else {
-            quote! {
-                jser::IntoJValue::into_jvalue(self.#ident.clone(), graph)?
-            }
-        };
-        quote! { object_fields.push((#java_name.to_owned(), #value)); }
-    });
+            };
+            quote! { object_fields.push((#java_name.to_owned(), #value)); }
+        });
 
     let initializers = infos.iter().map(|field| {
         let ident = &field.ident;
@@ -547,8 +543,8 @@ fn field_info(field: &Field) -> syn::Result<FieldInfo> {
         class_name1: ty.class_name1,
         primitive: ty.primitive,
         vec: ty.vec,
-        array_class: ty.array_class,
-        vec_element: ty.vec_element,
+        optional_vec: ty.optional_vec,
+        array_descriptor: ty.array_descriptor,
         transient: attrs.transient,
         flatten: attrs.flatten,
     })
@@ -560,8 +556,8 @@ struct TypeInfo {
     descriptor: String,
     primitive: bool,
     vec: bool,
-    array_class: Option<String>,
-    vec_element: Option<syn::Type>,
+    optional_vec: bool,
+    array_descriptor: Option<proc_macro2::TokenStream>,
     custom: bool,
 }
 
@@ -580,8 +576,8 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
         descriptor: code.to_owned(),
         primitive: true,
         vec: false,
-        array_class: None,
-        vec_element: None,
+        optional_vec: false,
+        array_descriptor: None,
         custom: false,
     };
 
@@ -606,7 +602,19 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
         "Option" => {
             let inner = generic_arg(ty, 0, "Option")?;
             let inner = field_type(inner, field_name)?;
-            if inner.primitive || inner.vec {
+            if inner.vec {
+                return Ok(TypeInfo {
+                    typecode: quote! { jser::FieldType::Object },
+                    class_name1: inner.class_name1,
+                    descriptor: inner.descriptor,
+                    primitive: false,
+                    vec: false,
+                    optional_vec: true,
+                    array_descriptor: inner.array_descriptor,
+                    custom: false,
+                });
+            }
+            if inner.primitive {
                 return Err(syn::Error::new_spanned(
                     ty,
                     "Option<T> requires an object type (String, custom class, HashMap, HashSet)",
@@ -619,8 +627,8 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
                     descriptor: String::new(),
                     primitive: false,
                     vec: false,
-                    array_class: None,
-                    vec_element: None,
+                    optional_vec: false,
+                    array_descriptor: inner.array_descriptor,
                     custom: true,
                 })
             } else {
@@ -637,16 +645,17 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
                 ));
             }
             if inner.custom {
+                let array_descriptor = inner
+                    .array_descriptor
+                    .expect("custom Vec elements have an array descriptor");
                 return Ok(TypeInfo {
                     typecode: quote! { jser::FieldType::Array },
-                    class_name1: Some(
-                        quote! { <#inner_ty as jser::JavaSerializable>::ARRAY_DESCRIPTOR },
-                    ),
+                    class_name1: Some(array_descriptor.clone()),
                     descriptor: String::new(),
                     primitive: false,
                     vec: true,
-                    array_class: None,
-                    vec_element: Some(inner_ty),
+                    optional_vec: false,
+                    array_descriptor: Some(array_descriptor),
                     custom: false,
                 });
             }
@@ -680,8 +689,8 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
                 descriptor: array_class.clone(),
                 primitive: false,
                 vec: true,
-                array_class: Some(array_class),
-                vec_element: None,
+                optional_vec: false,
+                array_descriptor: Some(quote! { #array_class }),
                 custom: false,
             })
         }
@@ -691,8 +700,8 @@ fn field_type(ty: &Type, field_name: &str) -> syn::Result<TypeInfo> {
             descriptor: String::new(),
             primitive: false,
             vec: false,
-            array_class: None,
-            vec_element: None,
+            optional_vec: false,
+            array_descriptor: Some(quote! { <#ty as jser::JavaSerializable>::ARRAY_DESCRIPTOR }),
             custom: true,
         }),
     }
@@ -709,8 +718,8 @@ fn object_owned(descriptor: String) -> TypeInfo {
         descriptor,
         primitive: false,
         vec: false,
-        array_class: None,
-        vec_element: None,
+        optional_vec: false,
+        array_descriptor: None,
         custom: false,
     }
 }
@@ -789,6 +798,19 @@ mod tests {
         let error = expand(input).unwrap_err();
         assert!(error.to_string().contains("unsupported integer field type"));
         assert!(error.to_string().contains("u8"));
+    }
+
+    #[test]
+    fn combination_fields_are_supported() {
+        let input: DeriveInput = parse_quote! {
+            #[java(class = "Foo", suid = 1)]
+            struct Foo {
+                maybe_values: Option<Vec<i32>>,
+                maybe_map: Option<HashMap<String, i32>>,
+                options: Vec<Option<String>>,
+            }
+        };
+        assert!(expand(input).is_ok());
     }
 
     #[test]

@@ -3,12 +3,12 @@
 
 mod common;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use common::{fixture_allowlist, read_fixture};
 use jser::{
-    decode_typed, decode_typed_with_allowlist, encode_typed, ClassData, ClassDesc, Error,
-    FieldDesc, FieldType, FromJValue, Graph, IntoJValue, JValue,
+    decode_stream, decode_typed, decode_typed_with_allowlist, encode_typed, ClassData, ClassDesc,
+    Error, FieldDesc, FieldType, FromJValue, Graph, IntoJValue, JValue,
 };
 
 fn fixture_typed<T: FromJValue>(id: &str) -> T {
@@ -122,6 +122,37 @@ fn missing_fields_are_errors() {
             .unwrap_err();
     assert!(matches!(error, Error::FieldMismatch { .. }));
     assert!(error.to_string().contains("doesNotExist"));
+}
+
+#[test]
+fn encodes_slices_arrays_and_btree_collections() {
+    let slice: &[i32] = &[1, 2, 3];
+    let bytes = encode_typed(slice).unwrap();
+    let decoded: Vec<i32> = decode_typed(&bytes).unwrap();
+    assert_eq!(decoded, [1, 2, 3]);
+    let graph = decode_stream(&bytes).unwrap();
+    assert_eq!(graph.class_name(&graph.items()[0]).unwrap(), "[I");
+
+    let bytes = encode_typed([4i32, 5, 6]).unwrap();
+    let decoded: Vec<i32> = decode_typed(&bytes).unwrap();
+    assert_eq!(decoded, [4, 5, 6]);
+
+    let strings: &[String] = &["a".to_owned(), "b".to_owned()];
+    let bytes = encode_typed(strings).unwrap();
+    let decoded: Vec<String> = decode_typed(&bytes).unwrap();
+    assert_eq!(decoded, ["a", "b"]);
+
+    let map: BTreeMap<String, i32> = [("b".to_owned(), 2), ("a".to_owned(), 1)]
+        .into_iter()
+        .collect();
+    let bytes = encode_typed(map.clone()).unwrap();
+    let decoded: BTreeMap<String, i32> = decode_typed(&bytes).unwrap();
+    assert_eq!(decoded, map);
+
+    let set: BTreeSet<String> = ["y".to_owned(), "x".to_owned()].into_iter().collect();
+    let bytes = encode_typed(set.clone()).unwrap();
+    let decoded: BTreeSet<String> = decode_typed(&bytes).unwrap();
+    assert_eq!(decoded, set);
 }
 
 #[test]

@@ -201,3 +201,4 @@
 | 2026-11-05 | `object/46` 移除 `Collections$SynchronizedList`（跨 JDK 构建 SUID 不稳定）并重新生成 manifest；fixture 42 例/78640 字节 | 跨平台修复 |
 | 2026-11-05 | P9-19：derive `from_jvalue` 校验类名/SUID；类名或 SUID 不匹配返回 `FieldMismatch`（含两个 SUID）；覆盖 struct/enum/继承回归，全仓 167 项通过 | P9-19 |
 | 2026-11-05 | P9-3：新增 `object/50`（TC_EXCEPTION + IOException）；`Error::JavaException` 携带 class/message/字段摘要；异常流的类解析使用临时宽松策略，不回放；全仓 168 项通过 | P9-3 |
+| 2026-11-05 | P9-18/P9-20：derive 组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`（含自定义数组）；typed `IntoJValue` 支持 `&[T]`/`[T;N]`/`BTreeMap`/`BTreeSet`；全仓 173 项通过 | P9-18/20 |

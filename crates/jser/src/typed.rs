@@ -8,10 +8,10 @@
 //! `HashMap`, `HashSet`); primitive elements are boxed into `java.lang.*`
 //! wrappers before being placed in a collection, as Java requires.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use crate::builtin::{new_array_list, new_hash_map_entries, new_hash_set};
+use crate::builtin::{new_array_list, new_hash_map_entries, new_hash_set, new_java_array};
 use crate::error::{Error, Result};
 use crate::value::{Graph, JValue, PrimitiveArray};
 
@@ -320,6 +320,198 @@ impl<T: IntoJValue> IntoJValue for Vec<T> {
             values.push(value.into_jvalue(graph)?);
         }
         let handle = new_array_list(graph, values)?;
+        Ok(JValue::Obj(handle))
+    }
+}
+
+macro_rules! array_into {
+    ($ty:ty, $class:literal, $variant:ident) => {
+        impl IntoJValue for &[$ty] {
+            fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+                let values = self.iter().map(|value| JValue::$variant(*value)).collect();
+                Ok(JValue::Arr(new_java_array(graph, $class, values)?))
+            }
+        }
+
+        impl<const N: usize> IntoJValue for [$ty; N] {
+            fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+                let values = self.into_iter().map(JValue::$variant).collect();
+                Ok(JValue::Arr(new_java_array(graph, $class, values)?))
+            }
+        }
+    };
+}
+
+array_into!(i8, "[B", Byte);
+array_into!(i16, "[S", Short);
+array_into!(i32, "[I", Int);
+array_into!(i64, "[J", Long);
+array_into!(f32, "[F", Float);
+array_into!(f64, "[D", Double);
+array_into!(bool, "[Z", Bool);
+
+impl IntoJValue for &[char] {
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .iter()
+            .map(|value| JValue::Char(*value as u16))
+            .collect();
+        Ok(JValue::Arr(new_java_array(graph, "[C", values)?))
+    }
+}
+
+impl<const N: usize> IntoJValue for [char; N] {
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .into_iter()
+            .map(|value| JValue::Char(value as u16))
+            .collect();
+        Ok(JValue::Arr(new_java_array(graph, "[C", values)?))
+    }
+}
+
+impl<T> IntoJValue for &[T]
+where
+    T: crate::JavaSerializable + IntoJValue + Clone,
+{
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .iter()
+            .map(|value| value.clone().into_jvalue(graph))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(JValue::Arr(new_java_array(
+            graph,
+            T::ARRAY_DESCRIPTOR,
+            values,
+        )?))
+    }
+}
+
+impl<T, const N: usize> IntoJValue for [T; N]
+where
+    T: crate::JavaSerializable + IntoJValue,
+{
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .into_iter()
+            .map(|value| value.into_jvalue(graph))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(JValue::Arr(new_java_array(
+            graph,
+            T::ARRAY_DESCRIPTOR,
+            values,
+        )?))
+    }
+}
+
+impl IntoJValue for &[String] {
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .iter()
+            .map(|value| value.clone().into_jvalue(graph))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(JValue::Arr(new_java_array(
+            graph,
+            "[Ljava.lang.String;",
+            values,
+        )?))
+    }
+}
+
+impl<const N: usize> IntoJValue for [String; N] {
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .into_iter()
+            .map(|value| value.into_jvalue(graph))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(JValue::Arr(new_java_array(
+            graph,
+            "[Ljava.lang.String;",
+            values,
+        )?))
+    }
+}
+
+impl IntoJValue for &[&str] {
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let values = self
+            .iter()
+            .map(|value| (*value).into_jvalue(graph))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(JValue::Arr(new_java_array(
+            graph,
+            "[Ljava.lang.String;",
+            values,
+        )?))
+    }
+}
+
+impl<K, V> FromJValue for BTreeMap<K, V>
+where
+    K: FromJValue + Ord,
+    V: FromJValue,
+{
+    fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
+        let Some(view) = graph.as_map(value)? else {
+            return Err(mismatch(format!(
+                "expected a Map for {}, got {value:?}",
+                std::any::type_name::<Self>()
+            )));
+        };
+
+        let mut map = BTreeMap::new();
+        for (key, value) in view.entries {
+            map.insert(K::from_jvalue(key, graph)?, V::from_jvalue(value, graph)?);
+        }
+        Ok(map)
+    }
+}
+
+impl<K, V> IntoJValue for BTreeMap<K, V>
+where
+    K: IntoJValue + Ord,
+    V: IntoJValue,
+{
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let mut entries = Vec::with_capacity(self.len());
+        for (key, value) in self {
+            entries.push((key.into_jvalue(graph)?, value.into_jvalue(graph)?));
+        }
+        let handle = new_hash_map_entries(graph, entries)?;
+        Ok(JValue::Obj(handle))
+    }
+}
+
+impl<T> FromJValue for BTreeSet<T>
+where
+    T: FromJValue + Ord,
+{
+    fn from_jvalue(value: &JValue, graph: &Graph) -> Result<Self> {
+        let Some(values) = graph.as_set(value)? else {
+            return Err(mismatch(format!(
+                "expected a Set for {}, got {value:?}",
+                std::any::type_name::<Self>()
+            )));
+        };
+
+        let mut set = BTreeSet::new();
+        for value in values {
+            set.insert(T::from_jvalue(value, graph)?);
+        }
+        Ok(set)
+    }
+}
+
+impl<T> IntoJValue for BTreeSet<T>
+where
+    T: IntoJValue + Ord,
+{
+    fn into_jvalue(self, graph: &mut Graph) -> Result<JValue> {
+        let mut values = Vec::with_capacity(self.len());
+        for value in self {
+            values.push(value.into_jvalue(graph)?);
+        }
+        let handle = new_hash_set(graph, values)?;
         Ok(JValue::Obj(handle))
     }
 }

@@ -299,6 +299,32 @@ struct Bag {
 }
 
 #[test]
+fn typed_slices_and_arrays_of_custom_objects() {
+    let items: &[Inner] = &[
+        Inner {
+            label: "s".to_owned(),
+            value: 1,
+        },
+        Inner {
+            label: "t".to_owned(),
+            value: 2,
+        },
+    ];
+    let bytes = encode_typed(items).unwrap();
+    let decoded: Vec<Inner> = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, items);
+
+    let array = [Inner {
+        label: "u".to_owned(),
+        value: 3,
+    }];
+    let bytes = encode_typed(array).unwrap();
+    let decoded: Vec<Inner> = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded[0].label, "u");
+    assert_eq!(decoded[0].value, 3);
+}
+
+#[test]
 fn derive_supports_custom_object_arrays() {
     assert_eq!(
         <Inner as JavaSerializable>::ARRAY_DESCRIPTOR,
@@ -337,6 +363,101 @@ fn derive_supports_custom_object_arrays() {
     let empty = Bag { items: Vec::new() };
     let bytes = encode_typed(empty.clone()).unwrap();
     let decoded: Bag = decode_typed_with_allowlist(&bytes, &fixture_allowlist()).unwrap();
+    assert_eq!(decoded, empty);
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "example.Combos", suid = 1)]
+struct Combos {
+    maybe_values: Option<Vec<i32>>,
+    maybe_map: Option<HashMap<String, i32>>,
+    options: Vec<Option<String>>,
+}
+
+#[test]
+fn derive_supports_combination_fields() {
+    let value = Combos {
+        maybe_values: Some(vec![1, 2]),
+        maybe_map: Some([("k".to_owned(), 7)].into_iter().collect()),
+        options: vec![Some("a".to_owned()), None],
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: Combos = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let object = &graph.items()[0];
+    let maybe_values = graph.require_field(object, "maybe_values").unwrap();
+    assert_eq!(graph.class_name(maybe_values).unwrap(), "[I");
+    let maybe_map = graph.require_field(object, "maybe_map").unwrap();
+    assert_eq!(graph.class_name(maybe_map).unwrap(), "java.util.HashMap");
+    let options = graph.require_field(object, "options").unwrap();
+    assert_eq!(graph.class_name(options).unwrap(), "[Ljava.lang.String;");
+
+    let empty = Combos {
+        maybe_values: None,
+        maybe_map: None,
+        options: Vec::new(),
+    };
+    let bytes = encode_typed(empty.clone()).unwrap();
+    let decoded: Combos = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, empty);
+    let graph = decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert!(matches!(
+        graph
+            .require_field(&graph.items()[0], "maybe_values")
+            .unwrap(),
+        jser::JValue::Null
+    ));
+}
+
+#[derive(JavaSerializable, Debug, Clone, PartialEq)]
+#[java(class = "example.NestedCombos", suid = 1)]
+struct NestedCombos {
+    maybe: Option<Vec<Inner>>,
+    options: Vec<Option<Inner>>,
+}
+
+#[test]
+fn derive_supports_nested_combination_fields() {
+    let value = NestedCombos {
+        maybe: Some(vec![Inner {
+            label: "a".to_owned(),
+            value: 1,
+        }]),
+        options: vec![
+            Some(Inner {
+                label: "b".to_owned(),
+                value: 2,
+            }),
+            None,
+        ],
+    };
+    let bytes = encode_typed(value.clone()).unwrap();
+    let decoded: NestedCombos = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    assert_eq!(decoded, value);
+
+    let graph = decode_stream_with_allowlist(&bytes, &Allowlist::all()).unwrap();
+    let object = &graph.items()[0];
+    assert_eq!(
+        graph
+            .class_name(graph.require_field(object, "maybe").unwrap())
+            .unwrap(),
+        "[LFixtures$Inner;"
+    );
+    assert_eq!(
+        graph
+            .class_name(graph.require_field(object, "options").unwrap())
+            .unwrap(),
+        "[LFixtures$Inner;"
+    );
+
+    let empty = NestedCombos {
+        maybe: None,
+        options: Vec::new(),
+    };
+    let bytes = encode_typed(empty.clone()).unwrap();
+    let decoded: NestedCombos = decode_typed_with_allowlist(&bytes, &Allowlist::all()).unwrap();
     assert_eq!(decoded, empty);
 }
 

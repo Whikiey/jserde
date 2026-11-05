@@ -40,6 +40,9 @@
   with both SUIDs.
 - `TC_EXCEPTION` parsing (P9-3): `Error::JavaException` carries the exception
   class, `Throwable.detailMessage` and summarized fields; `object/50` fixture.
+- Derive combination fields (`Option<Vec<T>>`, `Option<HashMap>`, `Vec<Option<T>>`,
+  including custom element arrays) and typed `IntoJValue` for `&[T]`, `[T; N]`,
+  `BTreeMap`/`BTreeSet` (P9-18/P9-20).
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.

@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-06 00:10 · feat: 组合字段与 slice/数组/BTree（P9-18 + P9-20）
+
+- **提交**：本次（hash 见 `git log`）
+- **P9-18**：
+  - derive 的 `Option<Vec<T>>` 生成可空 Java 数组字段（`[I`/`[L...;`），`None` 写 `TC_NULL`；`Option<HashMap>` 与 `Vec<Option<T>>` 支持。
+  - 组合字段覆盖 primitive/String 与自定义元素数组；`array_descriptor` 统一走 `JavaSerializable::ARRAY_DESCRIPTOR`。
+  - 测试：`Combos`（Some/None）、`NestedCombos`（自定义 Some/None 数组）。
+- **P9-20**：
+  - typed `IntoJValue` 新增 `&[T]`/`[T; N]`（primitive/String/自定义 `JavaSerializable`）与 `BTreeMap`/`BTreeSet` 双向转换。
+  - 测试：`&[i32]`/`[i32; 3]`/`&[String]`/`BTreeMap`/`BTreeSet`，以及自定义 `Inner` 的 slice/数组。
+- **验证**：`cargo test --workspace` **173 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`（43 例/79031 字节）、`interop.sh` 通过。
+- **TDD**：先加组合字段/自定义 slice 测试，修复 derive 的 array descriptor 与 `values` 变量遮蔽后转绿。
+
+---
+
 ## 2026-11-05 23:40 · feat: TC_EXCEPTION 结构化错误（P9-3）
 
 - **提交**：本次（hash 见 `git log`）
