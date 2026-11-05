@@ -243,7 +243,7 @@ P2 ─────────────────────────�
 - P6-3：allowlist 严格默认（P6 提前完成）；`Registry` 按类名分派内置语义，未知类保持 `JValue::Obj`。
 - P6-4：`jser-serde` 提供 schema 驱动的 `to_vec`/`from_slice`；P9-7～13 进一步支持递归嵌套 POJO、Map/Set/枚举字段与根、多根/`TC_RESET`、直连 `JValue`。
 - P6-5/6：fixture 生成流程与 `testdata/README` 覆盖表已更新；支持矩阵与 `Optional`/serde 限制写入文档。
-- 验证：全仓 **193 passed**（P8-4 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
+- 验证：全仓 **198 passed**（P8-6 后）；Java interop 42 例 + SUID 对拍、`gen.sh --check` 通过。
 
 出口：`36` 的四个值语义正确；每个新增内置类有双向用例；serde 越界行为有测试。
 
@@ -266,7 +266,7 @@ P2 ─────────────────────────�
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
 - P7-5：`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
-- P7-6：全仓 **193 passed**（P8-4 后），clippy/fmt/gen/interop 通过。
+- P7-6：全仓 **198 passed**（P8-6 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
 
@@ -455,11 +455,12 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-05 | P9-17 完成：泛型 struct derive + 自动 trait bounds；`schema()` 改为 `Vec<JavaField>`；拒绝 lifetime/const/enum 泛型；`GenericBox<Inner>` 测试；全仓 183 passed | P9-17 |
 | 2026-11-06 | 范围关闭：P9-5 零拷贝不做；P9-12 完整环关闭，保留非环 `Shared<T>`；剩余工作只剩 P8-1/P8-6 与发布决策 | 用户决定 |
 | 2026-11-06 | P8-4 完成：新增 `out_negative.rs` 10 项，覆盖旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径与错误 tag；全仓 193 passed | P8-4 |
+| 2026-11-06 | P8-6 完成：300 层对象链/深度上限、8 线程独立与共享 Graph 并发测试；全仓 198 passed | P8-6 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
 
-**当前（2026-11-06）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **193 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
+**当前（2026-11-06）**：P0–P9 主要功能完成；43 个 fixture / **79031** 字节；全仓 **198 passed**；42 个常规 fixture Java 读回 + SUID 对拍（`50` 为结构化异常）。P8-2/P8-3/P8-5 与 P9-1/2/7–11/13–16/21–33 已完成；**P8-1 30 分钟 fuzz 暂缓**。
 
 | 缺口 | 处理方式 | 优先级 | 关联 AC |
 |---|---|---|---|
@@ -467,7 +468,6 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 真实 100 MB primitive 数组 | ✅ `ArrayData::Primitive` raw bytes + `PrimitiveArray`；25M `int[]` 本地约 2.03× | P8-2 | AC-06 |
 | 嵌套 derive/serde | ✅ 嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承、递归 `SchemaField`、Map/Set/枚举/多根 | P8-3 | FR-14/15 |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ `object/42` + `BuiltinValue` | P8-5 | FR-13 |
-| 跨平台/并发/深链 | CI matrix 已加；并发/深链仍待补 | P8-6 | NFR-05 |
 
 
 > **P9-5/P9-12 已关闭（2026-11-06）**：P9-5 不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`；完整环继续用动态 `Graph`。两项不再作为待办。

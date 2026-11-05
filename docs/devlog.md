@@ -361,6 +361,20 @@
 
 ---
 
+## 2026-11-06 03:15 · test: 深链与并发（P8-6）
+
+- **提交**：本次（hash 见 `git log`）
+- **新增** `tests/robustness.rs`：
+  - 300 层 `Fixtures$DeepNode` 对象链，默认 limits 解码成功；
+  - `max_depth=32` 时返回 `LimitExceeded { kind: "depth" }`；
+  - 8 线程 × 16 次独立 decode/encode；
+  - 8 线程 × 16 次共享只读 `Graph` 重编码；
+  - 深链下严格 allowlist 仍拒绝 `Fixtures$DeepNode`，fixture allowlist 放行。
+- **验证**：`cargo test --workspace` **198 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`、`interop.sh` 通过。
+- **TDD**：并发测试先因 `bytes` 捕获和 allowlist 选型失败，修正后全绿；深链行为锁定 `max_depth` 语义。
+
+---
+
 ## 2026-11-06 02:55 · test: OUT 负例（P8-4）
 
 - **提交**：本次（hash 见 `git log`）

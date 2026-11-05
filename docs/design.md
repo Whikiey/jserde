@@ -380,6 +380,14 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 
 ---
 
+### 5.7 深链与并发（P8-6）
+
+- **深链**：`Limits::max_depth` 默认 512；`tests/robustness.rs` 构造 300 层 `Fixtures$DeepNode` 链，默认限制可解码；`max_depth=32` 时返回 `LimitExceeded { kind: "depth" }`，不 panic。
+- **并发**：`Graph` 在构造完成后是只读共享的，可被多个线程同时 `encode_stream`/视图访问；独立线程各自 `decode_stream`/`encode_stream` 也安全。`Reader` 本身持有可变输入/arena，不跨线程共享。
+- 覆盖：8 线程 × 16 次独立编解码、8 线程 × 16 次共享 `Graph` 重编码；严格 allowlist 在深链解码时仍生效。
+
+---
+
 ## 6. 里程碑与出口条件
 
 | # | 内容 | 出口条件 |
