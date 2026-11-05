@@ -50,9 +50,11 @@
 - Generic `#[derive(JavaSerializable)]` structs (JVM descriptor fields are
   monomorphized; `schema()` now returns `Vec<JavaField>`).
 - `jser_serde::Shared<T>` (`Rc<T>`) preserves non-cyclic shared pointer
-  identity within one serde call; cycles are rejected (P9-12, partial).
-- Zero-copy/borrowed `Graph` decoding remains deferred (P9-5, API-breaking D1
-  lifetime change); existing `as_str`/`as_primitive_array` views are borrowed.
+  identity within one serde call; full cycles are closed as a scope decision
+  and remain supported by the dynamic `Graph` API (P9-12, partial accepted).
+- Scope decision: P9-5 zero-copy/borrowed input decoding is closed (not planned;
+  existing `as_str`/`as_primitive_array` views are arena borrows, not input
+  zero-copy).
 - Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.

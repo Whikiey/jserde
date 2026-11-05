@@ -144,7 +144,7 @@ pub trait JavaSerializable: Sized {
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：typed 路径用 `direct` 模块的 `Serializer`/`Deserializer` 直接读写 `JValue`（无 `serde_json::Value` 中间层）；`from_slice_roots` 是显式 JSON 视图（返回 `Value`）。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值默认是树：共享引用解码为重复子树。`jser_serde::Shared<T>`（`Rc<T>`）在**单次 `to_vec`/`from_slice` 内**保留非环共享身份：编码复用同一 graph handle，解码复用同一 `Rc`。环仍无法用有限 schema 表达，解码检测到环会返回 `FieldMismatch`；真实身份/环继续用动态 `Graph`。仍拒绝对象数组与未知类。
+`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：typed 路径用 `direct` 模块的 `Serializer`/`Deserializer` 直接读写 `JValue`（无 `serde_json::Value` 中间层）；`from_slice_roots` 是显式 JSON 视图（返回 `Value`）。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值默认是树：共享引用解码为重复子树。`jser_serde::Shared<T>`（`Rc<T>`）在**单次 `to_vec`/`from_slice` 内**保留非环共享身份：编码复用同一 graph handle，解码复用同一 `Rc`。**完整环范围已关闭（2026-11-06）**：有限 schema 无法表达环，解码检测到环返回 `FieldMismatch`；真实身份/环继续用动态 `Graph`。仍拒绝对象数组与未知类。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
@@ -376,7 +376,7 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 
 - **解码**：`Reader<I: Input>` 抽象字节源；`StreamReader<'a>` 走切片，`ReadStream<R>` 走 `BufReader<R>` + `max_stream_size` 硬上限；`decode_from<R: Read>` / `decode_from_with_allowlist` / `decode_from_with_options` 增量读取，字符串/块/primitive 数组按需复制到 arena。错误偏移仍以已消费字节数为准，`UnexpectedEof` 映射为 `Truncated`。
 - **编码**：`encode_to<W: Write>` 已提供，但当前实现先在内存构造完整编码结果再 `write_all`；写侧的逐块 flush 留待后续，不宣称零缓冲。
-- **P9-5 暂缓**：要做到输入零拷贝，需要把 `Graph`/`Slot`/`BlockData`/`ArrayData` 生命周期参数化（D1 大改），并同时处理 modified UTF-8 的借用/拥有混合；这与 P8-2 已选的 compact raw 数组有交叉。当前只提供 arena 内的借用视图（`Graph::as_str`、`as_primitive_array`），不是输入零拷贝。除非有明确吞吐/分配指标，否则不启动该改造。
+- **P9-5 已关闭（2026-11-06）**：输入零拷贝需要把 `Graph`/`Slot`/`BlockData`/`ArrayData` 生命周期参数化（D1 大改），并同时处理 modified UTF-8 的借用/拥有混合；这与 P8-2 已选的 compact raw 数组交叉，且没有性能指标强制要求。决定不做；保留 arena 借用视图（`Graph::as_str`、`as_primitive_array`）。
 
 ---
 

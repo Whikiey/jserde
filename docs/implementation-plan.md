@@ -453,6 +453,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | 2026-11-05 | P9-6 完成：`HashMapLayout` 显式 capacity/threshold/loadFactor；layout 构造器与 `MapView.threshold`；测试精确布局/非法容量；全仓 180 passed | P9-6 |
 | 2026-11-05 | P9-12 部分完成：`jser_serde::Shared<T>` 保留单次调用内的非环共享指针身份；编码复用 handle、解码复用 `Rc`；环检测报错；全仓 181 passed | P9-12 |
 | 2026-11-05 | P9-17 完成：泛型 struct derive + 自动 trait bounds；`schema()` 改为 `Vec<JavaField>`；拒绝 lifetime/const/enum 泛型；`GenericBox<Inner>` 测试；全仓 183 passed | P9-17 |
+| 2026-11-06 | 范围关闭：P9-5 零拷贝不做；P9-12 完整环关闭，保留非环 `Shared<T>`；剩余工作只剩 P8-1/P8-4/P8-6 与发布决策 | 用户决定 |
 
 
 ## 20. 当前进度与后续缺口（2026-11-05）
@@ -467,8 +468,10 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | OUT 负例 | 只补错误断言与文档，不实现语义 | P8-4 | — |
 | `Year`/`YearMonth`/`MonthDay`/`Period` | ✅ `object/42` + `BuiltinValue` | P8-5 | FR-13 |
 | 跨平台/并发/深链 | CI matrix 已加；并发/深链仍待补 | P8-6 | NFR-05 |
-| P9-5/12 | 见 §21；P9-5 零拷贝暂缓，P9-12 部分 | P9 余项 | — |
 
+
+> **P9-5/P9-12 已关闭（2026-11-06）**：P9-5 不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`；完整环继续用动态 `Graph`。两项不再作为待办。
+>
 > 原则：OUT 项不改语义；AC 项不能只用合成负载替代；涉及 `Graph` 表示的 P8-2 需单独评审后再动核心模型。
 >
 > §21 登记了全部纯 Rust 可实现的扩展候选（33 项）；本节只保留近期优先项。
@@ -487,7 +490,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-2 | `TC_PROXYCLASSDESC` 保真回放：新增 proxy 描述符槽（接口名 + annotation），对象 classdata 按 0 字段处理；代理语义仍 OUT-02——✅ 已实现：`ClassDesc.proxy_interfaces` + Reader/Writer + `object/48` | D1 扩展、allowlist 检查接口名 | JDK 生成 proxy fixture | 低 / L |
 | P9-3 | `TC_EXCEPTION` 语义化：解析异常对象并保留类名/message/字段，错误类型携带结构化信息——✅ 已实现：`Error::JavaException` + `object/50` + `tests/exception.rs`；异常解析临时宽松、不回放 | Error 模型、fixture | 已完成 | 中 / S |
 | P9-4 | 流式 IO：`decode_from<R: Read>` / `encode_to<W: Write>`——✅ 已实现：`Reader<I: Input>` + `ReadStream` + 增量解码；写侧暂缓冲整图 | wire 层缓冲、错误偏移、文档 | 已完成 | 中 / M |
-| P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图——◐ 暂缓：需 D1 生命周期泛型大改，当前仅有 arena 借用视图 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | P8-2 评审结论 | 低 / XL |
+| P9-5 | 零拷贝/借用解码：`&str`/`&[u8]` 视图——❌ **已关闭（不做）**：需 D1 生命周期泛型大改，当前仅有 arena 借用视图；2026-11-06 决定不做 | D1 大改（生命周期泛型）；与 P8-2 二选一评审 | 关闭 | 低 / XL |
 | P9-6 | `HashMap` 写侧 `capacity`/`threshold` 与 JDK 完全一致——✅ 已实现：`HashMapLayout` + `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，`MapView.threshold`；测试覆盖精确布局/非法容量，Java 读回 `map-layout.ser` | 编码器 | 已完成 | 低 / S |
 
 ### 21.2 serde 桥（改变 D3 边界，需先改 design §5.4）
@@ -501,7 +504,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 | P9-9 | 枚举字段/根 | `SchemaField::enumeration`/`EnumSchema`（serde↔Java 常量映射），`to_vec_enum`/`from_slice_enum`——✅ 已实现 | 中 / M |
 | P9-10 | 多根流 | ✅ 已实现：`MultiRootWriter` + `from_slice_roots`/`from_slice_multi`（逐根 schema） | 中 / M |
 | P9-11 | `TC_RESET` 流 | ✅ 已实现：`MultiRootWriter::reset()` 插入 `TC_RESET`；解码跳过 Reset 并按段读取 | 中 / S |
-| P9-12 | 共享引用/环 | ◐ 部分：新增 `jser_serde::Shared<T>`（`Rc<T>`）保留非环共享身份；普通 serde 值仍按值展开；环检测返回 `FieldMismatch`，完整环仍用动态 `Graph` | 低 / XL |
+| P9-12 | 共享引用/环 | ◐ **部分关闭**：`jser_serde::Shared<T>` 保留非环共享身份；普通值按值展开；完整环范围关闭，继续用动态 `Graph` | 低 / XL |
 | P9-13 | 直接 serde `Serializer`/`Deserializer`（去掉 JSON 中间层）——✅ 已实现：typed 路径直连 `JValue`；`from_slice_roots` 仍返回 JSON（按设计） | 性能与错误定位；外部 API 不变 | 中 / L |
 
 ### 21.3 derive / typed

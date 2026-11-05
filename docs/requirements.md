@@ -206,3 +206,4 @@
 | 2026-11-05 | P9-6：新增 `HashMapLayout` 与 `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，可精确写 capacity/threshold/loadFactor；`MapView.threshold` 可读；全仓 180 项通过 | P9-6 |
 | 2026-11-05 | P9-12（部分）：新增 `jser_serde::Shared<T>`（`Rc<T>`），单次调用内保留非环共享身份；环检测返回 `FieldMismatch`，完整环仍由 `Graph` 支持；全仓 181 项通过 | P9-12 |
 | 2026-11-05 | P9-17：泛型 `#[derive(JavaSerializable)]`；`schema()` 改为返回 `Vec<JavaField>` 以支持单态化字段描述符；拒绝生命周期/const 泛型与泛型 enum；全仓 183 项通过 | P9-17 |
+| 2026-11-06 | 范围关闭：P9-5 零拷贝不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`，完整环继续用动态 `Graph` | 用户决定 |

@@ -361,6 +361,17 @@
 
 ---
 
+## 2026-11-06 02:35 · docs: 关闭 P9-5/P9-12 剩余范围
+
+- **提交**：本次（hash 见 `git log`）
+- **决定**：
+  - **P9-5 关闭（不做）**：输入零拷贝需要 `Graph<'a>`/`Slot<'a>`/`BlockData<'a>`/`ArrayData<'a>` 全链路生命周期改造，且没有性能指标强制要求；保留现有 arena 借用视图（`as_str`/`as_primitive_array`）。
+  - **P9-12 关闭完整环范围**：接受非环 `Shared<T>`（单次调用内保留 `Rc` 身份）；有限 schema 无法表达完整环，环继续用动态 `Graph`。
+- **文档**：AGENT/README/CHANGELOG、design §5.6/D3、requirements 变更记录、plan §20/§21 与 backlog 状态同步；两项不再作为待办。
+- **验证**：文档变更，无代码改动；当前 183 项测试、clippy/fmt/doc/gen/interop 维持通过。
+
+---
+
 ## 2026-11-06 02:20 · feat: 泛型 derive（P9-17）
 
 - **提交**：本次（hash 见 `git log`）

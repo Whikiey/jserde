@@ -10,7 +10,7 @@
 - 已覆盖：动态编解码、集合/扩展容器、环/共享、typed、derive（嵌套/继承/enum）、SUID、内置类语义、allowlist、`TC_CLASS`/动态代理保真回放、serde 桥（递归嵌套 POJO/Map/Set/枚举/多根/`TC_RESET`）。
 - P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地约 2.03×（AC-06）；三层/混合嵌套 fixture 已覆盖。
 - P8-1：30 分钟 fuzz 暂缓（AC-04，workflow 已就绪，`schedule` 停用，可从 Actions 手动触发）。
-- 剩余 P9 扩展：P9-5（暂缓）、P9-12（部分）（见 [implementation-plan.md §21](docs/implementation-plan.md#21-扩展-backlog可行性登记)）。
+- P9-5（零拷贝）与 P9-12（完整环）已关闭：P9-5 不做 `Graph` 生命周期改造；P9-12 接受非环 `Shared<T>`，完整环仍用动态 `Graph`。
 
 ## 能力
 
@@ -119,5 +119,5 @@ cargo test -p jser --test fuzz_smoke
 - serde 默认仍是树模型：普通共享引用按值展开；`jser_serde::Shared<T>` 在单次调用内保留**非环**共享身份；完整环用动态 `Graph`，serde 环检测返回错误；不支持对象数组字段。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - primitive 数组使用紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集约 2.03× 输入，Linux 可用 `bench -- array` 的 `VmHWM` 复核。
-- **剩余 P9**：P9-5 零拷贝（暂缓）、P9-12 serde 指针级共享/环（部分，`Shared<T>`）。
+- **已关闭的 P9 范围**：P9-5 零拷贝（不做 `Graph` 生命周期改造）；P9-12 完整环（`Shared<T>` 仅覆盖非环共享）。
 - 默认 allowlist 不能替代完整反序列化沙箱。
