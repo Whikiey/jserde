@@ -102,7 +102,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "jser"
+name = "jserde"
 version = "0.1.0"
 dependencies = [
  "sha1",
@@ -110,10 +110,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "jser-fuzz"
+name = "jserde-fuzz"
 version = "0.0.0"
 dependencies = [
- "jser",
+ "jserde",
  "libfuzzer-sys",
 ]
 

@@ -1,5 +1,5 @@
 {
-  "schema": "jser-bench/1",
+  "schema": "jserde-bench/1",
   "note": "Observed decode throughput from docs/bench.md; nightly CI requires >= threshold * observed for the required metrics.",
   "threshold": 0.35,
   "max_rss_ratio": 3.0,

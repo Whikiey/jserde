@@ -33,7 +33,7 @@ def run_bench(arguments: list[str]) -> tuple[dict[str, dict[str, float]], int | 
         "run",
         "--release",
         "-p",
-        "jser",
+        "jserde",
         "--example",
         "bench",
         "--",

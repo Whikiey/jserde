@@ -75,7 +75,7 @@
   - 新增 `tests/property.rs`：固定种子 xorshift64（无 proptest/quickcheck，离线缓存无这些 crate），8 个属性测试共约 900 组输入。
   - 覆盖：随机 Unicode 字符串、`TC_LONGSTRING` 边界长度（65534/65535/65536/70000/130000）、`Vec<i32>`、`HashMap<String,i32>`、重编码字节稳定、随机/截断字节不 panic（小 `Limits`）、`Fixtures$Point` 字段随机变异往返。
   - 文件头说明：非完整 property 框架、无自动 shrinking，但确定可复现且零依赖。
-- **验证**：`cargo test -p jser --test property` 8 passed（0.04s）；全仓 **157 passed**；clippy/fmt 通过。
+- **验证**：`cargo test -p jserde --test property` 8 passed（0.04s）；全仓 **157 passed**；clippy/fmt 通过。
 
 ---
 
@@ -94,7 +94,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `jser-serde` crate 文档增加可编译示例（`Point` schema → `to_vec`/`from_slice`）。
+  - `jserde-serde` crate 文档增加可编译示例（`Point` schema → `to_vec`/`from_slice`）。
   - `design.md` §8、`implementation-plan.md` §18、`requirements.md` §6 全部转为“已定案”：Java 17 基线（JDK 25 重生成逐字节一致）、schema 驱动 serde、暂不发布 crates.io、性能 ≥1 GB/s 且 RSS <3×（nightly 35% 门禁）。
   - `NFR-02` 数值更新为 ≥1 GB/s；修正“34 例回放”为 36 例。
   - CI lint 增加 `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps`。
@@ -110,7 +110,7 @@
   - `Graph::set_array_element`：对象数组按下标替换；primitive 数组提示重建。
   - `tests/mutation.rs` 新增：全部标量字段（byte/short/int/long/float/double/char/bool/String）修改、Map 替换与追加（含装箱校验）、`[Ljava.lang.String;` 元素替换；嵌套叶子修改已在 `tests/nested.rs` 覆盖。
   - `tests/interop.rs` 增加 Mixed 的 `i/s/b` 修改后 Java `Verify` 读回（i=42、s=changed、b=false）。
-- **验证**：`cargo test -p jser --test mutation` 7 passed；interop 通过；全仓 **147 passed**；clippy/fmt 通过。
+- **验证**：`cargo test -p jserde --test mutation` 7 passed；interop 通过；全仓 **147 passed**；clippy/fmt 通过。
 - **TDD**：先加 Map 替换/数组元素用例（API 缺失、primitive 值编码损坏），再实现 API 与装箱后全绿。
 
 ---
@@ -141,9 +141,9 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - 新增 `crates/jser-serde/src/direct.rs`：`Serializer` 将 schema 类型值直接写入 `Graph`；`Deserializer` 按 schema 读取 `JValue`（标量/String/Option/数组/嵌套 POJO/Map/Set/枚举/多根）。
+  - 新增 `crates/jserde-serde/src/direct.rs`：`Serializer` 将 schema 类型值直接写入 `Graph`；`Deserializer` 按 schema 读取 `JValue`（标量/String/Option/数组/嵌套 POJO/Map/Set/枚举/多根）。
   - `to_vec`/`from_slice`、`to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum`、`MultiRootWriter`/`from_slice_multi` 全部走直连；`from_slice_roots` 保留 JSON 视图（返回 `Value`）。
-  - 错误仍带 schema 类名/SUID 校验；serde 错误经 `SerdeError` 转回 `jser::Error`。
+  - 错误仍带 schema 类名/SUID 校验；serde 错误经 `SerdeError` 转回 `jserde::Error`。
 - **验证**：13 个 serde 测试全绿；全仓 **144 passed**；clippy `-D warnings`、fmt 通过。
 - **TDD/重构**：以现有 13 个 serde 用例作为回归门禁，直连实现逐项对齐 JSON 路径语义（含共享引用按值展开、多根/`TC_RESET`）。
 
@@ -157,7 +157,7 @@
   - `emit.rs` 将全部 fixture 解码→重编码到 `build/rust/all/`（可用 `JSER_EMIT_DIR` 覆盖；本机沙箱下用 `target/rust-emit` 验证），并给关键 I/O 加路径上下文。
   - `interop.sh` 对全部 object-like 文件执行 `--read`，09/11 用 `--primitives`/`--blocks`。
   - `tests/interop.rs` 同样逐例重编码并 `--read`、补 primitives/blocks 与 36/40/42/43 的 `--array` 元素类断言。
-- **验证**：`cargo test -p jser --test interop` 通过（36 例 + 各模式）；本机 `JSER_EMIT_DIR=target/rust-emit` 生成 36 个文件，Java 读回 `point`/`09`/`11`/`35`/`43` 全部 OK；`cargo test --workspace` **144 passed**；clippy/fmt 通过。
+- **验证**：`cargo test -p jserde --test interop` 通过（36 例 + 各模式）；本机 `JSER_EMIT_DIR=target/rust-emit` 生成 36 个文件，Java 读回 `point`/`09`/`11`/`35`/`43` 全部 OK；`cargo test --workspace` **144 passed**；clippy/fmt 通过。
 - **说明**：`interop.sh` 需要 bash + `python3`，本机无法直接运行；其逻辑与 `tests/interop.rs` 一致，CI 执行。
 
 ---
@@ -190,7 +190,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `jser-serde` 新增 `EnumConstant`/`EnumSchema`（serde 名 ↔ Java 常量名映射），`SchemaField` 增加 `enumeration`；编码生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），解码校验类名并按映射回 serde 字符串。
+  - `jserde-serde` 新增 `EnumConstant`/`EnumSchema`（serde 名 ↔ Java 常量名映射），`SchemaField` 增加 `enumeration`；编码生成 `TC_ENUM`（flags 0x12、SUID 0、super `java.lang.Enum`），解码校验类名并按映射回 serde 字符串。
   - 新增根入口 `to_vec_enum`/`from_slice_enum`；`validate_schema` 校验枚举非空、常量唯一、与 `class_name1` 描述符一致。
   - 测试：`Palette{name, color}` 枚举字段往返与图断言（类名/常量/flags/SUID/super）、`Color` 枚举根往返。
 - **验证**：`cargo test --workspace` **141 passed**；clippy/fmt 通过。
@@ -215,7 +215,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `jser-derive` 支持 unit-only enum：生成 `TC_ENUM` 值，flags `0x12`、SUID 0、super `java.lang.Enum`；常量名默认由 variant 转 UPPER_SNAKE（`Green`→`GREEN`、`XmlHttp`→`XML_HTTP`），`#[java(rename)]` 覆盖。
+  - `jserde-derive` 支持 unit-only enum：生成 `TC_ENUM` 值，flags `0x12`、SUID 0、super `java.lang.Enum`；常量名默认由 variant 转 UPPER_SNAKE（`Green`→`GREEN`、`XmlHttp`→`XML_HTTP`），`#[java(rename)]` 覆盖。
   - 校验：enum 的 `suid` 必须为 0（可省略）；variant 必须是 unit，仅支持 `rename`；空 enum 报错。
   - 测试：`Fixtures$Color` 解码（GREEN）、三个 variant 往返、图断言（SUID/flags/super）；宏单测（非 unit、suid≠0、默认 SUID 0）。
 - **验证**：`cargo test --workspace` **138 passed**；clippy/fmt 通过。
@@ -227,7 +227,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `jser-serde`：新增 `SchemaValue`/`MapSchema`，`SchemaField` 增加 `map`/`set`；递归编码/解码 Map（HashMap/LinkedHashMap）与 Set（HashSet），Map 值可嵌套 POJO；Map 键限标量/String（JSON object 键）。
+  - `jserde-serde`：新增 `SchemaValue`/`MapSchema`，`SchemaField` 增加 `map`/`set`；递归编码/解码 Map（HashMap/LinkedHashMap）与 Set（HashSet），Map 值可嵌套 POJO；Map 键限标量/String（JSON object 键）。
   - 新增根入口 `to_vec_map`/`from_slice_map`（`linked` 参数）与 `to_vec_set`/`from_slice_set`。
   - `builtin::new_linked_hash_map_entries`：HashMap 父层 + LinkedHashMap `accessOrder` 子层。
   - 测试：Map/LinkedHashMap/HashSet 字段往返与 graph 断言、Map 值嵌套 POJO、Map/Set 根（含 `HashMap<i32, String>` 键）。
@@ -239,16 +239,16 @@
 ## 2026-11-04 12:45 · test: interop 临时目录改用 CARGO_TARGET_TMPDIR
 
 - **提交**：本次（hash 见 `git log`）
-- **改动**：`tests/interop.rs` 的编译/校验目录从系统 `temp_dir()/jser-interop-<pid>` 改为 `env!("CARGO_TARGET_TMPDIR")/jser-interop`。本机系统临时目录出现异常 ACL，`create_dir_all` 返回 `PermissionDenied`（os error 5）；Cargo 的 target 临时目录随构建产物管理，始终可写。
-- **验证**：`cargo test -p jser --test interop` 通过；Java 读回 14 项断言不变。
+- **改动**：`tests/interop.rs` 的编译/校验目录从系统 `temp_dir()/jserde-interop-<pid>` 改为 `env!("CARGO_TARGET_TMPDIR")/jserde-interop`。本机系统临时目录出现异常 ACL，`create_dir_all` 返回 `PermissionDenied`（os error 5）；Cargo 的 target 临时目录随构建产物管理，始终可写。
+- **验证**：`cargo test -p jserde --test interop` 通过；Java 读回 14 项断言不变。
 - **TDD**：不适用（测试环境修复）。
 
 ---
 
-## 2026-11-04 12:35 · chore: 重命名 jser-serde emit 示例
+## 2026-11-04 12:35 · chore: 重命名 jserde-serde emit 示例
 
 - **提交**：本次（hash 见 `git log`）
-- **改动**：`crates/jser-serde/examples/emit.rs` → `serde_emit.rs`，`docs/testdata/gen/interop.sh` 同步 `--example serde_emit`。`jser` 与 `jser-serde` 原来都产出 `target/debug/examples/emit.exe`，并行链接时报 `LNK1104`，阻塞 `cargo test --workspace`（示例编译）。
+- **改动**：`crates/jserde-serde/examples/emit.rs` → `serde_emit.rs`，`docs/testdata/gen/interop.sh` 同步 `--example serde_emit`。`jserde` 与 `jserde-serde` 原来都产出 `target/debug/examples/emit.exe`，并行链接时报 `LNK1104`，阻塞 `cargo test --workspace`（示例编译）。
 - **验证**：`cargo test --workspace` 不再出现示例输出名冲突；`cargo fmt --check` 通过。
 - **TDD**：不适用（构建配置）。
 
@@ -258,7 +258,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `jser-derive` 新增 `#[java(flatten)]` 父类字段：编码时先调用父类 `to_jvalue`，克隆其 `ClassData` 层，子类 `ClassDesc.super_desc` 指向父类最派生描述符，`classdata` 按父→子写入；解码时父类 `from_jvalue` 自动跨层 `require_field`。
+  - `jserde-derive` 新增 `#[java(flatten)]` 父类字段：编码时先调用父类 `to_jvalue`，克隆其 `ClassData` 层，子类 `ClassDesc.super_desc` 指向父类最派生描述符，`classdata` 按父→子写入；解码时父类 `from_jvalue` 自动跨层 `require_field`。
   - 约束：最多一个 `flatten` 字段；必须是非 primitive/String/集合的 `JavaSerializable` 类型；不可与 `transient`/`rename` 组合。
   - 测试：`Base <- Inherited` 往返与类层次断言（2 层、`super_desc`、字段 a/b）；用 flatten struct 解码 Java fixture `object/22` 并再往返；宏单测 `flatten_requires_a_custom_type`。
 - **验证**：`cargo test --workspace` **131 passed**；clippy/fmt 通过。
@@ -284,8 +284,8 @@
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
   - `JavaSerializable` 新增 `DESCRIPTOR: &'static str`；derive 从 `class` 属性生成（`.`→`/`），手写实现同步补常量。
-  - `jser-derive`：未知字段类型按嵌套 `JavaSerializable` 处理（`class_name1` 引用子类 `DESCRIPTOR`），支持 `Option<Custom>`；`Vec<Custom>` 明确拒绝并指向 P9-14；`u8/u32/u64/...` 给出明确错误。
-  - `jser-serde`：`SchemaField` 新增 `nested: Option<Box<JavaSchema>>`；`to_vec`/`from_slice` 重构为递归 `encode_object`/`decode_object`，逐层校验类名与 SUID；`validate_schema` 拒绝「nested 但 typecode 非 Object」。
+  - `jserde-derive`：未知字段类型按嵌套 `JavaSerializable` 处理（`class_name1` 引用子类 `DESCRIPTOR`），支持 `Option<Custom>`；`Vec<Custom>` 明确拒绝并指向 P9-14；`u8/u32/u64/...` 给出明确错误。
+  - `jserde-serde`：`SchemaField` 新增 `nested: Option<Box<JavaSchema>>`；`to_vec`/`from_slice` 重构为递归 `encode_object`/`decode_object`，逐层校验类名与 SUID；`validate_schema` 拒绝「nested 但 typecode 非 Object」。
   - 测试：derive 嵌套 `Outer{Inner}`、`Option<Inner>`、点号类名 DESCRIPTOR；serde 两层 `Outer{Inner}` 往返；更新既有 `SchemaField` 字面量与 derive 单测。
 - **验证**：`cargo test --workspace` **126 passed**；clippy/fmt 通过；无新增 fixture（Rust 构造用例，Java fixture 待 P9-33/P8-5）。
 - **TDD**：Red：先加嵌套测试，derive 报 `unsupported ... Inner`、serde 报 `SchemaField has no field nested`；Green：实现 `DESCRIPTOR`、宏自定义字段与递归 schema 后全绿。
@@ -296,7 +296,7 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - 新增 `crates/jser/tests/nesting.rs`（2 项）：Rust 构造 `HashMap<String, Object[]>`，数组内含自定义 `Widget`（字段为 `int[]` 与 `HashMap`），并让同一 `HashMap` 在数组中出现两次以验证 `TC_REFERENCE`；断言解码结构、共享句柄与构造流的逐字节回放。
+  - 新增 `crates/jserde/tests/nesting.rs`（2 项）：Rust 构造 `HashMap<String, Object[]>`，数组内含自定义 `Widget`（字段为 `int[]` 与 `HashMap`），并让同一 `HashMap` 在数组中出现两次以验证 `TC_REFERENCE`；断言解码结构、共享句柄与构造流的逐字节回放。
   - 另加 typed `HashMap<String, Vec<Point>>` 往返用例。
   - `implementation-plan.md` §21 新增 P9-33（混合嵌套 fixture 矩阵），§19/§20 计数同步。
 - **验证**：`cargo test --workspace` **122 passed**；clippy/fmt 通过。
@@ -311,7 +311,7 @@
   - `value`：`Slot::Arr` 改为 `ArrayData`（`Values`/`Primitive`）；新增 `PrimitiveArray`（`len/get/bytes/iter`）、`Graph::as_primitive_array`、`Graph::new_primitive_array`；`as_array` 仅返回对象数组；`Ref::PrimitiveArr`。
   - `reader`：primitive 数组一次性读 `length*width` 字节；`writer`：raw 字节直写并校验长度/类型；`new_array` 自动压缩 primitive 元素。
   - `typed`：`FromJValue::from_primitive_element` 默认方法 + 整数/浮点/bool/char/u16/`JValue` 实现；`Vec<T>` 走 raw 快路径。
-  - `builtin::semantic`（BigInteger magnitude）与 `jser-serde` 数组字段改走 raw 视图。
+  - `builtin::semantic`（BigInteger magnitude）与 `jserde-serde` 数组字段改走 raw 视图。
   - 新增 `tests/primitive_arrays.rs`（7 项）；`object_containers` 使用统一断言；`bench -- array [elements] [repeats]`。
 - **验证**：`cargo test --workspace` **120 passed**；clippy/fmt 通过；`bench -- array 25000000 300` 约 3.6 GB/s、峰值工作集 203,378,688 B ≈ **2.03×**（Windows 采样）；Linux `VmHWM` 复核见 `docs/bench.md`。
 - **TDD**：Red：先加 `tests/primitive_arrays.rs`（`as_primitive_array` 不存在、`as_array` 语义变化导致失败）；Green：实现 `ArrayData`/视图/typed 快路径后全绿；34 例逐字节回放门禁保持通过。
@@ -364,7 +364,7 @@
 ## 2026-11-06 03:50 · test: 30 分钟 fuzz 通过（P8-1 / AC-04）
 
 - **提交**：本次（hash 见 `git log`）
-- **修复**：`fuzz/Cargo.toml` 的 `jser` 依赖从 `..`（虚拟 workspace 根）改为 `../crates/jser`，否则 `cargo fuzz` 无法构建。
+- **修复**：`fuzz/Cargo.toml` 的 `jserde` 依赖从 `..`（虚拟 workspace 根）改为 `../crates/jserde`，否则 `cargo fuzz` 无法构建。
 - **CI**：`.github/workflows/nightly.yml` 恢复每日 18:00 UTC schedule；三个 fuzz step 改为 `set -o pipefail` + `tee`，新增 `fuzz-logs` artifact（`if: always()`）。
 - **本地 AC-04**（2026-11-06，Linux，nightly + cargo-fuzz）：
   - decode：1801 s，5,000,272 runs，peak RSS 476 MB，exit 0；
@@ -433,8 +433,8 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - 新增 `jser_serde::Shared<T>`（`Rc<T>` wrapper），实现 `Serialize`/`Deserialize`；编码在单次 `to_vec` 内按 `Rc` 指针复用同一 graph handle（Java 写 `TC_REFERENCE`），解码在单次 `from_slice` 内按 handle 复用同一 `Rc`。
-  - 环检测：解码遇到同一 handle 正在构造时返回 `FieldMismatch`（提示使用 `jser::Graph`），不无限递归；serde 树模型仍无法表达完整环。
+  - 新增 `jserde_serde::Shared<T>`（`Rc<T>` wrapper），实现 `Serialize`/`Deserialize`；编码在单次 `to_vec` 内按 `Rc` 指针复用同一 graph handle（Java 写 `TC_REFERENCE`），解码在单次 `from_slice` 内按 handle 复用同一 `Rc`。
+  - 环检测：解码遇到同一 handle 正在构造时返回 `FieldMismatch`（提示使用 `jserde::Graph`），不无限递归；serde 树模型仍无法表达完整环。
   - 加测试：共享 `Shared<Inner>` 两字段编码后 graph handle 相同，解码后 `Rc::ptr_eq` 为真；普通共享值仍按值展开的旧测试保留。
 - **验证**：`cargo test --workspace` **181 passed**；clippy/fmt/`cargo doc -D warnings`、`gen.sh --check`、`interop.sh` 通过。
 - **TDD**：先加 pointer identity 测试，确认 `Shared` 未导出/未实现后补 wrapper 与 direct 桥钩子；普通 serde 共享展开行为不回归。
@@ -559,7 +559,7 @@
 - **改动**：`Fixtures.java` 新增 `Leaf`/`Middle`/`Outer` 与 `object/41-nested-objects.ser`（Outer → Middle → Leaf，197 字节）；`build_manifest.py` 登记嵌套语义；重新生成 manifest（34 例、74947 字节）；新增 `tests/nested.rs` 验证三层解码与深层字段修改后重编码；同步 `tests/manifest.rs`、README、AGENT、design/plan 的 fixture 计数。
 - **验证**：`cargo test --workspace` **113 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过。
 - **TDD**：先加入 fixture/期望与失败测试，再确认动态对象递归解码/编码通过；该用例补上了此前仅靠 `36`/`38` 间接覆盖的多层 POJO 缺口。
-- **覆盖边界**：动态 `JValue` 层支持任意深度对象；derive 仍只支持扁平字段，`jser-serde` 明确拒绝嵌套对象字段，手写 typed 结构可自行递归实现。
+- **覆盖边界**：动态 `JValue` 层支持任意深度对象；derive 仍只支持扁平字段，`jserde-serde` 明确拒绝嵌套对象字段，手写 typed 结构可自行递归实现。
 
 ---
 
@@ -576,11 +576,11 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - panic 审计：`jser` 增加 `#![deny(clippy::unwrap_used, clippy::expect_used)]`；移除 allowlist/builtin/semantic 中的 `expect`；`Reader` 批量解码改为 move 进 arena，避免 100 MB 顶层块多一次复制。
+  - panic 审计：`jserde` 增加 `#![deny(clippy::unwrap_used, clippy::expect_used)]`；移除 allowlist/builtin/semantic 中的 `expect`；`Reader` 批量解码改为 move 进 arena，避免 100 MB 顶层块多一次复制。
   - `fuzz/`：decode/roundtrip/mutf8 三个 libFuzzer 目标、README、seed 说明；新增离线 `tests/fuzz_smoke.rs`，CI 增加 `fuzz-smoke` job。
-  - `crates/jser/examples/bench.rs` + `docs/bench.md`：100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入。
+  - `crates/jserde/examples/bench.rs` + `docs/bench.md`：100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入。
   - `README.md`、`SECURITY.md`、`CHANGELOG.md`；CI 继续覆盖 lint/test/fixtures/interop。
-- **验证**：`cargo test --workspace` **111 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过；`cargo package --list -p jser` 通过（无发布元数据，按 A-5 暂不发布）。
+- **验证**：`cargo test --workspace` **111 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过；`cargo package --list -p jserde` 通过（无发布元数据，按 A-5 暂不发布）。
 - **TDD**：Red：新增 `fuzz_smoke` 与 bench 流程先运行；Green：修复 panic 路径与批量解码复制后通过。
 - **AC 状态**：`AC-06` 的合成 100 MB 块负载满足吞吐/内存目标；`AC-04` 已有 fuzz 目标 + 冒烟，但 30 分钟完整运行待夜间/手工执行。
 
@@ -599,9 +599,9 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `crates/jser/src/builtin/semantic.rs`：`JavaDate`、`BigInteger`（十进制度转换）、`BigDecimal`（保留 scale）、`Duration`/`Instant`/`LocalDate`/`LocalTime`/`LocalDateTime`/`ZonedDateTime`；`BuiltinValue` 与 `Registry`（按类名分派，未知类返回 `None`）。
-  - `Graph::builtin` 便捷入口；`crates/jser/tests/builtin.rs` 覆盖 `36` 与新增 `40` 的语义，未知类不误判。
-  - `crates/jser-serde`：schema 驱动 `to_vec`/`from_slice`（JavaSchema/SchemaField），支持单根扁平 POJO、标量/String/Option/数组；拒绝多根、未知类/schema 不匹配、嵌套对象；`tests/serde.rs` 5 例。
+  - `crates/jserde/src/builtin/semantic.rs`：`JavaDate`、`BigInteger`（十进制度转换）、`BigDecimal`（保留 scale）、`Duration`/`Instant`/`LocalDate`/`LocalTime`/`LocalDateTime`/`ZonedDateTime`；`BuiltinValue` 与 `Registry`（按类名分派，未知类返回 `None`）。
+  - `Graph::builtin` 便捷入口；`crates/jserde/tests/builtin.rs` 覆盖 `36` 与新增 `40` 的语义，未知类不误判。
+  - `crates/jserde-serde`：schema 驱动 `to_vec`/`from_slice`（JavaSchema/SchemaField），支持单根扁平 POJO、标量/String/Option/数组；拒绝多根、未知类/schema 不匹配、嵌套对象；`tests/serde.rs` 5 例。
   - `examples/emit.rs` + `interop.sh`：serde 输出的 `point-serde.ser` 由 Java 读回；`docs/design.md` §5.4 支持矩阵与 serde 限制。
 - **验证**：`cargo test --workspace` **110 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 通过（14 项 Java/SUID 校验）。
 - **TDD**：Red：先加 `tests/builtin.rs`/serde 测试，缺少 `Registry`/`BuiltinValue`/`to_vec` 编译失败；Green：实现语义解析与 schema 桥后逐项通过。
@@ -631,10 +631,10 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `crates/jser/src/java.rs`：`JavaSerializable`/`JavaField`（CLASS/SUID/schema/to_jvalue/from_jvalue）。
-  - `crates/jser-derive`：`#[derive(JavaSerializable)]`，支持 `#[java(class/suid)]`、`#[java(rename)]`、`#[java(transient)]`；字段排序、基本类型/String/Option/Vec（Java 数组）/HashMap/HashSet；生成 `FromJValue`/`IntoJValue`。
-  - `crates/jser/src/builtin/mod.rs`：`new_java_array`（常用一维数组类与 SUID）。
-  - `crates/jser/src/suid.rs`：`computeDefaultSUID` 移植（SHA-1 摘要前 8 字节反向折叠）、`.class` 最小解析；`src/bin/suid.rs` 输出计算值。
+  - `crates/jserde/src/java.rs`：`JavaSerializable`/`JavaField`（CLASS/SUID/schema/to_jvalue/from_jvalue）。
+  - `crates/jserde-derive`：`#[derive(JavaSerializable)]`，支持 `#[java(class/suid)]`、`#[java(rename)]`、`#[java(transient)]`；字段排序、基本类型/String/Option/Vec（Java 数组）/HashMap/HashSet；生成 `FromJValue`/`IntoJValue`。
+  - `crates/jserde/src/builtin/mod.rs`：`new_java_array`（常用一维数组类与 SUID）。
+  - `crates/jserde/src/suid.rs`：`computeDefaultSUID` 移植（SHA-1 摘要前 8 字节反向折叠）、`.class` 最小解析；`src/bin/suid.rs` 输出计算值。
   - 测试：`tests/derive.rs`（7）、`tests/java_trait.rs`（1）、`tests/suid.rs`（1）、derive crate 编译错误单测（3）。
   - `examples/emit.rs`/`interop.sh`：增加 derive Point 的 Java 读回与 `Fixtures$NoSuid` SUID 对拍。
 - **验证**：`cargo test --workspace` **102 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 全通过（含 SUID `-3559046683250708543`）。
@@ -657,11 +657,11 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - 新增 `crates/jser/src/allowlist.rs`：`Allowlist` 支持精确名、`prefix.*`、`Fixtures$*`、裸 `*`/`Allowlist::all()`；默认 `strict()` 放行 `java.lang.*` + `java.util.*`；数组类名按元素类检查；`check` 返回带类名的 `UnsupportedClass`。
-  - `crates/jser/src/reader.rs`：`Reader::with_allowlist`，`TC_CLASSDESC` 解析时检查父类链；`decode_stream_with_allowlist`/`decode_stream_with_options`/`decode_with_allowlist`。
-  - `crates/jser/src/typed.rs`：`decode_typed_with_allowlist`。
+  - 新增 `crates/jserde/src/allowlist.rs`：`Allowlist` 支持精确名、`prefix.*`、`Fixtures$*`、裸 `*`/`Allowlist::all()`；默认 `strict()` 放行 `java.lang.*` + `java.util.*`；数组类名按元素类检查；`check` 返回带类名的 `UnsupportedClass`。
+  - `crates/jserde/src/reader.rs`：`Reader::with_allowlist`，`TC_CLASSDESC` 解析时检查父类链；`decode_stream_with_allowlist`/`decode_stream_with_options`/`decode_with_allowlist`。
+  - `crates/jserde/src/typed.rs`：`decode_typed_with_allowlist`。
   - 测试：`tests/allowlist.rs`（7）；fixture 测试统一通过 `common::fixture_allowlist()` 显式放行 `Fixtures$*`、`java.math.*`、`java.time.*`；Java interop/emit 同步。
-  - `crates/jser/src/lib.rs`：安全说明更新，新增 allowlist rustdoc 示例。
+  - `crates/jserde/src/lib.rs`：安全说明更新，新增 allowlist rustdoc 示例。
 - **验证**：`cargo test --workspace` **90 passed**；clippy/fmt/`gen.sh --check`/`interop.sh` 全通过。
 - **TDD**：Red：先写 `tests/allowlist.rs`，缺少 `Allowlist`/`decode_stream_with_allowlist` 编译失败；Green：实现 allowlist 与 Reader 集成后 7 例通过，再修 fixture 测试的显式放行。
 - **行为变化**：`decode_stream`/`Reader::new`/`decode_typed` 默认严格；未放行类（如 `Fixtures$Point`、`java.math.BigInteger`）返回 `UnsupportedClass`。这是有意的安全默认。
@@ -681,10 +681,10 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - 新增 `crates/jser/src/typed.rs`：`FromJValue`/`IntoJValue`、`decode_typed`/`encode_typed`；覆盖标量、`Option`、`Vec`、`HashMap`、`HashSet`、手写 POJO，集合元素自动装箱。
-  - `crates/jser/src/builtin/mod.rs`：`new_array_list`、`new_hash_set`、`new_hash_map_entries`；`box_primitive` 支持 `java.lang.*` 包装类（Integer/Long/Boolean/Character 等）。
-  - `crates/jser/src/value/mod.rs`：`require_field`、`add_reset`、构造描述符去重。
-  - `crates/jser/src/lib.rs`：crate rustdoc 示例（读 Map、typed Map、手写 POJO）与安全警告。
+  - 新增 `crates/jserde/src/typed.rs`：`FromJValue`/`IntoJValue`、`decode_typed`/`encode_typed`；覆盖标量、`Option`、`Vec`、`HashMap`、`HashSet`、手写 POJO，集合元素自动装箱。
+  - `crates/jserde/src/builtin/mod.rs`：`new_array_list`、`new_hash_set`、`new_hash_map_entries`；`box_primitive` 支持 `java.lang.*` 包装类（Integer/Long/Boolean/Character 等）。
+  - `crates/jserde/src/value/mod.rs`：`require_field`、`add_reset`、构造描述符去重。
+  - `crates/jserde/src/lib.rs`：crate rustdoc 示例（读 Map、typed Map、手写 POJO）与安全警告。
   - 新测试：`tests/typed.rs`（7）、`tests/unknown.rs`（1，AC-05）、reset 插入回归（1）；`tests/interop.rs` 增加 typed `HashMap<String,i32>` 与 `ArrayList<Integer>` 的 Java 读回。
   - `docs/testdata/gen/Verify.java` 支持 `List`；`examples/emit.rs` 增加 typed map/list 输出。
 - **验证**：`cargo test --workspace` **82 passed**；`cargo clippy -D warnings`、`cargo fmt --check`、`gen.sh --check`、`interop.sh` 全部通过。
@@ -706,12 +706,12 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `crates/jser/src/writer.rs`：`encode_stream`/`encode`；按 `items` 顺序写顶层元素；wire 句柄分配/`TC_REFERENCE`/`TC_RESET`；字符串按 `Str.long` 选头；ClassDesc 去重与字段/`className1` 写回；对象、数组、enum、块、自定义数据。
-  - `crates/jser/src/wire/writer.rs`：大端 `StreamWriter`；`crates/jser/src/wire/block.rs`：1024 字节分块与 `u8`/`i32` 长度选择。
-  - `crates/jser/src/value/mod.rs`：`FieldDesc.class_name_handle`（回放 className1 句柄）、`Graph::new_string/add_item/add_class_desc/new_object/new_array/new_enum/set_field/insert_map_entry` 与编码侧槽位访问器。
-  - `crates/jser/src/builtin/mod.rs`：`new_hash_map` 从零构造 HashMap（capacity/threshold/自定义块）。
+  - `crates/jserde/src/writer.rs`：`encode_stream`/`encode`；按 `items` 顺序写顶层元素；wire 句柄分配/`TC_REFERENCE`/`TC_RESET`；字符串按 `Str.long` 选头；ClassDesc 去重与字段/`className1` 写回；对象、数组、enum、块、自定义数据。
+  - `crates/jserde/src/wire/writer.rs`：大端 `StreamWriter`；`crates/jserde/src/wire/block.rs`：1024 字节分块与 `u8`/`i32` 长度选择。
+  - `crates/jserde/src/value/mod.rs`：`FieldDesc.class_name_handle`（回放 className1 句柄）、`Graph::new_string/add_item/add_class_desc/new_object/new_array/new_enum/set_field/insert_map_entry` 与编码侧槽位访问器。
+  - `crates/jserde/src/builtin/mod.rs`：`new_hash_map` 从零构造 HashMap（capacity/threshold/自定义块）。
   - 新测试：`tests/roundtrip_bytes.rs`（1，32 例逐字节回放）、`tests/roundtrip_semantics.rs`（4）、`tests/mutation.rs`（4，字段/Map 条目/构造 POJO/HashMap）、`tests/interop.rs`（1，无 JDK 跳过）、`wire::block` 单测（2）。
-  - `crates/jser/examples/emit.rs`、`docs/testdata/gen/Verify.java`、`docs/testdata/gen/interop.sh`、CI `interop` job。
+  - `crates/jserde/examples/emit.rs`、`docs/testdata/gen/Verify.java`、`docs/testdata/gen/interop.sh`、CI `interop` job。
   - `docs/design.md` D1：补 `ClassDesc.annotations`、`FieldDesc.class_name_handle` 与 className1 句柄不变量。
 - **验证**：`cargo test --workspace` **70 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`cd docs/testdata && ./gen/gen.sh --check` 全通过；`docs/testdata/gen/interop.sh` 的 9 个 Java 校验全部 OK。
 - **TDD**：
@@ -724,7 +724,7 @@
 ## 2026-11-04 00:40 · chore: 收口 P2 状态并补充句柄视图
 
 - **提交**：本次（hash 见 `git log`）
-- **改动**：`crates/jser/src/value/mod.rs` 增加 `Ref` 与 `Graph::resolve`（按句柄借用槽位，不展开环）；`crates/jser/src/lib.rs` 导出；`tests/object.rs` 增加 `resolves_a_handle_without_expanding_the_cycle`；`AGENT.md`、`implementation-plan.md` 标记 P2 完成。
+- **改动**：`crates/jserde/src/value/mod.rs` 增加 `Ref` 与 `Graph::resolve`（按句柄借用槽位，不展开环）；`crates/jserde/src/lib.rs` 导出；`tests/object.rs` 增加 `resolves_a_handle_without_expanding_the_cycle`；`AGENT.md`、`implementation-plan.md` 标记 P2 完成。
 - **验证**：`cargo test --workspace` **58 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`docs/testdata/gen/gen.sh --check` 通过。
 - **TDD**：不适用（P2-3 辅助视图收口；回归测试与实现同提交）。
 
@@ -734,9 +734,9 @@
 
 - **提交**：本次（hash 见 `git log`）
 - **改动**：
-  - `crates/jser/src/value/mod.rs`：新增 `FieldType`/`FieldDesc`/`ClassDesc`/`ClassData`/`JObject`，`Slot` 扩展为 `Desc/Str/Arr/Obj/Enum`；`Graph` 增加插入/回填 API 与 `as_object/as_array/as_enum_constant/as_map/as_list/as_set/as_scalar`、`field(s)`、`descriptor`、`as_i64/as_i32/as_f64/as_bool/as_char`。
-  - `crates/jser/src/reader.rs`：实现 `TC_CLASSDESC`/`TC_OBJECT`/`TC_ARRAY`/`TC_ENUM`、继承链、`SC_WRITE_METHOD`/`SC_BLOCK_DATA` 自定义块、未知类降级、共享/环、`TC_RESET`；新增 `Limits` 与 `Reader::with_limits`。
-  - `crates/jser/src/builtin/mod.rs`：解析 `ArrayList`/`LinkedList`/`HashMap`/`LinkedHashMap`/`HashSet` 的自定义块；`crates/jser/src/wire/mod.rs` 增加 `SC_*` 常量。
+  - `crates/jserde/src/value/mod.rs`：新增 `FieldType`/`FieldDesc`/`ClassDesc`/`ClassData`/`JObject`，`Slot` 扩展为 `Desc/Str/Arr/Obj/Enum`；`Graph` 增加插入/回填 API 与 `as_object/as_array/as_enum_constant/as_map/as_list/as_set/as_scalar`、`field(s)`、`descriptor`、`as_i64/as_i32/as_f64/as_bool/as_char`。
+  - `crates/jserde/src/reader.rs`：实现 `TC_CLASSDESC`/`TC_OBJECT`/`TC_ARRAY`/`TC_ENUM`、继承链、`SC_WRITE_METHOD`/`SC_BLOCK_DATA` 自定义块、未知类降级、共享/环、`TC_RESET`；新增 `Limits` 与 `Reader::with_limits`。
+  - `crates/jserde/src/builtin/mod.rs`：解析 `ArrayList`/`LinkedList`/`HashMap`/`LinkedHashMap`/`HashSet` 的自定义块；`crates/jserde/src/wire/mod.rs` 增加 `SC_*` 常量。
   - 新测试：`tests/object.rs`（8）、`tests/object_containers.rs`（9）、`tests/limits.rs`（7）、`tests/decode_all.rs`（1）。
   - `docs/design.md` §4.2/§4.3：补充 classDesc 句柄分配时机、classdata 父→子顺序、每层自定义块位置。
 - **验证**：`cargo test --workspace` **57 passed**；`cargo clippy --workspace --all-targets -- -D warnings`、`cargo fmt --all -- --check`、`cd docs/testdata && ./gen/gen.sh --check` 全通过；32 个 fixture 全部可解码。
@@ -763,7 +763,7 @@
 | `ad46c43` | 2026-11-03 23:54 | docs | 初始化项目文档与 Java 序列化基准数据 | `AGENT.md`、requirements/design/implementation-plan；32 个 `.ser`、`manifest.json`、生成器 | 44 个文件入库；基准数据 32 例 / 74559 字节 |
 | `754ddfe` | 2026-11-03 23:57 | docs | 增加每次改动必须提交 git 的规则 | `AGENT.md` §10.1、开发流程、检查清单；plan P0-1 标记 | 文档检查通过 |
 | `d9c15a1` | 2026-11-03 23:57 | docs | 修正开工清单中的 git 基线状态 | `implementation-plan.md` §17 | 文档检查通过 |
-| `e8150ff` | 2026-11-04 00:03 | feat | 初始化 jser workspace 与错误模型 | workspace、`jser`/`jser-derive`/`jser-serde` 骨架、`Error` 模型、模块占位 | `cargo check` / `cargo build` 通过 |
+| `e8150ff` | 2026-11-04 00:03 | feat | 初始化 jserde workspace 与错误模型 | workspace、`jserde`/`jserde-derive`/`jserde-serde` 骨架、`Error` 模型、模块占位 | `cargo check` / `cargo build` 通过 |
 | `86a6073` | 2026-11-04 00:03 | test | 接入 manifest 驱动的 32 例夹具测试 | `tests/common`、`tests/manifest.rs`、`tests/errors.rs` | `cargo test` 6 passed；32 例、路径、size、流头校验 |
 | `aa46873` | 2026-11-04 00:03 | ci | 添加 fmt/clippy/test 与 testdata 校验 | `.github/workflows/ci.yml` 三个 job | 本地等价检查通过；Actions 待远端首次运行 |
 | `134a6da` | 2026-11-04 00:04 | docs | 更新 P0 完成状态 | `AGENT.md`、plan P0 表与开工清单 | 文档检查通过 |

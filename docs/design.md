@@ -140,11 +140,11 @@ pub trait JavaSerializable: Sized {
 }
 ```
 
-`#[derive(JavaSerializable)]` 生成上述实现（`jser-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`、`#[java(flatten)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算）、组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`，以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承通过 `#[java(flatten)]` 父类字段支持（类型安全，生成 `super_desc` 与父类 classdata 层）。unit-only enum 也可 derive：variant 默认转 UPPER_SNAKE 常量名（`rename` 覆盖），flags `0x12`、SUID 0、super `java.lang.Enum`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求类型实现 `Clone`；泛型结构体的类型参数自动加 `JavaSerializable + IntoJValue + FromJValue + Clone` 约束，`schema()` 按单态化返回字段描述符；生命周期/const 泛型与泛型 enum 仍拒绝；`from_jvalue` 先经 `JavaSerializable::validate_decoded` 校验类名/SUID（P9-19），SUID 不匹配的错误包含期望值与实际值。
+`#[derive(JavaSerializable)]` 生成上述实现（`jserde-derive` proc-macro crate）。支持的属性/字段：`#[java(class = "...", suid = ...)]`、`#[java(rename = "...")]`、`#[java(transient)]`、`#[java(flatten)]`；字段类型支持 Java 基本类型、`String`、`Option<T>`、`HashMap`/`HashSet`、`Vec<T>`（primitive/String/自定义元素数组；自定义数组的类 SUID 由默认算法按数组类名计算）、组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`，以及**自定义 `JavaSerializable` 类型**（嵌套对象，`Option<Custom>` 也可）：宏从子类 `class` 属性生成 `DESCRIPTOR`/`ARRAY_DESCRIPTOR`。继承通过 `#[java(flatten)]` 父类字段支持（类型安全，生成 `super_desc` 与父类 classdata 层）。unit-only enum 也可 derive：variant 默认转 UPPER_SNAKE 常量名（`rename` 覆盖），flags `0x12`、SUID 0、super `java.lang.Enum`。derive 会按“基本类型按名 → 对象/数组按名”生成 schema，并要求类型实现 `Clone`；泛型结构体的类型参数自动加 `JavaSerializable + IntoJValue + FromJValue + Clone` 约束，`schema()` 按单态化返回字段描述符；生命周期/const 泛型与泛型 enum 仍拒绝；`from_jvalue` 先经 `JavaSerializable::validate_decoded` 校验类名/SUID（P9-19），SUID 不匹配的错误包含期望值与实际值。
 
 ### D3：serde 只做可选的"便利层"，不进核心
 
-`jser-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：typed 路径用 `direct` 模块的 `Serializer`/`Deserializer` 直接读写 `JValue`（无 `serde_json::Value` 中间层）；`from_slice_roots` 是显式 JSON 视图（返回 `Value`）。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值默认是树：共享引用解码为重复子树。`jser_serde::Shared<T>`（`Rc<T>`）在**单次 `to_vec`/`from_slice` 内**保留非环共享身份：编码复用同一 graph handle，解码复用同一 `Rc`。**完整环范围已关闭（2026-11-06）**：有限 schema 无法表达环，解码检测到环返回 `FieldMismatch`；真实身份/环继续用动态 `Graph`。仍拒绝对象数组与未知类。
+`jserde-serde` 是独立 crate（不污染核心）。serde 无法表达 Java 类名/SUID/类型码，因此由调用方提供 `JavaSchema`（class/suid/fields）：typed 路径用 `direct` 模块的 `Serializer`/`Deserializer` 直接读写 `JValue`（无 `serde_json::Value` 中间层）；`from_slice_roots` 是显式 JSON 视图（返回 `Value`）。支持**单根 POJO 的递归嵌套**：字段可为标量/String/Option/数组、嵌套 POJO（`SchemaField::nested`）、`HashMap`/`LinkedHashMap`（`SchemaField::map`）、`HashSet`（`SchemaField::set`）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根通过 `to_vec_map`/`from_slice_map`、`to_vec_set`/`from_slice_set`、`to_vec_enum`/`from_slice_enum` 提供；多根流（含 `TC_RESET`）用 `MultiRootWriter`/`from_slice_multi`。serde 值默认是树：共享引用解码为重复子树。`jserde_serde::Shared<T>`（`Rc<T>`）在**单次 `to_vec`/`from_slice` 内**保留非环共享身份：编码复用同一 graph handle，解码复用同一 `Rc`。**完整环范围已关闭（2026-11-06）**：有限 schema 无法表达环，解码检测到环返回 `FieldMismatch`；真实身份/环继续用动态 `Graph`。仍拒绝对象数组与未知类。
 
 ### D4：内置类用「注册表 + 特例编解码器」
 
@@ -258,14 +258,14 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
 仓库根（workspace）
 ├── Cargo.toml            # workspace
 ├── crates/
-│   ├── jser/             # 核心：wire 读写 + JValue + Registry（可再拆 core/value）
+│   ├── jserde/             # 核心：wire 读写 + JValue + Registry（可再拆 core/value）
 │   │   ├── src/wire/     # StreamReader / StreamWriter / BlockBuffer / Mutf8 / HandleTable
 │   │   ├── src/desc/     # ClassDesc 解析/写回、字段排序、SUID 计算工具
 │   │   ├── src/value/    # JValue / Slot / Graph / ClassDesc / 视图与 Rust 类型转换
 │   │   ├── src/builtin/  # HashMap / HashSet / ArrayList / Date / BigInteger / java.time.Ser ...
 │   │   └── tests/        # 集成测试；用 CARGO_MANIFEST_DIR 定位 ../../docs/testdata（不复制）
-│   ├── jser-derive/      # #[derive(JavaSerializable)]
-│   └── jser-serde/       # 可选桥（feature 默认关闭）
+│   ├── jserde-derive/      # #[derive(JavaSerializable)]
+│   └── jserde-serde/       # 可选桥（feature 默认关闭）
 └── docs/testdata/        # JDK 生成的 .ser + 生成脚本（唯一事实来源）
 ```
 
@@ -273,7 +273,7 @@ API 草图：
 
 ```rust
 // 读：整条流（可多元素、可含 reset）
-let stream = jser::decode_stream(bytes)?;
+let stream = jserde::decode_stream(bytes)?;
 for item in stream.items() {
     match item {
         JValue::Reset => { /* wire 句柄表已重置 */ }
@@ -289,21 +289,21 @@ if let Some(array) = stream.graph().as_primitive_array(v)? {
 }
 
 // 读：单元素便捷（多元素流会报错，提示用 decode_stream）
-let pojo: MyPojo = jser::decode_typed(bytes)?;
+let pojo: MyPojo = jserde::decode_typed(bytes)?;
 
 // 写：原样重放（byte-exact 回归门禁用这个）
-let out = jser::encode_stream(&stream)?;
+let out = jserde::encode_stream(&stream)?;
 
 // 写：构造新流（引用型值先入 arena 拿 Handle）
-let mut g = jser::Graph::new();
+let mut g = jserde::Graph::new();
 let s = g.new_string("hello");
 let one = g.new_int(1);
 let m = g.new_map(MapKind::HashMap, [(s, one)])?;
-let out = jser::encode(&g, &[JValue::Obj(m)])?;
+let out = jserde::encode(&g, &[JValue::Obj(m)])?;
 
 // 安全：allowlist（默认严格：java.lang.*、java.util.*）
-let allowlist = jser::Allowlist::strict().allow("com.example.*")?;
-let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
+let allowlist = jserde::Allowlist::strict().allow("com.example.*")?;
+let mut r = jserde::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 ```
 
 ### 5.1 M2 回放门禁的边界（2026-11-03 定案）
@@ -329,9 +329,9 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 
 ### 5.3 SUID 工具（P5）
 
-- `jser::suid::compute_default_suid(&ClassSignature) -> Result<i64>` 移植 `ObjectStreamClass.computeDefaultSUID`：类名、修饰符、排序后的接口/字段/构造器/非私有方法 → SHA-1；摘要前 8 字节**从末尾向前**拼成 i64。
-- `jser::suid::parse_class_file(&[u8])` 读取 `.class` 的最小元数据（常量池、字段、方法、`<clinit>`）。
-- `cargo run -p jser --bin suid -- path/to/Foo.class` 输出现值；`interop.sh` 用 `build/suid.txt` 的 `Fixtures$NoSuid = -3559046683250708543` 与之对拍。
+- `jserde::suid::compute_default_suid(&ClassSignature) -> Result<i64>` 移植 `ObjectStreamClass.computeDefaultSUID`：类名、修饰符、排序后的接口/字段/构造器/非私有方法 → SHA-1；摘要前 8 字节**从末尾向前**拼成 i64。
+- `jserde::suid::parse_class_file(&[u8])` 读取 `.class` 的最小元数据（常量池、字段、方法、`<clinit>`）。
+- `cargo run -p jserde --bin suid -- path/to/Foo.class` 输出现值；`interop.sh` 用 `build/suid.txt` 的 `Fixtures$NoSuid = -3559046683250708543` 与之对拍。
 - 限制：这是默认算法值，**优先显式声明 `suid`**；Java 版本/类成员变化会改变计算值，文档不承诺跨版本稳定。
 
 ### 5.4 内置类与 serde 支持矩阵（P6）
@@ -397,7 +397,7 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 | M2 ✅ | **写** + 回放门禁 + 双向对拍 | 42 个常规 fixture 全部逐字节回放；`object/50` 为 fatal 错误路径，不重放；构造/修改流由 Java 读回 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
-| M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 余项与常见值类/扩展容器已补；serde 支持递归嵌套/Map/Set/枚举/多根，树模型限制已文档化 |
+| M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jserde-serde` | 每类双向对拍；`java.time` 余项与常见值类/扩展容器已补；serde 支持递归嵌套/Map/Set/枚举/多根，树模型限制已文档化 |
 | M6 ✅ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 100 MB/25M `int[]` bench 达标；2026-11-06 decode 1801s/5,000,272 runs/476MB、roundtrip/mutf8 各 301s 均无失败 |
 
 ## 7. 风险与缓解
@@ -424,8 +424,8 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 |---|---|---|
 | 1 | 方向 | **双向**（FR-02 MUST）：读与写均已实现并通过 P3/P6/P7 回归。 |
 | 2 | 目标 Java 版本 | **Java 17** 为基线：fixture 由 17.0.20.1 生成；wire 协议自 1.2 未变，JDK 25 重新生成已提交用例逐字节一致。`java.time` 等 Java 8+ 类按需支持；对受支持类，JDK 8–25 的流预期可读，但不作为 CI 门禁。 |
-| 3 | serde 集成 | **已实现**为独立 `jser-serde`：schema 驱动、直连 `JValue`；自定义 derive 仍独立（`jser-derive`）。不做“无 schema 的 `Serialize` 直出”。 |
-| 4 | 发布到 crates.io | **暂不发布**：0.1.0 保持 unreleased，保留 `jser`/`jser-derive`/`jser-serde` 三 crate 拆分；API 冻结与 semver 在首次发布前再评审。 |
+| 3 | serde 集成 | **已实现**为独立 `jserde-serde`：schema 驱动、直连 `JValue`；自定义 derive 仍独立（`jserde-derive`）。不做“无 schema 的 `Serialize` 直出”。 |
+| 4 | 发布到 crates.io | **暂不发布**：0.1.0 保持 unreleased，保留 `jserde`/`jserde-derive`/`jserde-serde` 三 crate 拆分；API 冻结与 semver 在首次发布前再评审。 |
 | 5 | 性能目标 | 大块/primitive 数组解码 **≥1 GB/s**、内存 **<3×** 输入；实测 `int[]` 约 3.5–6 GB/s、100 MB 块约 4.8–6 GB/s、`int[]` RSS 约 2.03×；nightly bench 门禁按观测值 35% 兜底（见 `docs/bench.md`）。 |
 | 6 | 安全默认值 | **已定案（2026-11-04）**：默认严格 allowlist（`java.lang.*`、`java.util.*`）；`Allowlist::all()` 为显式放宽，文档警告 gadget 风险。 |
 

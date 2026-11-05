@@ -1,6 +1,6 @@
 #![no_main]
 
-use jser::wire::mutf8;
+use jserde::wire::mutf8;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

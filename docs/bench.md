@@ -6,7 +6,7 @@
 ## 合成块流（P7-2）
 
 ```bash
-cargo run --release -p jser --example bench -- 100
+cargo run --release -p jserde --example bench -- 100
 ```
 
 Linux 基线输出：
@@ -25,7 +25,7 @@ peak RSS: 207568 kB
 ## 真实 primitive 数组（P8-2 / AC-06）
 
 ```bash
-cargo run --release -p jser --example bench -- array 25000000 300
+cargo run --release -p jserde --example bench -- array 25000000 300
 ```
 
 本机（Windows）输出：
@@ -36,7 +36,7 @@ int-array-25000000  100000027 B     3598.53 MB/s  repeats=300 items=1 len=250000
 
 - 输入 **100,000,027 B**；`int[]` 以 4 B/元素（wire 大端字节）存储，不再展开为 32 B/`JValue`。
 - 300 次重复解码，`Get-Process` 以 5 ms 间隔采样 488 次，峰值工作集 **203,378,688 B ≈ 194 MiB**，约 **2.03×** 输入，满足 `< 3×`。
-- Linux 复核（`cargo run --release -p jser --example bench -- array`）：
+- Linux 复核（`cargo run --release -p jserde --example bench -- array`）：
 
 ```text
 int-array-25000000  100000027 B     3946.13 MB/s  repeats=1 items=1 len=25000000

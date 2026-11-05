@@ -1,0 +1,15 @@
+[package]
+name = "jserde"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+sha1.workspace = true
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+jserde-derive = { version = "0.1.0", path = "../jserde-derive" }

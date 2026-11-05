@@ -1,4 +1,4 @@
-# jser
+# jserde
 
 纯 Rust 实现的 Java 对象序列化协议，与 JDK 的 `ObjectOutputStream` / `ObjectInputStream` 双向互通，**运行时零 JVM 依赖**。
 
@@ -36,10 +36,10 @@
 ## 快速开始
 
 ```rust
-use jser::{decode_stream_with_allowlist, Allowlist};
+use jserde::{decode_stream_with_allowlist, Allowlist};
 
-fn main() -> jser::Result<()> {
-    let bytes = std::fs::read("stream.ser").map_err(|error| jser::Error::FieldMismatch {
+fn main() -> jserde::Result<()> {
+    let bytes = std::fs::read("stream.ser").map_err(|error| jserde::Error::FieldMismatch {
         message: error.to_string(),
     })?;
     let allowlist = Allowlist::strict().allow("com.example.*")?;
@@ -59,9 +59,9 @@ fn main() -> jser::Result<()> {
 写一个 Map：
 
 ```rust
-use jser::{builtin::new_hash_map, encode_stream, Graph, JValue};
+use jserde::{builtin::new_hash_map, encode_stream, Graph, JValue};
 
-fn main() -> jser::Result<()> {
+fn main() -> jserde::Result<()> {
     let mut graph = Graph::new();
     let map = new_hash_map(&mut graph, &[("a", "one")])?;
     graph.add_item(JValue::Obj(map));
@@ -73,7 +73,7 @@ fn main() -> jser::Result<()> {
 derive：
 
 ```rust
-use jser_derive::JavaSerializable;
+use jserde_derive::JavaSerializable;
 
 #[derive(JavaSerializable, Clone)]
 #[java(class = "com.example.Point", suid = 1)]
@@ -101,8 +101,8 @@ cd docs/testdata
 ./gen/interop.sh           # Rust 写 → Java 读回 + SUID 对拍（需 JDK 17）
 
 # 可选
-cargo run --release -p jser --example bench -- 16
-cargo test -p jser --test fuzz_smoke
+cargo run --release -p jserde --example bench -- 16
+cargo test -p jserde --test fuzz_smoke
 ```
 
 ## 文档
@@ -118,7 +118,7 @@ cargo test -p jser --test fuzz_smoke
 
 - `Externalizable` 通用语义、动态代理调用语义、`TC_CLASS` 类加载语义、RMI/JNDI 不在范围；P9-1/2 仅做 `TC_CLASS`/`TC_PROXYCLASSDESC` 的字节与句柄保真回放。
 - 动态 `JValue` 层支持任意深度嵌套（`object/41` 验证 3 层）；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承（`#[java(flatten)]`）与 unit-only enum；serde 通过递归 `SchemaField` 支持多层 POJO/Map/Set/枚举/多根。
-- serde 默认仍是树模型：普通共享引用按值展开；`jser_serde::Shared<T>` 在单次调用内保留**非环**共享身份；完整环用动态 `Graph`，serde 环检测返回错误；不支持对象数组字段。
+- serde 默认仍是树模型：普通共享引用按值展开；`jserde_serde::Shared<T>` 在单次调用内保留**非环**共享身份；完整环用动态 `Graph`，serde 环检测返回错误；不支持对象数组字段。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - primitive 数组使用紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集约 2.03× 输入，Linux 可用 `bench -- array` 的 `VmHWM` 复核。
 - **已关闭的 P9 范围**：P9-5 零拷贝（不做 `Graph` 生命周期改造）；P9-12 完整环（`Shared<T>` 仅覆盖非环共享）。

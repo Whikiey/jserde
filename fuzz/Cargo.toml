@@ -1,5 +1,5 @@
 [package]
-name = "jser-fuzz"
+name = "jserde-fuzz"
 version = "0.0.0"
 edition = "2021"
 publish = false
@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-jser = { path = "../crates/jser" }
+jserde = { path = "../crates/jserde" }
 
 [[bin]]
 name = "decode"

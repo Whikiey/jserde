@@ -49,7 +49,7 @@
   for capacity/threshold/loadFactor matching a specific JDK construction (P9-6).
 - Generic `#[derive(JavaSerializable)]` structs (JVM descriptor fields are
   monomorphized; `schema()` now returns `Vec<JavaField>`).
-- `jser_serde::Shared<T>` (`Rc<T>`) preserves non-cyclic shared pointer
+- `jserde_serde::Shared<T>` (`Rc<T>`) preserves non-cyclic shared pointer
   identity within one serde call; full cycles are closed as a scope decision
   and remain supported by the dynamic `Graph` API (P9-12, partial accepted).
 - Deep-chain (300 objects) and concurrent read-only/independent encode tests
@@ -61,10 +61,10 @@
 - Scope decision: P9-5 zero-copy/borrowed input decoding is closed (not planned;
   existing `as_str`/`as_primitive_array` views are arena borrows, not input
   zero-copy).
-- Schema-driven `jser-serde` bridge (single root; recursive nested POJOs).
+- Schema-driven `jserde-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);
   a 25M-element `int[]` now decodes at ~2.0× input RSS instead of ~9×.
-- Documentation closeout: compiled `jser-serde` example, resolved design §8
+- Documentation closeout: compiled `jserde-serde` example, resolved design §8
   questions (Java 17 baseline, no crates.io release yet, performance targets),
   `cargo doc -D warnings` in CI.
 - `Graph::set_map_entry` (replace/append with primitive boxing) and

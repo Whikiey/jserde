@@ -407,7 +407,7 @@ def build() -> dict:
         total += size
         cases.append({**c, "size": size, "sha256": sha256(path)})
     return {
-        "schema": "jser-fixtures/1",
+        "schema": "jserde-fixtures/1",
         "jdk": os.environ.get("JDK_VERSION", "unknown"),
         "generator": "gen/Fixtures.java",
         "cross_check": "gen/build_codec_fixtures.py",

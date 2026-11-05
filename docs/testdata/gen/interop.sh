@@ -21,12 +21,12 @@ command -v javac >/dev/null 2>&1 || {
 ./gen/gen.sh --check >/dev/null
 mkdir -p build/rust
 
-cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser --example emit
-cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser-serde --example serde_emit
+cargo run --quiet --manifest-path "$root/Cargo.toml" -p jserde --example emit
+cargo run --quiet --manifest-path "$root/Cargo.toml" -p jserde-serde --example serde_emit
 javac -cp build/classes -d build/classes gen/Verify.java
 
 expected_suid=$(awk '$1 == "Fixtures$NoSuid" { print $2 }' build/suid.txt)
-actual_suid=$(cargo run --quiet --manifest-path "$root/Cargo.toml" -p jser --bin suid -- 'build/classes/Fixtures$NoSuid.class')
+actual_suid=$(cargo run --quiet --manifest-path "$root/Cargo.toml" -p jserde --bin suid -- 'build/classes/Fixtures$NoSuid.class')
 if [ "$actual_suid" != "$expected_suid" ]; then
     echo "SUID mismatch: Rust=$actual_suid JDK=$expected_suid" >&2
     exit 1

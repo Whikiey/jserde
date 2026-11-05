@@ -1,5 +1,5 @@
 {
-  "schema": "jser-fixtures/1",
+  "schema": "jserde-fixtures/1",
   "jdk": "openjdk version \"17.0.20.1\" 2026-08-18",
   "generator": "gen/Fixtures.java",
   "cross_check": "gen/build_codec_fixtures.py",

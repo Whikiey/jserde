@@ -47,5 +47,5 @@ until feature work completes):
 
 AC-04 is now marked ✅ in `docs/requirements.md` based on the 2026-11-06 run;
 subsequent nightly runs remain the regression gate. The always-on CI check
-remains the offline smoke test (`cargo test -p jser --test fuzz_smoke`), which
+remains the offline smoke test (`cargo test -p jserde --test fuzz_smoke`), which
 needs no fuzzing toolchain.

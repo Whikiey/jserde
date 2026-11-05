@@ -77,5 +77,5 @@ Fixtures$NoSuid	-3559046683250708543
 
 ```bash
 # 与 build/suid.txt 的 Fixtures$NoSuid 对拍（interop.sh 也会执行）
-cargo run -p jser --bin suid -- 'build/classes/Fixtures$NoSuid.class'
+cargo run -p jserde --bin suid -- 'build/classes/Fixtures$NoSuid.class'
 ```

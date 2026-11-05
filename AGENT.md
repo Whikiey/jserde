@@ -106,28 +106,28 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo deny check                       # 依赖/许可证/来源审计（deny.toml）
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps   # 文档无警告
 cargo fmt --all -- --check
-cargo test -p jser --test codec        # 只跑 codec 12 例
-cargo test -p jser --test reader       # StreamReader 单元契约
-cargo test -p jser --test mutf8        # 修改版 UTF-8 契约
-cargo test -p jser --test roundtrip_bytes # 42 例逐字节回放（50 除外）
-cargo test -p jser --test typed       # typed 转换
-cargo test -p jser --test allowlist   # 默认严格 allowlist
-cargo test -p jser --test derive      # derive 互通
-cargo test -p jser --test mutation    # 7 例变异/构造流（标量/Map/数组）
-cargo test -p jser --test property    # 8 例属性测试（固定种子 xorshift）
-cargo test -p jser --test builtin     # Date/BigInteger/java.time 语义
-cargo test -p jser-serde              # serde 桥
-cargo test -p jser --test nested      # 三层嵌套对象
-cargo test -p jser --test exception   # TC_EXCEPTION 结构化错误
-cargo test -p jser --test fuzz_smoke  # 离线 fuzz 冒烟
+cargo test -p jserde --test codec        # 只跑 codec 12 例
+cargo test -p jserde --test reader       # StreamReader 单元契约
+cargo test -p jserde --test mutf8        # 修改版 UTF-8 契约
+cargo test -p jserde --test roundtrip_bytes # 42 例逐字节回放（50 除外）
+cargo test -p jserde --test typed       # typed 转换
+cargo test -p jserde --test allowlist   # 默认严格 allowlist
+cargo test -p jserde --test derive      # derive 互通
+cargo test -p jserde --test mutation    # 7 例变异/构造流（标量/Map/数组）
+cargo test -p jserde --test property    # 8 例属性测试（固定种子 xorshift）
+cargo test -p jserde --test builtin     # Date/BigInteger/java.time 语义
+cargo test -p jserde-serde              # serde 桥
+cargo test -p jserde --test nested      # 三层嵌套对象
+cargo test -p jserde --test exception   # TC_EXCEPTION 结构化错误
+cargo test -p jserde --test fuzz_smoke  # 离线 fuzz 冒烟
 cargo +nightly fuzz run decode -- -max_total_time=1800  # 30 分钟 fuzz（需 cargo-fuzz；nightly CI 自动执行）
-cargo run --release -p jser --example bench -- 100 # 100MB 级 bench
-cargo run --release -p jser --example bench -- array 25000000  # 25M int[] 内存/吞吐（AC-06）
+cargo run --release -p jserde --example bench -- 100 # 100MB 级 bench
+cargo run --release -p jserde --example bench -- array 25000000  # 25M int[] 内存/吞吐（AC-06）
 python3 docs/bench_gate.py             # bench 回归门禁（CI nightly 同款）
-cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
-cargo test -p jser --doc              # rustdoc 示例
-cargo run -p jser --example emit       # 生成 build/rust/*.ser
-cargo run --release -p jser --example bench -- array 25000000 300
+cargo run -p jserde --bin suid -- path/to/Foo.class # 默认 SUID 计算
+cargo test -p jserde --doc              # rustdoc 示例
+cargo run -p jserde --example emit       # 生成 build/rust/*.ser
+cargo run --release -p jserde --example bench -- array 25000000 300
 cargo deny check                       # 依赖审计（需安装 cargo-deny）
 docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
 ```
@@ -143,10 +143,10 @@ docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
 ## 6. 计划中的 Rust 结构（`design.md` §5）
 
 ```
-jser/
+jserde/
 ├── Cargo.toml                # workspace
 ├── crates/
-│   ├── jser/                 # 核心库：wire 读写 + JValue + Registry
+│   ├── jserde/                 # 核心库：wire 读写 + JValue + Registry
 │   │   ├── src/wire/         # StreamReader/Writer、BlockBuffer、Mutf8、HandleTable
 │   │   ├── src/desc/         # ClassDesc 解析/生成、SUID 计算
 │   │   ├── src/value/        # JValue、JObject、Graph、Rust 类型转换
@@ -157,8 +157,8 @@ jser/
 │   │   ├── src/allowlist.rs  # 默认严格类白名单
 │   │   ├── src/builtin/      # 集合布局 + semantic.rs
 │   │   └── examples/         # emit / bench
-│   ├── jser-derive/          # #[derive(JavaSerializable)]（proc-macro）
-│   └── jser-serde/           # schema 驱动 serde 桥
+│   ├── jserde-derive/          # #[derive(JavaSerializable)]（proc-macro）
+│   └── jserde-serde/           # schema 驱动 serde 桥
 └── tests/                    # 对拍、fuzz 目标、bench
 ```
 

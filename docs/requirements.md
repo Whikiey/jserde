@@ -170,7 +170,7 @@
 | 2026-11-03 | 明确逐字节回放是内部回归门禁（design §5.1），不替代 AC-02；OUT-01 补充 `java.time.Ser` 已知特例 | 拍板 1 |
 | 2026-11-04 | NFR-04 定案：默认严格 allowlist（`java.lang.*`、`java.util.*`），支持精确名与 `prefix.*`/`Fixtures$*`；数组按元素类检查；默认 `decode_stream` 拒绝未放行类 | 用户拍板 |
 | 2026-11-04 | FR-14（derive）落地：`JavaSerializable`/`#[derive(JavaSerializable)]`、typed 互通；同时实现 `computeDefaultSUID` 与 `suid` 工具，`Fixtures$NoSuid` 与 JDK 一致 | P5 |
-| 2026-11-04 | FR-13/FR-15 部分落地：`Date`/`BigInteger`/`BigDecimal`/`java.time` 语义；新增 `object/40`（33 例）；`jser-serde` schema 驱动单根扁平桥，明确拒绝嵌套/环/reset/多根；`Optional` 非 Serializable 不纳入 | P6 |
+| 2026-11-04 | FR-13/FR-15 部分落地：`Date`/`BigInteger`/`BigDecimal`/`java.time` 语义；新增 `object/40`（33 例）；`jserde-serde` schema 驱动单根扁平桥，明确拒绝嵌套/环/reset/多根；`Optional` 非 Serializable 不纳入 | P6 |
 | 2026-11-04 | P7 加固：panic 审计（核心库禁 unwrap/expect）、fuzz 目标与离线冒烟、100 MB 合成块 bench（约 4.7 GB/s、2.0× RSS）、README/SECURITY/CHANGELOG；AC-06 合成负载通过，AC-04 的 30 分钟 fuzz 待夜间执行 | P7 |
 | 2026-11-04 | P8-1：新增 nightly fuzz workflow（decode 1800s、roundtrip/mutf8 300s、corpus 取 fixture、失败上传 artifacts）；AC-04 待首次绿色运行 | P8-1 |
 | 2026-11-04 | 暂缓 30 分钟 fuzz：nightly `schedule` 停用、保留手动触发；等功能完成后恢复 | 用户决定 |
@@ -204,7 +204,7 @@
 | 2026-11-05 | P9-18/P9-20：derive 组合字段 `Option<Vec<T>>`/`Option<HashMap>`/`Vec<Option<T>>`（含自定义数组）；typed `IntoJValue` 支持 `&[T]`/`[T;N]`/`BTreeMap`/`BTreeSet`；全仓 173 项通过 | P9-18/20 |
 | 2026-11-05 | P9-4：`Reader<I: Input>`、`ReadStream<R>`、`decode_from`/`encode_to`；解码增量缓冲、写侧暂缓冲整图；全仓 178 项通过。P9-5 零拷贝因 D1 生命周期改造暂缓 | P9-4/5 |
 | 2026-11-05 | P9-6：新增 `HashMapLayout` 与 `new_hash_map_entries_with_layout`/`new_hash_map_with_layout`，可精确写 capacity/threshold/loadFactor；`MapView.threshold` 可读；全仓 180 项通过 | P9-6 |
-| 2026-11-05 | P9-12（部分）：新增 `jser_serde::Shared<T>`（`Rc<T>`），单次调用内保留非环共享身份；环检测返回 `FieldMismatch`，完整环仍由 `Graph` 支持；全仓 181 项通过 | P9-12 |
+| 2026-11-05 | P9-12（部分）：新增 `jserde_serde::Shared<T>`（`Rc<T>`），单次调用内保留非环共享身份；环检测返回 `FieldMismatch`，完整环仍由 `Graph` 支持；全仓 181 项通过 | P9-12 |
 | 2026-11-05 | P9-17：泛型 `#[derive(JavaSerializable)]`；`schema()` 改为返回 `Vec<JavaField>` 以支持单态化字段描述符；拒绝生命周期/const 泛型与泛型 enum；全仓 183 项通过 | P9-17 |
 | 2026-11-06 | 范围关闭：P9-5 零拷贝不做 `Graph<'a>` 生命周期改造；P9-12 关闭完整环范围，仅保留非环 `Shared<T>`，完整环继续用动态 `Graph` | 用户决定 |
 | 2026-11-06 | P8-4：补 OUT 负例（旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径、错误 tag）；全仓 193 项通过 | P8-4 |
