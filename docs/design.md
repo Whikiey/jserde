@@ -5,7 +5,7 @@
 - 需求基线：[requirements.md](requirements.md)（验收以其中的 `AC-*` 为准，本文只回答"怎么做"）
 - 实现计划：[implementation-plan.md](implementation-plan.md)（任务拆分、阶段门禁、缺口定案）
 - 日期：2026-11-03
-- 最近修订：2026-11-03 按 `implementation-plan.md` §3 收口模型/协议缺口（D1 句柄化、多元素、java.time.Ser、代理项等）
+- 最近修订：2026-11-05 同步 P8/P9（primitive raw、嵌套 derive/serde、TC_CLASS/proxy 保真、扩展容器/值类）
 - 预期语言：Rust（`serde` 可选）+ Java（仅用于生成测试基准，不进入交付物）
 
 ---
@@ -38,8 +38,8 @@ Java 的序列化格式（Java Object Serialization Stream Protocol）是**自�
 | 不做 | 原因 |
 |---|---|
 | `Externalizable` 的通用 `writeExternal/readExternal` 语义 | 自定义协议对端逻辑不可知，只能当不透明块处理；`java.time.Ser` 等已知特例走注册表，见 §4.2 第 16 条 |
-| 动态代理（`TC_PROXYCLASSDESC`） | 依赖接口列表 + InvocationHandler，实际用途极窄 |
-| `TC_CLASS`（`Class` 对象）完整语义 | 需要类加载语义，Rust 侧没有对应概念 |
+| 动态代理的**调用语义**（`TC_PROXYCLASSDESC`） | P9-2 做接口列表/classdata 的字节保真回放；`InvocationHandler` 调用语义仍不做 |
+| `TC_CLASS` 的**类加载语义** | P9-1 做 `Class` 对象的字节/句柄保真回放；Rust 侧没有类加载概念 |
 | RMI / JNDI 传输层 | 与序列化格式无关 |
 | 任意 Java 类 → Rust 结构体的自动映射 | 需要类元数据，改为"动态结构 + 可选 schema" |
 | 反序列化安全防护（gadget chain 拦截） | 只提供 allowlist 钩子并在文档中警告，不做完整沙箱 |
@@ -223,7 +223,7 @@ SC_BLOCK_DATA 0x08    SC_ENUM 0x10
     | `BigDecimal` | `0x03` | `scale:int` + `intVal:BigInteger` | 空（仅有收尾 `TC_ENDBLOCKDATA`） | `36` |
 
 15. **引用型值统一走句柄、顶层可多元素**：`TC_REFERENCE` 返回同一个 `Handle`；编码时同一句柄首次写实体、后续写回指。顶层流按出现顺序产生 `JValue`，其中 `JValue::Reset` 表示 `TC_RESET`；`decode` 单元素便捷函数遇到多元素或 `Reset` 必须报错并提示用 `decode_stream`。依据：`08`、`33`（共享）、`34`（环）、`35`（reset）、`09`/`11`（块元素）。
-16. **`java.time.Ser` 是已知的 Externalizable 特例**：`java.time.*` 经 `writeReplace` 变成 `java.time.Ser`（`36`）。它的 classDesc flags 是 `0x0C`（`SC_EXTERNALIZABLE|SC_BLOCK_DATA`）、0 个字段，数据全部在块里：`LocalDate` 为 `type=3` + `year:int` + `month:int` + `day:int`（`36` 的块是 `77 07 03 00 00 07 E8 02 1D`）。不要把它当普通 POJO，也不要因此实现通用 `Externalizable`（`OUT-01` 仍有效）。
+16. **`java.time.Ser` 是已知的 Externalizable 特例**：`java.time.*` 经 `writeReplace` 变成 `java.time.Ser`（`36`）。它的 classDesc flags 是 `0x0C`（`SC_EXTERNALIZABLE|SC_BLOCK_DATA`）、0 个字段，数据全部在块里：`LocalDate` 为 `type=3` + `year:int` + `month:byte` + `day:byte`（`36` 的块是 `77 07 03 00 00 07 E8 02 1D`）。不要把它当普通 POJO，也不要因此实现通用 `Externalizable`（`OUT-01` 仍有效）。
 
 > 第 2、6、12、14、16 条以及数组 SUID 曾是我的记忆推断，**已被基准数据证实或修正**——这正是 `testdata/` 存在的意义。基准数据的字节是唯一事实来源，本文与它冲突时以它为准。
 
@@ -311,7 +311,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 "逐字节回放"只用于**未修改的 fixture 流**，是 P3 的回归门禁，不是验收标准（验收仍是 `AC-02` 的 Java 读回）。
 
 - **定义**：`encode_stream(decode_stream(x)) == x`。
-- **适用**：`testdata/fixtures/**` 的 34 个已提交用例；decode 后不改动 `Graph`。
+- **适用**：`testdata/fixtures/**` 的 42 个已提交用例；decode 后不改动 `Graph`。
 - **不适用**：新建的图、修改过字段/集合/引用的图；这些只要求"Java 读回语义相等"。
 - **例外**：必须登记"文件 + 原因 + 负责人 + 到期"，默认不允许；例外不放宽全局断言。
 - **防作弊**：mutation test（解码 → 改字段/Map 条目/数组元素 → 编码 → Java 读到新值）与构造流测试（手工构造 Map/POJO/数组 → Java 读回）；`encode` 必须走 `Graph`，不得缓存原始流直接回显。
@@ -319,7 +319,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 
 ### 5.2 Allowlist（2026-11-04 定案）
 
-- **默认严格**：`decode_stream` / `Reader::new` / `decode_typed` 使用 `Allowlist::strict()`，只放行 `java.lang.*`、`java.util.*`；fixture 测试额外放行 `Fixtures$*`、`java.math.*`、`java.time.*`。
+- **默认严格**：`decode_stream` / `Reader::new` / `decode_typed` 使用 `Allowlist::strict()`，只放行 `java.lang.*`、`java.util.*`；fixture 测试额外放行 `Fixtures$*`、`java.math.*`、`java.time.*`、`java.sql.*`、`java.util.regex.*`。
 - **匹配规则**：精确类名、`prefix.*`、`Fixtures$*`（以 `$` 结尾的命名空间前缀）；裸 `*` / `Allowlist::all()` 表示全放行。非法模式返回 `InvalidSchema`。
 - **检查时机**：每读到一个 `TC_CLASSDESC`（含父类链）立刻检查；数组类名 `[Lcom.example.Foo;` 提取元素类后再检查，基本类型数组直接放行。
 - **错误**：未放行时返回 `UnsupportedClass(<class name>)`，不会先破坏性读取 classdata。
@@ -356,7 +356,7 @@ let mut r = jser::Reader::with_allowlist(bytes, Limits::default(), allowlist)?;
 | `java.time.Period` | ✅ years/months/days | `BuiltinValue::Period` |
 | `java.util.Optional` | ❌ **不是 `Serializable`**，Java 端不会产出 | — |
 
-serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/数组、递归嵌套 POJO（`SchemaField::nested`）、Map（`SchemaField::map`，HashMap/LinkedHashMap）、Set（`SchemaField::set`，HashSet）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根有独立入口，多根用 `MultiRootWriter`（可插 `TC_RESET`）；共享引用按值展开、环不在树模型内（真实身份用动态 `Graph`）；不支持对象数组；`from_slice*` 必须传入 allowlist。扩展候选（直接 serde 实现）已登记在 `implementation-plan.md` §21.2。
+serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/数组、递归嵌套 POJO（`SchemaField::nested`）、Map（`SchemaField::map`，HashMap/LinkedHashMap）、Set（`SchemaField::set`，HashSet）与枚举（`SchemaField::enumeration`）；Map/Set/枚举根有独立入口，多根用 `MultiRootWriter`（可插 `TC_RESET`）；共享引用按值展开、环不在树模型内（真实身份用动态 `Graph`）；不支持对象数组；`from_slice*` 必须传入 allowlist。扩展候选（直接 serde 实现）已登记在 `implementation-plan.md` §21.2。`object/46` 不含 `Collections$SynchronizedList`：其默认 SUID 跨 JDK 构建不稳定；解码支持仍在。
 
 嵌套对象：动态 `JValue` 层递归支持任意深度（`object/41` 验证 Outer→Middle→Leaf 三层，受 `max_depth` 限制）；typed 可手写递归实现；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承（`#[java(flatten)]`）与 unit-only enum；serde 通过递归 `SchemaField::nested` 支持多层 POJO。
 
@@ -364,13 +364,13 @@ serde 桥额外限制：单根/多根 POJO；字段可为标量/String/`Option`/
 
 | # | 内容 | 出口条件 |
 |---|---|---|
-| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 42 例/78843 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
+| M0 ✅ | 协议探针：`MUTF-8`、块缓冲、句柄表、`classDesc` 解析；生成 fixture 的 Java 脚本 + CI（GitHub Actions 装 JDK 17） | 42 例/78640 字节；codec 手写推导与 JDK 输出逐字节一致；Rust 侧已能解码并回放全部用例 |
 | M1 ✅ | 基本类型 / `String` / 数组 / 集合的**读** | fixture 全部可解码；多元素流与 `TC_RESET` 可读 |
 | M2 ✅ | **写** + 回放门禁 + 双向对拍 | 42 例未修改 fixture 全部逐字节回放；构造/修改流由 Java 读回；无例外登记 |
 | M3 ✅ | 动态 POJO（`JValue::Obj`）+ typed API + 循环引用 + `TC_RESET` | 自引用链表/双向图可读写；`ObjectOutputStream.reset()` 的流可读写；未知类可原样回写 |
 | M4 ✅ | `#[derive(JavaSerializable)]` + SUID 工具（含与 JDK `serialver` 的对拍） | derive 的结构体与等价 Java 类互通；SUID 计算与 JDK 一致 |
-| M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 以 `LocalDate` 起步；serde 桥只覆盖单根无环 POJO，且有明确报错 |
-| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 合成 100 MB bench 达标（约 4.8 GB/s、2.0×）；fuzz 目标/冒烟完成；30 分钟完整 fuzz 和真实 primitive 大数组待 P8 |
+| M5 ✅ | 内置类补齐（`Date`、`BigInteger`、`BigDecimal`、`java.time.*`）+ `jser-serde` | 每类双向对拍；`java.time` 余项与常见值类/扩展容器已补；serde 支持递归嵌套/Map/Set/枚举/多根，树模型限制已文档化 |
+| M6 ◐ | 加固：深度/长度限制、fuzz（`cargo-fuzz` 跑 30 分钟无 panic）、bench | 合成 100 MB 与 25M `int[]` bench 达标（约 2.0× RSS）；fuzz 目标/冒烟完成；30 分钟完整 fuzz 暂缓 |
 
 ## 7. 风险与缓解
 

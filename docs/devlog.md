@@ -361,6 +361,21 @@
 
 ---
 
+## 2026-11-05 21:50 · docs: 跨机同步 P8/P9 进度
+
+- **提交**：本次（hash 见 `git log`）
+- **检查**：读取另一台机器留下的 DSH session log（`dsh-session-session-.../session.v4.jsonl`），确认 P8/P9 已完成项、剩余 P9 项与暂缓项；日志目录加入 `.gitignore`，保留本地参考、不入库。
+- **同步内容**：
+  - 统一当前基线为 **42 个 fixture / 78640 字节、164 项测试、42 例 Java 读回 + SUID**。
+  - README/AGENT/SECURITY/CHANGELOG 更新到 P0–P9；补充嵌套 derive/serde、primitive raw、`TC_CLASS`/proxy 保真、扩展容器/值类。
+  - requirements §4.1 更新 AC 状态；OUT-02/04 明确“保真回放 ≠ 调用/类加载语义”。
+  - design M0/M2/M5/M6、fixture 数量、serde 边界与 `LocalDate` 块格式同步；删除已过期的“单根扁平”“Year 未实现”等说法。
+  - implementation-plan 更新 P6/P7 计数、CI matrix、§20 当前进度与 §21 剩余项；标注 P8-1 fuzz 暂缓。
+- **验证**：`cargo test --workspace` 164 passed；`cargo clippy -D warnings`、`fmt --check`、`cargo doc -D warnings`、`gen.sh --check`（42 例/78640 字节）、`interop.sh`（42 例）全部通过。
+- **TDD**：不适用（跨机同步与文档收口；46 号 fixture 修复见上一条）。
+
+---
+
 ## 2026-11-05 21:30 · fix: 修复 46 号夹具可移植性与 interop allowlist
 
 - **提交**：本次（hash 见 `git log`）

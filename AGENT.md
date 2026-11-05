@@ -6,17 +6,17 @@
 
 ---
 
-## 1. 当前状态（2026-11-04）
+## 1. 当前状态（2026-11-05）
 
 | 项 | 状态 |
 |---|---|
-| 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P7；P8 缺口见计划 §20 |
-| 实现计划 | 已有初版 `docs/implementation-plan.md`（P0–P7 已完成；P7-1 的 30 分钟 fuzz workflow 已接入但暂缓，等功能完成后执行；计划假设按默认执行，设计缺口已定案） |
-| 基准数据 | **已完成**：42 个用例、78843 字节（P6/P7/P8/P9 新增 object/40–49），JDK 17.0.20.1 生成，见 `docs/testdata/` |
-| Rust 代码 | **P7 已完成**：编解码 + typed API + allowlist + derive/SUID + 内置类语义 + serde 桥 + panic 审计/bench/fuzz harness；P8-2 primitive raw 数组、P8-3 嵌套 derive/serde、P8-5 java.time 余项、P9-7/8 serde Map/Set、P9-9 serde enum、P9-10/11 多根与 `TC_RESET`、P9-13 serde 直连、P9-14 对象数组、P9-15 继承、P9-16 enum、P9-21 java.time zone、P9-27 AC-02 全 fixture、P9-28/29 CI 与 cargo-deny、P9-30 bench 门禁、P9-31 mutation 扩展、P9-32 文档收口、P9-33 混合嵌套 fixture、P9-26 property 测试、P9-22 常见值类语义、P9-23/24/25 扩展容器（含 EnumSet/EnumMap）、P9-1 `TC_CLASS`、P9-2 动态代理；164 项测试全绿 |
-| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P7 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
+| 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；剩余项见计划 §20/§21 |
+| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成主要功能；P8-1 的 30 分钟 fuzz 暂缓；剩余 P9 扩展见 §20/§21 |
+| 基准数据 | **已完成**：42 个用例、78640 字节（P6/P7/P8/P9 新增 object/40–49），JDK 17.0.20.1 生成，见 `docs/testdata/` |
+| Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**164 项测试全绿**。剩余 P9-3/4/5/6/12/17/18/19/20 见 §20/§21 |
+| 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P7 已完成；当前已知缺口见 `implementation-plan.md` §20（近期优先）与 §21（全部纯 Rust 可实现的扩展候选）：P7-1 的 30 分钟 fuzz（AC-04）、`ZoneId` 等 java.time 余项、跨平台 CI 等。
+所以：P0–P9 主要功能已完成；剩余项见 `implementation-plan.md` §20/§21：P8-1 的 30 分钟 fuzz（AC-04，暂缓）、P9-3 `TC_EXCEPTION`、P9-4 流式 IO、P9-5 零拷贝、P9-6 HashMap 容量、P9-12 serde 指针级共享/环、P9-17 泛型、P9-18 组合字段、P9-19 typed/derive 类名/SUID 校验、P9-20 `IntoJValue` 扩展。
 
 ---
 
@@ -47,7 +47,7 @@
 | NFR-03 | 交付物运行时不依赖 JDK/JRE。 |
 | NFR-05 | 可移植：Linux/macOS/Windows 行为一致，核心库不引入平台相关依赖。 |
 | NFR-06 | 测试离线可跑：基准数据随仓库提交，不联网。 |
-| §5 OUT | 不做 `Externalizable` 语义、动态代理（`TC_PROXYCLASSDESC`）、`TC_CLASS` 完整语义、RMI/JNDI、完整 gadget 沙箱。 |
+| §5 OUT | 不做 `Externalizable` 语义、动态代理调用语义、`TC_CLASS` 类加载语义、RMI/JNDI、完整 gadget 沙箱；P9-1/2 仅做 `TC_CLASS`/`TC_PROXYCLASSDESC` 的字节与句柄保真回放。 |
 
 范围外的请求不要"顺手实现"；需要扩展时先改 `requirements.md` 并让用户确认。
 
@@ -60,17 +60,20 @@ AGENT.md                     # 本文件（仓库根）
 README.md / SECURITY.md      # 快速开始、安全边界
 CHANGELOG.md                 # 版本变更
 fuzz/                        # cargo-fuzz 目标（独立 workspace）
+deny.toml / .github/         # 依赖审计与 CI matrix/nightly
+dsh-session-*/               # 本地 DSH 日志（已 ignore，不入库）
 docs/
 ├── requirements.md          # 要做什么：FR/NFR/AC/范围外/已定案问题
 ├── design.md                # 怎么做：决策 D1–D5、协议要点、模块、里程碑、风险
-├── implementation-plan.md   # P0–P7 任务拆分、门禁与进度
+├── implementation-plan.md   # P0–P9 任务拆分、门禁、§20/§21 缺口 backlog
+├── bench.md / bench-baseline.json / bench_gate.py  # 性能基线
 ├── devlog.md                # 每次提交的开发日志（§10.2）
 └── testdata/
     ├── README.md            # 基准数据的用途、用法、覆盖表
-    ├── manifest.json        # 机读契约（34 例，含期望语义值 + sha256）
+    ├── manifest.json        # 机读契约（42 例，含期望语义值 + sha256）
     ├── fixtures/
     │   ├── codec/           # 01–12：无类描述符的流原语
-    │   └── object/          # 20–39：类描述符/SUID/继承/enum/数组/集合/环/reset
+    │   └── object/          # 20–49：类描述符/SUID/继承/enum/数组/集合/环/reset/扩展类型
     ├── gen/
     │   ├── Fixtures.java              # 权威生成器（JDK 17+）
     │   ├── build_codec_fixtures.py    # codec 层独立再推导，用于对拍
@@ -123,6 +126,8 @@ python3 docs/bench_gate.py             # bench 回归门禁（CI nightly 同款�
 cargo run -p jser --bin suid -- path/to/Foo.class # 默认 SUID 计算
 cargo test -p jser --doc              # rustdoc 示例
 cargo run -p jser --example emit       # 生成 build/rust/*.ser
+cargo run --release -p jser --example bench -- array 25000000 300
+cargo deny check                       # 依赖审计（需安装 cargo-deny）
 docs/testdata/gen/interop.sh           # Rust 写 → Java 读回（需 JDK）
 ```
 
@@ -209,7 +214,7 @@ jser/
 
 里程碑顺序：M1 读通 fixture → M2 写 + 双向对拍 → M3 动态 POJO/环/`TC_RESET` → M4 derive + SUID → M5 内置类/serde → M6 加固（fuzz、bench）。**不要跳过 M1 直接做 M5。**
 
-P3 的逐字节回放门禁（design §5.1）**只对未修改的 fixture 流（当前 34 例）**；修改/构造过的图必须用 Java 读回验证，别把回放门禁当成 `AC-02`。回放门禁的例外要登记"文件+原因+负责人+到期"。
+P3 的逐字节回放门禁（design §5.1）**只对未修改的 fixture 流（当前 42 例）**；修改/构造过的图必须用 Java 读回验证，别把回放门禁当成 `AC-02`。回放门禁的例外要登记"文件+原因+负责人+到期"。
 
 ### 8.1 TDD 循环（强制）
 

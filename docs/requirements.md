@@ -1,10 +1,11 @@
 # 0006 · 需求基线（Requirements）
 
-- 状态：Draft（第 6 节待你确认后转为基线）
+- 状态：Accepted（2026-11-04；§6 已定案）
 - 关联想法：`ideas.md` #6
 - 下游设计：[design.md](design.md)
 - 测试基准：[testdata/](testdata/)
 - 日期：2026-11-03
+- 最近修订：2026-11-05
 
 需求文档回答"**要做什么**"，设计文档回答"**怎么做**"。两者分工明确：验收以本文的 `AC-*` 为准，实现路径以设计文档为准。
 
@@ -102,16 +103,16 @@
 
 > 逐字节回放（`encode_stream(decode_stream(x)) == x`，限 fixture 未修改流（当前 42 例））是 `design.md` §5.1 / 计划 P3 的**内部回归门禁**，不替代 `AC-02`，也不作为验收标准；构造或修改过的流只按 `AC-02` 验收。
 
-### 4.1 当前实现状态（2026-11-04）
+### 4.1 当前实现状态（2026-11-05）
 
 | AC | 状态 | 证据/缺口 |
 |---|---|---|
 | AC-01 | ✅ | 42 个 fixture 全部解码；`36`/`40`/`42`/`43` 语义、`41` 三层嵌套、`44` 混合/共享/环、`45` 常见值类、`46` 扩展容器、`47` Class 对象、`48` 动态代理、`49` EnumSet/EnumMap 由 `tests/builtin.rs`、`tests/nested.rs`、`tests/nesting.rs`、`tests/containers.rs`、`tests/class_objects.rs`、`tests/proxy.rs` 覆盖 |
 | AC-02 | ✅（全 fixture） | `tests/interop.rs` + `Verify.java`：42 个 fixture 全部由 Rust 重编码后经 Java `ObjectInputStream` 读回（`--read`/`--sequence`/`--primitives`/`--blocks`/`--array`）；构造/typed/derive/serde 代表用例断言字段值；范围外类型（`Externalizable` 语义、代理语义等）仍不覆盖 |
 | AC-03 | ✅ | `33`/`34`/`35` 读→写→读；`tests/roundtrip_semantics.rs` |
-| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（2026-11-04 决定，等功能完成后执行，`schedule` 已停用） |
+| AC-04 | ◐ | `fuzz/` 三目标 + `tests/fuzz_smoke.rs` + CI smoke；nightly workflow 已接入但**暂缓**（`schedule` 停用，可手动触发），30 分钟未跑满 |
 | AC-05 | ✅ | `23`/`36`/`39` 原样回写；`tests/unknown.rs` |
-| AC-06 | ✅（本地实测） | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；25M `int[]` 改 raw 存储后本地工作集采样约 **2.03×**（Windows；Linux `bench -- array` 的 `VmHWM` 可复核） |
+| AC-06 | ✅（本地实测） | 合成 100 MB 块流约 4.8 GB/s、2.0× RSS；25M `int[]` raw 存储本地约 **2.03×**（Windows；Linux `bench -- array` 可复核） |
 
 > 剩余缺口与处理优先级见 `implementation-plan.md` §20。
 
@@ -122,9 +123,9 @@
 | 编号 | 不做 | 原因 |
 |---|---|---|
 | OUT-01 | `Externalizable` 的 `readExternal/writeExternal` 语义 | 对端逻辑不可知，只能当不透明块；`java.time.Ser` 等已知内置特例走注册表，不属于本项 |
-| OUT-02 | 动态代理（`TC_PROXYCLASSDESC`） | 依赖 `InvocationHandler`，用途极窄 |
+| OUT-02 | 动态代理的调用语义（`InvocationHandler`） | P9-2 已实现 `TC_PROXYCLASSDESC` 字节/句柄保真回放，不做代理调用语义 |
 | OUT-03 | RMI / JNDI 传输层 | 与序列化格式无关 |
-| OUT-04 | `Class` 对象（`TC_CLASS`）完整语义 | 需要类加载语义，Rust 无对应概念 |
+| OUT-04 | `Class` 对象的类加载语义（`TC_CLASS`） | P9-1 已实现字节/句柄保真回放；Rust 无类加载概念 |
 | OUT-05 | 运行时调用 JVM 做转换 | 违反 S-1（零 JVM 依赖） |
 | OUT-06 | 完整的反序列化 gadget 沙箱 | 只做白名单 + 文档警告 |
 
@@ -196,3 +197,5 @@
 | 2026-11-04 | P9-1：`TC_CLASS` 保真回放（`JValue::Class`/`Slot::Class`，含共享类对象与 `new_class`）；`object/47` + `tests/class_objects.rs`；manifest 40 例/78347 字节；全仓 162 passed | P9-1 |
 | 2026-11-04 | P9-2：`TC_PROXYCLASSDESC` 保真回放（接口列表 + super Proxy + `h` 字段）；`object/48` + `tests/proxy.rs`；manifest 41 例/78499 字节；全仓 163 passed | P9-2 |
 | 2026-11-04 | P9-23 补齐：EnumSet/EnumMap 解码视图 + `new_enum_set`/`new_enum_map`；`object/49`；manifest 42 例/78843 字节；全仓 164 passed | P9-23 |
+| 2026-11-05 | 进度同步：P8/P9 主要功能完成；当前 42 例/78640 字节、164 项测试、42 例 Java 读回；剩余 P9-3/4/5/6/12/17/18/19/20 与 P8-1 fuzz | 跨机同步 |
+| 2026-11-05 | `object/46` 移除 `Collections$SynchronizedList`（跨 JDK 构建 SUID 不稳定）并重新生成 manifest；fixture 42 例/78640 字节 | 跨平台修复 |

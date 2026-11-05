@@ -63,21 +63,29 @@
   strings, vectors, maps, re-encode stability, random/truncated bytes, mutation.
 - Hybrid nested fixture `object/44`: Map × array × custom class with shared
   references and a self-cycle; Rust build + decode/replay regressions.
-- 37 JDK-generated fixtures, byte-exact replay, Java `Verify` interop (every
-  fixture re-encoded by Rust and read back), SUID comparison, deterministic
-  fuzz smoke and a benchmark example.
+- 42 JDK-generated fixtures / 78640 bytes, byte-exact replay, Java `Verify`
+  interop (every fixture re-encoded by Rust and read back), SUID comparison,
+  deterministic fuzz smoke and a benchmark example.
+- P8/P9: compact primitive arrays, nested derive/serde, Map/Set/enum serde,
+  multi-root + `TC_RESET`, `TC_CLASS`/proxy fidelity, extended containers
+  (EnumSet/EnumMap included), common value classes, property/mutation tests,
+  cross-platform/MSRV/i686/cargo-deny CI and bench gate.
 - Three-level nested POJO fixture (`object/41`) and regression tests.
 - P7 hardening: panic audit, compact bulk decoding of large top-level blocks,
   libFuzzer targets, nightly-ready CI smoke, README/SECURITY/CHANGELOG.
 
 ### Known limitations
 
-- Generic `Externalizable`, dynamic proxies, `TC_CLASS`, RMI/JNDI are out of scope.
-- serde bridge: no object arrays, cycles/shared refs, `TC_RESET` or
-  multi-root streams.
+- Generic `Externalizable` semantics, dynamic-proxy invocation semantics,
+  `TC_CLASS` class-loading semantics and RMI/JNDI are out of scope; P9-1/2 only
+  provide byte/handle-fidelity replay.
+- serde is a tree model: shared references decode as duplicated values and
+  cycles are not representable; object-array fields are unsupported.
+- `Collections$SynchronizedList` decode support exists, but it is not in the
+  cross-JDK fixture because its computed SUID varies between JDK builds.
 - `java.util.Optional` is not `Serializable`.
 - Allowlist is not a gadget sandbox.
 - AC-04: the 30-minute decode fuzz workflow is in place but deferred until
   feature work is complete. The offline smoke test is always on.
-- AC-06: the synthetic 100 MB block stream and a real 25M-element `int[]`
-  both stay under the 3× memory target with compact primitive arrays.
+- AC-06: synthetic 100 MB block and a real 25M-element `int[]` stay under the
+  3× memory target with compact primitive arrays (local measurement).
