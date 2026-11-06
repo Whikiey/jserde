@@ -361,6 +361,15 @@
 
 ---
 
+## 2026-11-07 00:20 · docs: 补充 GitHub 元数据
+
+- **提交**：本次（hash 见 `git log`）
+- **改动**：workspace/三个 crate 增加 `repository`/`homepage`；README 中英文加入 GitHub 链接；RELEASING checklist 与 SECURITY 私有漏洞报告入口更新为 GitHub。
+- **背景**：0.1.0 已发布到 crates.io；GitHub 仓库已创建并推送 `main` + `v0.1.0`（SOCKS5 代理）。
+- **验证**：`cargo package --list` / 198 tests 保持通过。
+
+---
+
 ## 2026-11-06 04:20 · docs: 准备发布前文档
 
 - **提交**：本次（hash 见 `git log`）

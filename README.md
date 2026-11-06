@@ -19,6 +19,8 @@ cargo add jserde-derive
 cargo add jserde-serde
 ```
 
+GitHub：[Whikiey/jserde](https://github.com/Whikiey/jserde)
+
 crates.io：[jserde](https://crates.io/crates/jserde)、
 [jserde-derive](https://crates.io/crates/jserde-derive)、
 [jserde-serde](https://crates.io/crates/jserde-serde)。文档见

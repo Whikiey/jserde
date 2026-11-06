@@ -18,8 +18,8 @@ Before publishing, confirm:
 
 - [ ] version is intentional (`0.1.0`, not a local dev version);
 - [ ] crates.io names `jserde`, `jserde-derive`, `jserde-serde` are available;
-- [ ] the repository URL/homepage is filled in the manifests (currently
-      intentionally omitted because no public repository URL is set);
+- [ ] the repository URL/homepage is filled in the manifests
+      (`https://github.com/Whikiey/jserde`);
 - [ ] the copyright holder in each `LICENSE-MIT` is correct (root and crates);
 - [ ] a private security-reporting channel exists, or `SECURITY.md` clearly
       says reports should go through the public issue tracker.

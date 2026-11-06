@@ -57,9 +57,8 @@ Zlib), wildcard ban and registry pinning. Run it locally before releases.
 
 ## Reporting
 
-This is a 0.1.0 project without a private security channel yet. Do not
-deploy it as a trust boundary. Before a public release, the maintainers must
-publish a private reporting address (or explicitly use the repository's private
-security advisory flow); until then, report only minimal reproduction details
-in a public issue and ask for a private contact. See `RELEASING.md` for the
-release checklist.
+This is a 0.1.0 project. Do not deploy it as a trust boundary. Use GitHub's
+private vulnerability reporting flow at
+https://github.com/Whikiey/jserde/security/advisories/new; if that flow is not
+enabled, open a minimal public issue asking for a private contact without
+including exploit details. See `RELEASING.md` for the release checklist.
