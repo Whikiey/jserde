@@ -42,16 +42,6 @@ crates.io：[jserde](https://crates.io/crates/jserde)、
 `0.x` 阶段允许 breaking change；1.0 前不承诺 semver 兼容。详细发布流程见
 [RELEASING.md](RELEASING.md)。
 
-## 当前进度
-
-- P0–P9 主要功能已实现：43 个 fixture / 79031 字节、198 项测试通过、42 例 Java 读回 + SUID 对拍（`50` 为结构化异常，不重编码）；CI 覆盖 Linux/macOS/Windows、MSRV 1.77、i686 与 `cargo-deny`，nightly 含 bench 回归门禁。
-- 已覆盖：动态编解码、集合/扩展容器、环/共享、typed、derive（嵌套/继承/enum）、SUID、内置类语义、allowlist、`TC_CLASS`/动态代理保真回放、serde 桥（递归嵌套 POJO/Map/Set/枚举/多根/`TC_RESET`）。
-- P8-2：primitive 数组改为紧凑 raw 字节存储，25M `int[]` 本地约 2.03×（AC-06）；三层/混合嵌套 fixture 已覆盖。
-- P8-1：30 分钟 fuzz 已通过（AC-04）：decode 1801s / 5,000,272 runs，roundtrip 301s，mutf8 301s；nightly schedule 已启用。
-- P8-4：OUT 负例已补齐（旧式 Externalizable、非 Serializable classdesc、TC_CLASS/proxy 非法路径）。
-- P8-6：300 层对象链与 8 线程并发只读/独立编解码测试已补齐。
-- P9-5（零拷贝）与 P9-12（完整环）已关闭：P9-5 不做 `Graph` 生命周期改造；P9-12 接受非环 `Shared<T>`，完整环仍用动态 `Graph`。
-
 ## 能力
 
 | 能力 | 状态 |
@@ -67,8 +57,8 @@ crates.io：[jserde](https://crates.io/crates/jserde)、
 | `Date`、`BigInteger`、`BigDecimal`、`java.time` 语义视图 | ✅ |
 | 严格默认 allowlist | ✅ |
 | schema 驱动 serde 桥（递归嵌套/Map/Set/枚举/多根） | ✅（限制见下；`Shared<T>` 保留非环共享身份） |
-| 42 个常规 fixture 逐字节回放 + `TC_EXCEPTION` 结构化错误 | ✅ |
-| Rust 写 → Java 读回 | ✅（42 个常规 fixture + 构造/typed/derive/serde） |
+| JDK fixture 逐字节回放 + `TC_EXCEPTION` 结构化错误 | ✅ |
+| Rust 写 → Java 读回 | ✅（fixture + 构造/typed/derive/serde） |
 | `TC_EXCEPTION` 结构化错误（`JavaException`） | ✅（`object/50`，不重编码） |
 
 ## 快速开始
@@ -130,12 +120,12 @@ struct Point {
 ## 构建与验证
 
 ```bash
-cargo test --workspace          # 198 passed
+cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
 cd docs/testdata
-./gen/gen.sh --check       # 校验 JDK 生成的 43 个 fixture / 79031 字节
+./gen/gen.sh --check       # 校验 JDK 生成的 fixture
 ./gen/interop.sh           # Rust 写 → Java 读回 + SUID 对拍（需 JDK 17）
 
 # 可选
@@ -158,12 +148,12 @@ cargo test -p jserde --test fuzz_smoke
 
 ## 已知限制
 
-- `Externalizable` 通用语义、动态代理调用语义、`TC_CLASS` 类加载语义、RMI/JNDI 不在范围；P9-1/2 仅做 `TC_CLASS`/`TC_PROXYCLASSDESC` 的字节与句柄保真回放。
+- `Externalizable` 通用语义、动态代理调用语义、`TC_CLASS` 类加载语义、RMI/JNDI 不在范围；`TC_CLASS`/`TC_PROXYCLASSDESC` 仅做字节与句柄保真回放。
 - 动态 `JValue` 层支持任意深度嵌套（`object/41` 验证 3 层）；derive 支持嵌套自定义字段、`Option<Custom>`、`Vec<Custom>`、继承（`#[java(flatten)]`）与 unit-only enum；serde 通过递归 `SchemaField` 支持多层 POJO/Map/Set/枚举/多根。
 - serde 默认仍是树模型：普通共享引用按值展开；`jserde_serde::Shared<T>` 在单次调用内保留**非环**共享身份；完整环用动态 `Graph`，serde 环检测返回错误；不支持对象数组字段。
 - `java.util.Optional` 不是 `Serializable`，不纳入。
 - primitive 数组使用紧凑 raw 存储（4 B/`int`）；25M `int[]` 本地工作集约 2.03× 输入，Linux 可用 `bench -- array` 的 `VmHWM` 复核。
-- **已关闭的 P9 范围**：P9-5 零拷贝（不做 `Graph` 生命周期改造）；P9-12 完整环（`Shared<T>` 仅覆盖非环共享）。
+- 输入零拷贝（`Graph` 生命周期改造）与完整 serde 环不做；`Shared<T>` 仅覆盖非环共享。
 - 默认 allowlist 不能替代完整反序列化沙箱。
 
 ## License

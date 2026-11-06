@@ -60,8 +60,8 @@ promised before 1.0. See [API stability](docs/api-stability.md) and
 | Semantic views for `Date`, `BigInteger`, `BigDecimal`, `java.time` | ✅ |
 | Strict-by-default allowlist | ✅ |
 | Schema-driven serde bridge (nested POJOs, Map/Set/enum, multi-root) | ✅ (limits below; `Shared<T>` preserves non-cyclic identity) |
-| 42 regular fixtures replayed byte-for-byte + structured `TC_EXCEPTION` errors | ✅ |
-| Rust write → Java readback | ✅ (42 regular fixtures + constructed/typed/derive/serde) |
+| JDK fixtures replayed byte-for-byte + structured `TC_EXCEPTION` errors | ✅ |
+| Rust write → Java readback | ✅ (fixtures + constructed/typed/derive/serde) |
 
 ## Quick start
 
@@ -128,22 +128,18 @@ resource limits and reporting guidance.
 ## Build and verify
 
 ```bash
-cargo test --workspace          # 198 tests
+cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 
 cd docs/testdata
-./gen/gen.sh --check       # 43 JDK-generated fixtures / 79031 bytes
+./gen/gen.sh --check       # verify JDK-generated fixtures
 ./gen/interop.sh           # Rust write -> Java readback + SUID (JDK 17)
 
 # optional
 cargo run --release -p jserde --example bench -- 16
 cargo test -p jserde --test fuzz_smoke
 ```
-
-The 30-minute decode fuzz gate passed locally on 2026-11-06: 1801 s,
-5,000,272 runs, peak RSS 476 MB. The nightly schedule is enabled in
-`.github/workflows/nightly.yml`.
 
 ## Documentation
 
@@ -173,8 +169,7 @@ The 30-minute decode fuzz gate passed locally on 2026-11-06: 1801 s,
 - `java.util.Optional` is not `Serializable`.
 - Primitive arrays use compact raw storage (4 B per `int`); a 25M-element
   `int[]` stays near 2.03× input RSS in local measurements.
-- Closed P9 scope: input zero-copy (`Graph<'a>` rewrite) and full serde cycles
-  are not planned.
+- Input zero-copy (`Graph<'a>` rewrite) and full serde cycles are not planned.
 - The default allowlist is not a complete deserialization sandbox.
 
 ## License
