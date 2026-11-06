@@ -4,11 +4,9 @@
 
 纯 Rust 实现的 Java 对象序列化协议，与 JDK 的 `ObjectOutputStream` / `ObjectInputStream` 双向互通，**运行时零 JVM 依赖**。
 
-当前版本：`0.1.0`（release candidate；尚未发布 crates.io）。
+当前版本：`0.1.0`（2026-11-06 已发布到 crates.io）。
 
 ## 安装
-
-> `jserde` 0.1.0 目前尚未发布到 crates.io。发布后使用：
 
 ```bash
 # 核心库
@@ -21,8 +19,13 @@ cargo add jserde-derive
 cargo add jserde-serde
 ```
 
-发布前请从源码或 path/git 依赖使用，并参阅
-[RELEASING.md](RELEASING.md) 与 [release notes](docs/release-notes-0.1.0.md)。
+crates.io：[jserde](https://crates.io/crates/jserde)、
+[jserde-derive](https://crates.io/crates/jserde-derive)、
+[jserde-serde](https://crates.io/crates/jserde-serde)。文档见
+[docs.rs/jserde](https://docs.rs/jserde)。
+
+版本与发布说明见 [release notes](docs/release-notes-0.1.0.md) 和
+[RELEASING.md](RELEASING.md)。
 
 ## 兼容性
 

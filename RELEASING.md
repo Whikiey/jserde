@@ -6,8 +6,8 @@ This file is the release runbook for the three-crate workspace:
 - `jserde-derive` — `#[derive(JavaSerializable)]`
 - `jserde-serde` — optional schema-driven serde bridge
 
-The current version is **0.1.0**. It is a release candidate until the steps
-below are completed and the tags/crates are published.
+**0.1.0 was published on 2026-11-06.** This runbook remains the checklist for
+future releases; use the same steps for 0.1.1/0.2.0.
 
 See [`docs/api-stability.md`](docs/api-stability.md) for the versioning and
 deprecation policy referenced by this runbook.

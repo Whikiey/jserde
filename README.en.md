@@ -6,11 +6,9 @@ the JDK's `ObjectOutputStream` / `ObjectInputStream` in both directions, with
 
 [简体中文](README.md) | English
 
-Current version: `0.1.0` (release candidate; not yet published to crates.io).
+Current version: `0.1.0` (published to crates.io on 2026-11-06).
 
 ## Installation
-
-> `jserde` 0.1.0 has not been published to crates.io yet. After publication:
 
 ```bash
 # core library
@@ -23,8 +21,12 @@ cargo add jserde-derive
 cargo add jserde-serde
 ```
 
-Until then, use the workspace or a path/git dependency. See
-[RELEASING.md](RELEASING.md) and the
+Crates: [jserde](https://crates.io/crates/jserde),
+[jserde-derive](https://crates.io/crates/jserde-derive),
+[jserde-serde](https://crates.io/crates/jserde-serde). Docs:
+[docs.rs/jserde](https://docs.rs/jserde).
+
+See [RELEASING.md](RELEASING.md) and the
 [0.1.0 release notes](docs/release-notes-0.1.0.md).
 
 ## Compatibility

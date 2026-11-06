@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-11-06 (release candidate)
+## [0.1.0] - 2026-11-06
 
 ### Added
 
@@ -68,7 +68,7 @@ All notable changes to this project are documented here.
 - Release-ready documentation: installation/compatibility/API-stability notes,
   `RELEASING.md`, `CONTRIBUTING.md`, `docs/release-notes-0.1.0.md`, and
   MIT/Apache-2.0 license files.
-- Crate names in the 0.1.0 candidate are `jserde`, `jserde-derive`, and
+- Crate names in 0.1.0 are `jserde`, `jserde-derive`, and
   `jserde-serde` (the pre-release `jser` name was retired before publication).
 - Schema-driven `jserde-serde` bridge (single root; recursive nested POJOs).
 - Compact primitive-array storage (`PrimitiveArray` view over raw wire bytes);

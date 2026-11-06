@@ -11,12 +11,12 @@
 | 项 | 状态 |
 |---|---|
 | 文档 | `requirements.md` / `design.md` / `implementation-plan.md` 已同步到 P9；发布前文档见 `RELEASING.md` / `CONTRIBUTING.md` / `docs/api-stability.md` |
-| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成；P8-1 fuzz 已通过；当前只差发布决策（A-5） |
+| 实现计划 | `docs/implementation-plan.md`：P0–P9 已完成；P8-1 fuzz 已通过；0.1.0 已发布 |
 | 基准数据 | **已完成**：43 个用例、79031 字节（P6/P7/P8/P9 新增 object/40–50），JDK 17.0.20.1 生成，见 `docs/testdata/` |
 | Rust 代码 | **P0–P9 主要功能已完成**：编解码、typed、allowlist、derive/SUID、内置类语义、嵌套 serde、primitive raw 数组、`TC_CLASS`/代理保真回放、扩展容器、CI/bench/panic 审计；**198 项测试全绿**。P8-1 fuzz、P9-5/P9-12 均已关闭/完成 |
 | 版本控制 | 已初始化 git（`main`）；文档、testdata 与 P0–P9 代码均已提交，**之后每次改动都必须提交**（见 §10.1） |
 
-所以：P0–P9 主要功能已完成；P8-1 30 分钟 fuzz 已通过（AC-04 ✅）；P9-5 与 P9-12 已关闭；当前没有功能待办；发布文档已就绪，发布仍按 A-5 暂缓。
+所以：P0–P9 主要功能已完成；P8-1 30 分钟 fuzz 已通过（AC-04 ✅）；P9-5 与 P9-12 已关闭；当前没有功能待办；`jserde`/`jserde-derive`/`jserde-serde` 0.1.0 已于 2026-11-06 发布。
 
 ---
 
@@ -72,7 +72,7 @@ docs/
 ├── implementation-plan.md   # P0–P9 任务拆分、门禁、§20/§21 缺口 backlog
 ├── bench.md / bench-baseline.json / bench_gate.py  # 性能基线
 ├── api-stability.md         # 版本/兼容性/弃用策略
-├── release-notes-0.1.0.md   # 0.1.0 release candidate notes
+├── release-notes-0.1.0.md   # 0.1.0 release notes
 ├── devlog.md                # 每次提交的开发日志（§10.2）
 └── testdata/
     ├── README.md            # 基准数据的用途、用法、覆盖表
@@ -290,7 +290,7 @@ P3 的逐字节回放门禁（design §5.1）**只对未修改的 fixture 流（
 - 不把 serde 做成能处理环/共享的"半成品"。
 - 不添加未在 §5 声明的重量级依赖（async runtime、平台特定库）；新增依赖先说明理由。
 - 不在没有 fixture 证据的情况下"修正"协议细节。
-- `requirements.md` §6 / `design.md` §8 的目标 Java 版本、serde 形式、发布与性能数值**已定案（2026-11-04）**：Java 17 基线、schema 驱动 serde、暂不发布、≥1 GB/s 且 <3× RSS（nightly bench 门禁）。**allowlist 默认严格**：`java.lang.*`、`java.util.*`；放宽用 `Allowlist::all()` 并警告。写方向是基线 `FR-02 MUST`。
+- `requirements.md` §6 / `design.md` §8 的目标 Java 版本、serde 形式、发布与性能数值**已定案（2026-11-04）**：Java 17 基线、schema 驱动 serde、0.1.0 已发布、≥1 GB/s 且 <3× RSS（nightly bench 门禁）。**allowlist 默认严格**：`java.lang.*`、`java.util.*`；放宽用 `Allowlist::all()` 并警告。写方向是基线 `FR-02 MUST`。
 
 ---
 

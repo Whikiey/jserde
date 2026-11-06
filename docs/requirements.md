@@ -138,7 +138,7 @@
 3. **NFR-02 的数值**：大块/primitive 数组解码 ≥1 GB/s、内存 <3×；实测约 3.5–6 GB/s、`int[]` RSS 约 2.03×；nightly bench 门禁按观测值 35% 兜底。
 4. **NFR-04 的默认策略**：严格默认，只放行 `java.lang.*`、`java.util.*`；放宽用 `Allowlist::all()` 并警告 gadget 风险。
 5. **FR-13/14/15**：typed API、derive、schema 驱动 serde 桥（直连 `JValue`）均已交付；无 schema 的 serde 直出不在范围。
-6. **发布**：0.1.0 保持 unreleased，暂不发布 crates.io；首次发布前再做 API 冻结与 semver 评审。
+6. **发布**：0.1.0 已于 2026-11-06 发布到 crates.io；后续版本按 `RELEASING.md` 与 semver 评审。
 
 ---
 

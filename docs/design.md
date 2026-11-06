@@ -425,7 +425,7 @@ typed API 还支持 `&[T]`/`[T; N]` 编码为 Java 数组，以及 `BTreeMap`/`B
 | 1 | 方向 | **双向**（FR-02 MUST）：读与写均已实现并通过 P3/P6/P7 回归。 |
 | 2 | 目标 Java 版本 | **Java 17** 为基线：fixture 由 17.0.20.1 生成；wire 协议自 1.2 未变，JDK 25 重新生成已提交用例逐字节一致。`java.time` 等 Java 8+ 类按需支持；对受支持类，JDK 8–25 的流预期可读，但不作为 CI 门禁。 |
 | 3 | serde 集成 | **已实现**为独立 `jserde-serde`：schema 驱动、直连 `JValue`；自定义 derive 仍独立（`jserde-derive`）。不做“无 schema 的 `Serialize` 直出”。 |
-| 4 | 发布到 crates.io | **暂不发布**：0.1.0 保持 unreleased，保留 `jserde`/`jserde-derive`/`jserde-serde` 三 crate 拆分；API 冻结与 semver 在首次发布前再评审。 |
+| 4 | 发布到 crates.io | **已发布 0.1.0（2026-11-06）**：`jserde`/`jserde-derive`/`jserde-serde` 三 crate 已上线；后续按 `RELEASING.md` 与 semver 演进。 |
 | 5 | 性能目标 | 大块/primitive 数组解码 **≥1 GB/s**、内存 **<3×** 输入；实测 `int[]` 约 3.5–6 GB/s、100 MB 块约 4.8–6 GB/s、`int[]` RSS 约 2.03×；nightly bench 门禁按观测值 35% 兜底（见 `docs/bench.md`）。 |
 | 6 | 安全默认值 | **已定案（2026-11-04）**：默认严格 allowlist（`java.lang.*`、`java.util.*`）；`Allowlist::all()` 为显式放宽，文档警告 gadget 风险。 |
 

@@ -32,7 +32,7 @@ v0.1 的完成定义：**43 个 fixture 全部可处理（42 正常解码 + 1 TC
 | A-2 | **双向**实现（读 + 写） | `FR-02` 为 `MUST`，`S-2` 明确双向 |
 | A-3 | **已确认**：默认 **严格 allowlist**（`java.lang.*`、`java.util.*` + 显式放行） | `NFR-04` 的安全默认；放宽用 `Allowlist::all()` 并文档警告 |
 | A-4 | Rust `edition 2021`、`rust-version = 1.77` | 保守、无 nightly 依赖；`thiserror 2.0.21` 要求 1.77（P9-28 校准） |
-| A-5 | 首版**不发布** crates.io | 设计 §8 未决；不影响代码结构，只影响文档/CI 投入 |
+| A-5 | 首版**发布** crates.io | 2026-11-06 发布 0.1.0（用户决定）；后续按 `RELEASING.md` |
 | A-6 | 单人开发估算，人日为 1 个熟练 Rust 工程师 | 并行化建议见 §2 |
 | A-7 | 本机可能无 JDK，CI 必须有 JDK 17 | 无 JDK 时 `tests/interop.rs` 运行时跳过，fixture 校验与 interop job 在 CI 跑 |
 
@@ -265,7 +265,7 @@ P2 ─────────────────────────�
 - P7-2：无 criterion 离线依赖，改用 `examples/bench.rs`；100 MB 块流实测约 4.8 GB/s、峰值约 2.0× 输入，见 `docs/bench.md`（AC-06 的合成块负载）；真实 25M `int[]` 已由 P8-2 改为 raw 存储，本地采样约 2.03×。
 - P7-3：`#![forbid(unsafe_code)]` + `#![deny(clippy::unwrap_used, clippy::expect_used)]`；去除核心库 `expect`，大块顶层数据避免复制。
 - P7-4：README/SECURITY/CHANGELOG、crate rustdoc 与 `docs/bench.md`。
-- P7-5：`cargo package --list -p jserde` 通过；发布元数据、`RELEASING.md`、`CONTRIBUTING.md`、许可证与 0.1.0 release notes 已补齐，按 A-5 暂不发布。
+- P7-5：`cargo package --list -p jserde` 通过；发布元数据、`RELEASING.md`、`CONTRIBUTING.md`、许可证与 release notes 已补齐；0.1.0 已发布。
 - P7-6：全仓 **198 passed**（P8-6 后），clippy/fmt/gen/interop 通过。
 
 出口：`AC-04`、`AC-06`；`cargo test --workspace`、`clippy -D warnings`、`fmt --check`、`gen.sh --check` 全部通过；v0.1.0 可交付。
@@ -391,7 +391,7 @@ CI 安装 JDK 17 与 `python3`；Rust 用 stable，另有 MSRV 1.77、i686 与 c
 
 ## 18. 已定案问题（2026-11-04 收口）
 
-1. §1 的假设成立：Java 17 基线、双向、严格 allowlist、edition 2021、MSRV 1.77、首版暂不发布。
+1. §1 的假设成立：Java 17 基线、双向、严格 allowlist、edition 2021、MSRV 1.77；0.1.0 已发布。
 2. fixture 由本机 JDK 17/25 生成并提交；新增用例必须走 `gen.sh`，manifest 由脚本重算。
 3. typed API 与 serde 桥均已交付；serde 为 schema 驱动的受限桥（见 `design.md` §8）。
 

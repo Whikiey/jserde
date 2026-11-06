@@ -1,7 +1,7 @@
 # jserde 0.1.0 — Release Candidate
 
-Release date: pending publication  
-Status: release candidate; not yet published to crates.io.
+Release date: 2026-11-06  
+Status: published to crates.io (`jserde`, `jserde-derive`, `jserde-serde`).
 
 ## Highlights
 
