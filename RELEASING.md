@@ -88,20 +88,24 @@ patch releases must remain source-compatible.
 
 ## 5. Publish order
 
-Publish the core first, then the crates that depend on it:
+Publish `jserde-derive` **before** `jserde`: the core crate has a dev-dependency
+on `jserde-derive` (`version = "0.1.0"`), and Cargo validates that published
+dev-dependency when packaging the core crate.
 
 ```bash
-cargo publish -p jserde
 cargo publish -p jserde-derive
+cargo publish -p jserde
 cargo publish -p jserde-serde
 ```
 
-`jserde-derive` does not depend on `jserde` at runtime, but publishing in this
-order keeps docs and examples consistent. If a dry run is requested:
+If a dry run is requested, start with the dependency-free crate:
 
 ```bash
-cargo publish --dry-run -p jserde
+cargo publish --dry-run -p jserde-derive --registry crates-io
 ```
+
+The core dry run can only succeed after `jserde-derive 0.1.0` is visible on
+crates.io; `jserde-serde` likewise waits for `jserde 0.1.0`.
 
 ## 6. Tag and GitHub release
 
